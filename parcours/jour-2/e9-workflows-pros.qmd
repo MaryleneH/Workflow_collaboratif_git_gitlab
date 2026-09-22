@@ -1,0 +1,337 @@
+---
+title: "Même problème, plusieurs réponses"
+etape: e9
+description: "Git Flow lu brique par brique, puis comparé à GitHub Flow, GitLab Flow et au trunk-based development sur un même scénario : choisir un workflow selon son rythme de publication."
+---
+
+::: situation
+L'édition 2027 se prépare. Jules, qui administre le GitLab de la DSI, fait une proposition : « À la DSI, toutes les équipes sont en Git Flow. `develop`, des branches `feature/*`, une `release/*` avant chaque livraison. C'est le standard. Pourquoi l'Observatoire ferait-il autrement ? »
+
+Inès ne veut ni suivre la mode ni la rejeter par principe. Avant de décider, l'équipe doit savoir **ce que Git Flow résout**, ce qu'il **coûte**, et si ce problème est le sien.
+:::
+
+Vous connaissez maintenant toutes les briques : commits, branches, fusions avec ou sans commit de fusion, Merge Request, pipeline, rebase, squash, tags et branche de correction. Un **workflow** n'est rien d'autre qu'une façon de les assembler. Cette étape vous apprend à lire les assemblages les plus répandus, et à reconnaître celui qui convient à une équipe donnée.
+
+## Relire l'énigme, brique par brique
+
+Ce schéma figurait sur la page d'accueil. C'était une énigme ; ce n'en est plus une.
+
+::: {.git-graph scenario="gitflow-enigme"}
+:::
+
+[Git Flow]{.t} est un **modèle de branches**, c'est-à-dire une convention d'équipe. Il n'invente aucune commande : chaque élément du schéma est une notion que vous avez déjà manipulée.
+
+| Famille | Part de | Fusionnée dans | Durée de vie | Ce que vous en savez déjà |
+|---|---|---|---|---|
+| `main` | — | — | permanente | Ne reçoit **que** des versions publiées ; chaque commit de `main` porte un tag (E8). |
+| `develop` | `main`, une fois | — | permanente | Branche d'intégration : c'est là qu'arrivent les sujets terminés. |
+| `feature/*` | `develop` | `develop` | un sujet | Une [feature branch]{.t}, comme en E3. |
+| `release/*` | `develop` | `main` **et** `develop` | quelques jours | Stabilisation d'une version : corrections mineures, numéro de version, documentation. |
+| `hotfix/*` | `main` (le tag publié) | `main` **et** `develop` | quelques heures | Le [hotfix]{.t} de E8 : on part de ce qui est publié, pas du travail en cours. |
+
+Trois détails distinguent Git Flow de ce que vous avez pratiqué.
+
+- **Les fusions se font avec `--no-ff`.** Git crée un [commit de fusion]{.t} même quand un [fast-forward]{.t} serait possible. Le but est de garder visible, dans le graphe, le groupe de commits qui formait une fonctionnalité.
+- **Les branches `release/*` et `hotfix/*` sont fusionnées deux fois.** Dans `main`, parce que c'est la version publiée ; dans `develop`, pour que la correction ne soit pas perdue dans la version suivante. (Si une `release/*` est en cours au moment du hotfix, Driessen prévoit de fusionner le hotfix dans cette release plutôt que dans `develop`.)
+- **Le tag est posé sur le commit de fusion dans `main`**, par exemple `1.0` ou `1.0.1`, souvent en [SemVer]{.t}.
+
+::: idee-fausse
+::: fausse
+Git Flow est une fonctionnalité de Git, ou de GitLab.
+:::
+::: juste
+Git ne sait pas ce qu'est `develop` : pour lui, c'est une branche comme une autre. GitLab non plus. Git Flow est une **pratique d'équipe**. Une extension en ligne de commande, `git-flow`, automatise ses opérations (`git flow feature start …`), mais elle n'est pas fournie avec Git et vous n'en avez pas besoin pour comprendre le modèle.
+:::
+:::
+
+Un mot sur le vocabulaire. Le préfixe `feature/` vient de Git Flow ; dans notre équipe, la branche s'appelle `30-taux-difficulte`, du nom que propose le bouton *Create merge request* d'une issue. Attention aussi à l'homonymie : en data science, une *feature* est une variable explicative. Dans « feature branch », c'est une **fonctionnalité**.
+
+## Pourquoi Git Flow a été conçu
+
+En janvier 2010, Vincent Driessen publie sur son blog *A successful Git branching model*. Le contexte compte : des **logiciels livrés par versions**, installés chez des clients, avec un cycle de livraison de plusieurs semaines. Plusieurs versions vivent en même temps : la 1.0 chez un client, la 1.1 chez un autre, la 2.0 en préparation. Il faut pouvoir **stabiliser** une version sans geler le développement, et **corriger** une version publiée sans livrer la suivante par accident.
+
+Git Flow répond précisément à cela, et il y répond bien. Dans son schéma original, la branche principale s'appelait `master` ; la plupart des équipes l'ont depuis renommée `main`.
+
+En mars 2020, Driessen a ajouté en tête de son article une **note de réflexion**. En substance : si votre logiciel est livré en continu, comme une application web, il recommande un workflow beaucoup plus simple, du type GitHub Flow, plutôt que d'imposer Git Flow. Git Flow reste pertinent pour les logiciels **versionnés explicitement**, et surtout quand il faut maintenir plusieurs versions en parallèle. Autrement dit, l'auteur lui-même dit : « ce modèle n'est pas universel ».
+
+### Ce que Git Flow apporte, et ce qu'il coûte
+
+| Forces | Coûts |
+|---|---|
+| Une phase de **stabilisation explicite** (`release/*`) qui ne bloque pas le travail suivant. | Des **branches longues** : `develop`, et souvent des `feature/*` qui vivent des semaines. |
+| Plusieurs **versions maintenues** en parallèle, chacune avec ses correctifs. | Une **intégration tardive** : un sujet ne rencontre les autres qu'à la fusion dans `develop`, puis `main` ne le voit qu'à la release. Les conflits s'accumulent (*merge hell*). |
+| `main` ne contient que des versions publiées : on sait toujours ce qui est en production. | Une **double fusion** de chaque release et de chaque hotfix, qu'il est facile d'oublier (voir l'incident ci-dessous). |
+| Des noms de branches qui disent leur rôle. | Une **charge cognitive** : cinq familles de branches, des règles différentes pour chacune. |
+| | Si l'on ne maintient qu'une version, `develop` devient une **deuxième `main`** : il faut protéger, tester et surveiller deux branches au lieu d'une. |
+
+## Les autres réponses
+
+Depuis 2010, d'autres équipes ont répondu autrement au même problème : **comment tenir la promesse de la branche principale quand l'équipe grandit ?** Leur contexte n'était plus le logiciel livré par versions, mais le service web mis à jour plusieurs fois par jour.
+
+### GitHub Flow : une seule branche permanente
+
+En 2011, Scott Chacon décrit le fonctionnement de GitHub dans un billet intitulé *GitHub Flow*. Le modèle tient en six règles.
+
+1. Tout ce qui est dans `main` est livrable.
+2. Pour travailler, on crée une branche au nom explicite, depuis `main`.
+3. On commite sur cette branche et on la pousse régulièrement.
+4. On ouvre une [Pull Request]{.t} pour demander de l'aide ou proposer la fusion : c'est l'équivalent GitHub de notre [Merge Request]{.t}.
+5. On fusionne après relecture et approbation.
+6. Une fois fusionné dans `main`, on livre immédiatement.
+
+Pas de `develop`, pas de `release/*` : la branche principale **est** la version suivante. C'est l'intégration continue qui rend cela possible.
+
+### GitLab Flow : GitHub Flow, plus ce dont on a besoin
+
+[GitLab Flow]{.t}, décrit par GitLab à partir de 2014, part de la même base que [GitHub Flow]{.t} (`main` et des branches courtes relues en MR). Il ajoute des branches permanentes **seulement si le contexte l'exige** :
+
+- des **branches d'environnement** (`pre-production`, `production`) quand on ne peut pas livrer à tout moment ;
+- des **branches de version** (`2-3-stable` dans la documentation GitLab) quand il faut corriger une version publiée pendant que `main` prépare la suivante.
+
+Sa règle clé s'appelle **upstream first** : une correction se fait d'abord dans `main`, puis elle est reportée par [cherry-pick]{.t} dans la branche de version. On ne corrige jamais une branche de version seule, sinon la correction disparaîtrait de la version suivante. La documentation de GitLab sur ce sujet a été réorganisée au fil des versions ; les principes, eux, n'ont pas changé.
+
+### Trunk-based development : intégrer tous les jours
+
+Le [trunk-based development]{.t} pousse la logique au bout. Chacun intègre dans le tronc (`main`) **au moins une fois par jour**. Les branches vivent quelques heures, parfois moins. Ce qui n'est pas terminé entre quand même dans le tronc, mais désactivé par un [feature flag]{.t}. Cela suppose une CI **très** solide : un test qui manque est un bug livré dans l'heure.
+
+Les recherches du programme DORA, synthétisées dans le livre *Accelerate* (Forsgren, Humble et Kim, 2018), associent ces pratiques (branches de moins d'un jour, peu de branches actives, intégration fréquente) à de meilleures performances de livraison logicielle. Deux précautions de lecture : il s'agit d'une **corrélation** observée par enquête, pas d'une preuve de cause ; et le contexte étudié est la livraison de logiciels, pas la publication de statistiques.
+
+## Un même scénario, quatre workflows
+
+Pour comparer honnêtement, rejouons **la même histoire** dans les quatre modèles :
+
+- deux sujets en parallèle : #30 (taux de difficulté de recrutement par métier) et #31 (arrondi des parts du tableau de synthèse) ;
+- #30 est prêt pour la publication `2027.0` ; #31 ne l'est pas, il arrive après ;
+- un lecteur signale ensuite une erreur : il faut publier l'erratum `2027.1` **sans** embarquer #31.
+
+Parcourez chaque onglet étape par étape. Comptez les fusions et repérez où naît l'erratum.
+
+::: {.atlas titre="Un même scénario, quatre workflows"}
+::: {.git-graph scenario="e9-gitflow"}
+:::
+::: {.git-graph scenario="e9-github-flow"}
+:::
+::: {.git-graph scenario="e9-gitlab-flow"}
+:::
+::: {.git-graph scenario="e9-trunk-based"}
+:::
+:::
+
+| | Git Flow | GitHub Flow | GitLab Flow | Trunk-based |
+|---|---|---|---|---|
+| **Branches permanentes** | `main`, `develop` | `main` | `main`, plus une branche de version **à la demande** | `main` |
+| **Délai d'intégration d'un sujet dans `main`** | jusqu'à la release suivante (semaines) | la durée de la MR (jours) | la durée de la MR (jours) | quelques heures |
+| **Fusions dans ce scénario** | 6 commits de fusion | 3 commits de fusion | 3 MR en squash, 1 cherry-pick | aucune : des fast-forward |
+| **Où naît l'erratum** | `hotfix/2027.1` depuis `main`, fusionné dans `main` et `develop` | une branche depuis `main`… qui contient déjà #31 | dans `main` d'abord, puis `maintenance/2027` depuis le tag | sur le tronc, #31 éteint par le flag |
+| **Ce qu'il faut pour que ça marche** | discipline des doubles fusions, une personne responsable des releases | accepter que chaque livraison soit la dernière version de `main` | CI, review, et la discipline *upstream first* | CI très solide, petits incréments, feature flags, reviews rapides |
+
+Notez une chose : la **méthode de fusion** (commit de fusion, squash ou fast-forward) est un réglage **indépendant** du modèle de branches. Les onglets varient exprès : commits de fusion pour GitHub Flow, squash pour GitLab Flow. Vous choisirez la vôtre en E10.
+
+## Quand ça coince
+
+::: {.incident #inc-e9-1 titre="Le bug corrigé est revenu en recette"}
+Jules raconte un épisode de la DSI. L'application interne de suivi des effectifs est en Git Flow. Le hotfix `3.4.1` a corrigé le calcul de l'ancienneté, et il est en production depuis un mois. Or la recette de la version `3.5.0`, construite depuis `release/3.5.0`, affiche de nouveau l'ancienneté fausse.
+
+::: symptome
+```{.text .sortie}
+$ git branch -a --contains 9c41e7b
+  main
+  remotes/origin/main
+```
+`9c41e7b` est le commit « Corrige le calcul de l'ancienneté (hotfix 3.4.1) ».
+:::
+::: hypotheses
+- La branche `release/3.5.0` a « écrasé » la correction.
+- Le hotfix a été fusionné dans `main`, mais jamais dans `develop`.
+- Quelqu'un a annulé la correction avec `git revert`.
+:::
+::: diagnostic
+La sortie est sans appel : le commit de correction est contenu dans `main`, mais **ni dans `develop`, ni dans `release/3.5.0`**. La seconde fusion du hotfix, celle vers `develop`, a été oubliée. Or `release/3.5.0` a été créée depuis `develop` : elle n'a jamais reçu la correction.
+
+Rien n'a été « écrasé » : Git n'a rien perdu, la correction n'a simplement jamais été intégrée dans cette ligne d'historique. Une recherche `git log --oneline -S "anciennete" develop` confirme qu'aucun `revert` n'est en cause.
+
+Le risque ne s'arrête pas à la recette. Si `develop` a modifié les mêmes lignes entre-temps, la fusion de `release/3.5.0` dans `main` produira un conflit, et une résolution hâtive en faveur de la release effacera la correction de `main`.
+:::
+::: correction
+Intégrer le hotfix dans la release en cours, par une fusion du tag ou de la branche `main`, puis relancer les tests :
+
+```{.bash risque="reversible"}
+git fetch
+git switch release/3.5.0
+git merge --no-ff 3.4.1
+```
+
+Puis s'assurer que `develop` recevra aussi la correction, à la fusion de la release.
+:::
+::: prevention
+Dans Git Flow, un hotfix n'est terminé que lorsqu'il est dans `main` **et** dans `develop` (ou dans la release en cours). Chez nous, la même idée s'appelle R16 : la correction d'une publication doit aussi se retrouver dans `main`. Moins il y a de branches permanentes, moins il y a de fusions à oublier.
+:::
+:::
+
+Dans n'importe quel dépôt, la question « ce commit est-il dans cette branche ? » se pose au terminal, avant toute interprétation :
+
+```{.bash risque="sur"}
+git fetch
+git branch -a --contains 9c41e7b
+git log --oneline --graph --all
+```
+
+::: {.vscode titre="Voir les branches permanentes"}
+Dans la vue **Source Control** (<kbd>Ctrl</kbd>+<kbd>Maj</kbd>+<kbd>G</kbd>), la section **Source Control Graph** (graphe du contrôle de code source, selon votre version de VS Code) dessine le même graphe que `git log --graph`. Dans un dépôt en Git Flow, repérez les deux lignes permanentes, `main` et `develop`, et les commits de fusion qui les relient. Le graphe montre ; seule la commande `git branch --contains` répond sans ambiguïté.
+:::
+
+## À vous
+
+::: {.mission #m-e9-1 titre="Jeu de rôle : quel workflow pour quelle équipe ?" duree="20 min" mode="en équipe de 3 ou 4"}
+::: objectif
+Choisir un modèle de branches pour une équipe, et le justifier par son contexte de livraison plutôt que par l'habitude.
+:::
+
+Chaque équipe reçoit un contexte. Un membre joue Jules (« Git Flow, c'est le standard »), un autre joue Inès (« qu'est-ce que ça nous coûte ? »).
+
+1. **Le package R `oeiindic`**. Il rassemble les fonctions d'indicateurs de l'Observatoire (`part_seniors()`, `repartition_pcs()`…) et il est diffusé sur le CRAN en version 2.x. Des services partenaires utilisent encore la version 1.x, installée depuis le GitLab de l'Observatoire : elle doit recevoir des correctifs pendant deux ans. Chaque soumission au CRAN est précédée de plusieurs jours de vérifications.
+2. **Le tableau de bord interne des recrutements**. C'est une application Shiny, déployée sur Onyxia plusieurs fois par jour à partir de `main`. Une seule version est en service : la dernière.
+3. **Le Panorama annuel**. Une publication par an, datée. Des errata ponctuels sur l'édition publiée pendant que la suivante se prépare. Quatre à six contributeurs.
+
+::: consignes
+1. Lisez votre contexte. Répondez à deux questions : combien de versions **vivent** en même temps ? À quel rythme livre-t-on ?
+2. Choisissez un modèle (Git Flow, GitHub Flow, GitLab Flow, trunk-based) ou une variante.
+3. Écrivez deux arguments pour, et **le coût que vous acceptez**.
+4. Dites où naîtrait une correction urgente sur la version en service.
+5. En 2 minutes, présentez votre choix au groupe. Les autres équipes ont le droit de jouer Jules.
+:::
+
+::: reussite
+Votre choix tient en trois lignes : nombre de versions vivantes, rythme de livraison, et donc le modèle retenu. Il nomme le coût accepté, et l'endroit exact (branche et point de départ) d'une correction urgente.
+:::
+
+::: indice
+Relisez la note de 2020 de Driessen : pour quel type de logiciel recommande-t-il encore Git Flow ?
+:::
+
+::: {.indice titre="Indice 2 : la bonne question"}
+Posez-vous la question « y a-t-il un moment où deux versions doivent recevoir des corrections en même temps ? ». Si oui, il faut des branches de version. Si non, `main` suffit.
+:::
+
+::: corrige
+**Contexte 1 (package CRAN).** Deux versions vivantes (1.x et 2.x), des publications explicitement numérotées en SemVer, une stabilisation de plusieurs jours avant soumission. C'est le terrain de Git Flow, et c'est une réponse **défendable**. Une variante GitLab Flow est aussi très bonne : `main` avec branches courtes, plus une branche `1.x-stable` qui reçoit les correctifs par cherry-pick (*upstream first*), et une courte branche de stabilisation avant chaque soumission. Le coût accepté est la discipline des reports de correctifs.
+
+**Contexte 2 (application déployée plusieurs fois par jour).** Une seule version vivante, livraison continue. GitHub Flow ou trunk-based. Une correction urgente est une MR ordinaire sur `main`, livrée dans l'heure. Le coût accepté : une CI solide, et des feature flags si l'on veut intégrer du travail inachevé. Git Flow serait un contresens : `develop` et `release/*` retarderaient chaque livraison.
+
+**Contexte 3 (Panorama).** Une seule version vivante la plupart du temps, une publication par an, des errata rares. GitHub Flow comme base, complété **à la demande** par une branche de version depuis le tag, comme en E8 : c'est du GitLab Flow. Le coût accepté : ne pas avoir de phase de stabilisation séparée ; ce sont les dernières MR avant le tag qui la font, sur `main` protégée. C'est la conclusion de cette étape.
+
+Piège fréquent : un groupe choisit Git Flow pour le contexte 3 « parce qu'il y a des errata ». Faites-lui compter les versions vivantes : l'erratum 2025 n'a exigé qu'une branche créée depuis un tag, sans `develop`.
+:::
+:::
+
+## Ce que disent les développeurs
+
+Ces phrases, vous les entendrez dans une équipe de développement ou à la DSI. Vous devez pouvoir les traduire.
+
+::: decodeur
+« On est en [trunk-based]{.t ref="trunk-based"} : pas de branche de plus d'un jour, tout ce qui n'est pas prêt est derrière un [feature flag]{.t}. »
+
+::: traduction
+Chacun intègre son travail dans `main` au moins une fois par jour, par des branches de quelques heures. Une fonctionnalité inachevée est intégrée quand même, mais désactivée dans le code : on intègre tôt, on active plus tard.
+:::
+:::
+
+::: decodeur
+« On est en [GitLab Flow]{.t} avec des branches de [release]{.t} : le fix part *upstream first* dans [main]{.t}, puis on le [cherry-pick]{.t} sur la `2-3-stable`. »
+
+::: traduction
+La correction est d'abord fusionnée dans `main`, par une MR normale. Elle est ensuite reportée, par un nouveau commit qui reprend les mêmes modifications, dans la branche qui maintient la version 2.3 publiée. C'est exactement ce que l'équipe a fait en E8 avec le correctif du calcul de l'âge et `maintenance/2025`.
+:::
+:::
+
+::: {.rosette principe="integrite"}
+::: principe
+Le même principe, des réponses différentes selon le rythme de livraison : ce qui est livré ne doit jamais contenir de travail inachevé ou non vérifié.
+:::
+::: dev
+Git Flow isole le travail inachevé dans `develop` et stabilise dans `release/*`. Le trunk-based development l'intègre tout de suite, mais éteint, derrière un feature flag, sous une CI très solide.
+:::
+::: stat
+`main` protégée ne reçoit que des MR relues au pipeline vert. Un sujet inachevé reste sur sa branche courte. Un erratum part du **tag** publié, dans une branche de maintenance : il ne peut pas embarquer l'édition suivante.
+:::
+:::
+
+### Et les forks ?
+
+Dans les projets ouverts (un package R sur GitHub, une bibliothèque Python), les contributeurs n'ont pas le droit d'écrire dans le dépôt. Ils créent un [fork]{.t} : une copie du projet, faite **sur la plateforme**, dans leur propre espace. Ils y poussent leurs branches, puis proposent une MR vers le projet d'origine.
+
+Dans ce cas, le mot [upstream]{.t} prend son **second sens** : c'est le nom conventionnel du remote qui désigne le dépôt d'origine, à côté d'`origin`, qui désigne votre fork. Ce n'est pas le sens de E2 (la branche amont suivie par votre branche locale). L'approfondissement [Forks et upstream](../approfondissements/forks-upstream.qmd) détaille ce fonctionnement.
+
+## En pratique statistique : la réponse à Jules
+
+Revenons à l'Observatoire, avec les deux questions de la mission.
+
+- **Combien de versions vivantes ?** Une : l'édition en préparation. L'édition publiée est figée par son tag ; on n'y revient que pour un erratum, rare et ponctuel.
+- **Quel rythme de livraison ?** Une publication par an, plus les errata.
+
+Avec ces réponses, Git Flow ajouterait `develop` et `release/*` **sans bénéfice**. `develop` deviendrait une copie conforme de `main` (une deuxième branche à protéger, tester et fusionner). La stabilisation qu'offre `release/*`, l'équipe l'obtient déjà : ce sont les dernières MR avant le tag, relues, sur une `main` protégée dont le pipeline est vert.
+
+Et vous pratiquez déjà la brique utile. En E8, la branche `maintenance/2025`, créée depuis le tag `2025.0`, a reçu le correctif de `main` par `cherry-pick -x` : c'est une **branche de version** de GitLab Flow, avec la règle *upstream first* (la correction c11 était dans `main` avant d'être reportée). L'équipe n'a pas besoin d'un modèle plus lourd ; elle a besoin d'écrire celui qu'elle pratique déjà.
+
+::: {.recit persona="jules"}
+« D'accord. À la DSI, certaines applications existent en plusieurs versions, installées dans des services différents et corrigées en parallèle : Git Flow y a du sens. Ici, vous n'avez qu'une édition vivante. Je retire ma proposition, mais je veux voir vos règles écrites. »
+:::
+
+La dernière phrase de Jules est la bonne question : l'Observatoire a un workflow, mais il n'est écrit nulle part.
+
+::: {.regle ref="R17"}
+:::
+
+Cette règle n'est pas un rejet de Git Flow. Si l'Observatoire devait un jour maintenir deux éditions vivantes en parallèle (par exemple une série trimestrielle et le panorama annuel, chacune corrigée de son côté), il faudrait revoir la question. Et la réponse serait probablement plusieurs branches de version, pas `develop`.
+
+::: formateur
+**Timing (60 min).** Énigme relue : 10 min, en projetant le schéma et en faisant nommer chaque brique par le groupe. Histoire et autres modèles : 10 min. Atlas et tableau : 10 min (faire compter les fusions à voix haute). Jeu de rôle : 20 min, dont 8 min de restitution. Conclusion et R17 : 10 min.
+
+**Posture.** Ne ridiculisez pas Git Flow : c'est la bonne réponse pour le contexte 1. Le message est « un workflow se choisit », pas « Git Flow est dépassé ». Si un participant vient d'une équipe de développement en Git Flow, demandez-lui combien de versions il maintient en parallèle.
+
+**Variante si le groupe est en avance.** Demandez de redessiner, au tableau, le scénario de l'atlas en GitLab Flow avec des branches d'environnement (`production`) au lieu d'une branche de version, et de dire en quoi le cas d'une publication diffère d'un déploiement.
+:::
+
+::: retenir
+- Git Flow assemble des briques que vous connaissez (branches, commits de fusion, tags, hotfix) pour livrer des logiciels versionnés, dont plusieurs versions sont maintenues en parallèle.
+- Tous ces workflows protègent la même chose : ce qui est livré. Ils diffèrent par le délai d'intégration et le nombre de versions vivantes.
+- On choisit selon le rythme de publication et le nombre de versions à maintenir : pour l'Observatoire, `main` et des branches courtes, avec une branche de maintenance seulement pour un erratum.
+:::
+
+::: {.checkpoint titre="Avant de passer à la suite"}
+::: {.question rappel="e8"}
+Dans quel modèle la branche `maintenance/2025` de E8 trouve-t-elle naturellement sa place ? Pourquoi n'est-ce pas un `hotfix/*` de Git Flow ?
+
+::: reponse
+C'est une **branche de version** de GitLab Flow. Un `hotfix/*` Git Flow part de `main`, parce que `main` ne contient que des versions publiées, puis il est fusionné dans `main` et `develop`. Chez nous, `main` prépare déjà l'édition 2026 : l'erratum part donc du **tag** `2025.0`, et il n'est jamais fusionné en retour dans `main`, puisque la correction y était déjà (c11, reportée par `cherry-pick -x` : *upstream first*).
+:::
+:::
+
+::: {.question rappel="e7"}
+En trunk-based development, les branches vivent quelques heures. Pourquoi le rebase y devient-il presque indolore, et reste-t-il sans danger ?
+
+::: reponse
+Une branche de quelques heures a très peu divergé du tronc : le rebase rejoue un ou deux commits, avec peu de risques de conflit. Il reste sans danger parce que la branche n'est pas partagée : on réécrit son propre travail, et l'on pousse avec `--force-with-lease` (R13).
+:::
+:::
+
+::: question
+Dans Git Flow, pourquoi une branche `release/*` est-elle fusionnée à la fois dans `main` et dans `develop` ?
+
+::: reponse
+Dans `main`, parce que c'est la version publiée, qui reçoit son tag. Dans `develop`, parce que les corrections faites pendant la stabilisation doivent se retrouver dans les versions suivantes. Oublier cette seconde fusion, c'est réintroduire les bugs corrigés.
+:::
+:::
+
+::: question
+Un collègue affirme : « En GitHub Flow, un erratum est impossible. » Qu'en pensez-vous ?
+
+::: reponse
+C'est possible, mais un erratum tiré de `main` embarque tout ce qui y a été fusionné depuis la publication (#31 dans l'atlas). GitHub Flow suppose que chaque livraison est la dernière version de `main`. Pour corriger une version antérieure sans le travail en cours, il faut une branche créée depuis le tag : c'est exactement ce qu'ajoute GitLab Flow.
+:::
+:::
+:::
+
+::: pont
+Vous savez lire Git Flow, le situer parmi les workflows modernes et dire pourquoi il ne convient pas à l'Observatoire. Reste à écrire **notre** workflow : l'étape suivante le déduit, règle par règle, du carnet que vous avez rempli depuis hier, puis configure GitLab pour le faire respecter.
+:::
