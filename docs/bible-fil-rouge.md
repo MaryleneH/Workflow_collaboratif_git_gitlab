@@ -56,7 +56,7 @@ observatoire-industrie/
 │       └── charte.py        ← charte graphique commune
 ├── scripts/
 │   ├── 01_generer_donnees.py   → data/brut/*.parquet + MANIFEST.json
-│   ├── 02_preparer.py          → data/prepare/*.parquet (DuckDB)
+│   ├── 02_preparer.py          → data/prepare/*.parquet + table d'analyse CSV (DuckDB)
 │   ├── 03_indicateurs.R        → resultats/indicateurs_<millesime>.csv
 │   └── 04_figures.py           → resultats/figures/*.png
 ├── reports/
@@ -91,6 +91,13 @@ observatoire-industrie/
   déterministe (graine dérivée du millésime) et écrit un `MANIFEST.json`
   contenant l'**empreinte SHA-256 du contenu** de chaque table, pas du fichier.
   C'est la « référence précise des données » d'une publication.
+- **Chaîne de traitement** :
+  - Python écrit les Parquet bruts.
+  - DuckDB les interroge **sans tout charger en mémoire** et produit les
+    Parquet préparés, ainsi que des tables d'analyse compactes en CSV
+    (`data/prepare/salaries_champ.csv`, `data/prepare/recrutements.csv`).
+  - R lit ces CSV avec `utils::read.csv`, sans dépendance à arrow : les
+    dépendances R se limitent à dplyr, testthat, lintr, knitr et rmarkdown.
 - **Données individuelles** : `data/brut/` et `data/prepare/` ne sont
   **jamais** versionnés (`.gitignore`). Dans le récit, les « vraies » données
   vivent sur un stockage S3 d'Onyxia. Dans la formation, on les régénère.
