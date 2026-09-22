@@ -14,13 +14,13 @@ stages:
       - nom: lint-r
         statut: echec
         image: "rocker/r-ver:4.4.1"
-        question: "Le code R respecte-t-il les règles de `lintr` ? Non : une ligne de 125 caractères."
+        question: "Le code R respecte-t-il les règles de `lintr` ? Non : une ligne de 146 caractères, pour une limite de 100 (fichier `.lintr`)."
   - nom: tester
     jobs:
       - nom: tests-python
         statut: succes
         image: "python:3.12-slim"
-        question: "Les données synthétiques régénérées ont-elles le bon schéma et des valeurs plausibles ?"
+        question: "Le générateur produit-il des tables au bon schéma, avec des valeurs plausibles et une empreinte stable ? (panel réduit, fabriqué par les tests)"
       - nom: tests-r
         statut: echec
         image: "rocker/r-ver:4.4.1"
@@ -35,7 +35,11 @@ stages:
         statut: ignore
         image: "rocker/r-ver:4.4.1"
         question: "Non lancé : il attend `donnees`."
+      - nom: figures
+        statut: ignore
+        image: "python:3.12-slim"
+        question: "Non lancé : il attend `donnees` et `indicateurs`."
       - nom: rapport
         statut: ignore
         image: "rocker/verse:4.4.1"
-        question: "Non lancé : il attend `indicateurs`."
+        question: "Non lancé : il attend `indicateurs` et `figures`."
