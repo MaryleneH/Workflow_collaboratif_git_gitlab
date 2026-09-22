@@ -107,29 +107,34 @@ Git rejoue les commits dans l'ordre. Le deuxième ajoute une ligne aux chiffres 
 ```{.text .sortie}
 Auto-merging reports/panorama.qmd
 CONFLICT (content): Merge conflict in reports/panorama.qmd
-error: could not apply ab68ba4... wip
+Auto-merging scripts/03_indicateurs.R
+error: could not apply e844a7a... wip
 hint: Resolve all conflicts manually, mark them as resolved with
 hint: "git add/rm <conflicted_files>", then run "git rebase --continue".
 hint: You can instead skip this commit: run "git rebase --skip".
 hint: To abort and get back to the state before "git rebase", run "git rebase --abort".
-Could not apply ab68ba4... wip
+Could not apply e844a7a... wip
 ```
 
 C'est un [conflit]{.t} ordinaire, comme en E3, mais **pendant** une opération en plusieurs temps. `git status` le rappelle :
 
 ```{.text .sortie}
-interactive rebase in progress; onto 7dc63cb
+interactive rebase in progress; onto dd0eadb
 Last commands done (2 commands done):
-   pick fbd0ac8 Regroupe les PCS en quatre grandes catégories
-   pick ab68ba4 wip
+   pick 238a8c5 Regroupe les PCS en quatre grandes catégories
+   pick e844a7a wip
 Next commands to do (5 remaining commands):
-   pick 330dfe3 corrige le test
-   pick 2741a2e oups
+   pick 44c3d4f corrige le test
+   pick 5997ef2 oups
   (use "git rebase --edit-todo" to view and edit)
-You are currently rebasing branch '21-regrouper-pcs' on '7dc63cb'.
+You are currently rebasing branch '21-regrouper-pcs' on 'dd0eadb'.
   (fix conflicts and then run "git rebase --continue")
   (use "git rebase --skip" to skip this patch)
   (use "git rebase --abort" to check out the original branch)
+
+Changes to be committed:
+  (use "git restore --staged <file>..." to unstage)
+	modified:   scripts/03_indicateurs.R
 
 Unmerged paths:
   (use "git restore --staged <file>..." to unstage)
@@ -137,26 +142,26 @@ Unmerged paths:
 	both modified:   reports/panorama.qmd
 ```
 
-Ne vous laissez pas dérouter par *interactive rebase in progress* : depuis Git 2.26, un rebase ordinaire est affiché ainsi. Vous êtes au commit 2 sur 7, et HEAD est **détachée** : Git construit la nouvelle suite de commits avant d'y déplacer la branche.
+Ne vous laissez pas dérouter par *interactive rebase in progress* : depuis Git 2.26, un rebase ordinaire est affiché ainsi. Vous êtes au commit 2 sur 7 (le premier a été rejoué sans conflit), et HEAD est **détachée** : Git construit la nouvelle suite de commits avant d'y déplacer la branche. La modification de `scripts/03_indicateurs.R` apportée par « wip » s'est appliquée seule : elle est déjà prête (*Changes to be committed*). Les hash affichés sont ceux du dépôt compagnon ; `dd0eadb` est c22, le commit de Léa.
 
 Le fichier contient les marqueurs habituels, avec un piège :
 
 ```{.text .sortie}
 <<<<<<< HEAD
-- Répartition des établissements par région
+- Répartition des établissements par région : `r region_max$modalite` en accueille le plus (`r pct(region_max$valeur)`).
 =======
-- Répartition par grande catégorie de PCS
->>>>>>> ab68ba4 (wip)
+- Répartition par grande catégorie de PCS : les ouvriers sont majoritaires dans `r pct(valeur("part_etab_ouvriers"))` des établissements.
+>>>>>>> e844a7a (wip)
 ```
 
-Pendant un rebase, les rôles sont **inversés** par rapport à un merge. `HEAD` désigne la base en construction, c'est-à-dire `main` avec le travail de Léa. L'autre côté est **votre** commit en cours de rejeu. Les deux intentions sont compatibles (R05) : on garde les deux lignes.
+Pendant un rebase, les rôles sont **inversés** par rapport à un merge. `HEAD` désigne la base en construction, c'est-à-dire `main` avec le travail de Léa. L'autre côté est **votre** commit en cours de rejeu. Les deux intentions sont compatibles (R05) : on garde les deux lignes, dans cet ordre, et l'on supprime les trois lignes de marqueurs.
 
 ```{.bash risque="reversible"}
 git add reports/panorama.qmd
 git rebase --continue
 ```
 
-Git peut ouvrir votre éditeur pour confirmer le message du commit rejoué : enregistrez et fermez sans rien changer. Le rebase reprend et se termine :
+Git peut ouvrir votre éditeur pour confirmer le message du commit rejoué : enregistrez et fermez sans rien changer. Le rebase reprend, rejoue les cinq derniers commits sans autre conflit, et se termine :
 
 ```{.text .sortie}
 Successfully rebased and updated refs/heads/21-regrouper-pcs.
@@ -167,8 +172,10 @@ Si la situation vous échappe, `git rebase --abort` ramène la branche exactemen
 Enfin, **relancez les tests** : les sept nouveaux commits n'ont jamais été testés, et la combinaison « travail de Léa + travail de Tom » n'a jamais existé avant.
 
 ```{.bash risque="sur"}
-Rscript -e 'testthat::test_dir("tests/testthat")'
+Rscript -e 'testthat::test_dir("tests/testthat", stop_on_failure = TRUE)'
 ```
+
+Sur le dépôt compagnon, les tests passent (`[ FAIL 0 | WARN 0 | SKIP 0 | PASS 20 ]`) et l'instantané final est **identique** à celui du commit que l'équipe fusionnera dans `main` (c23) : `git diff` entre les deux n'affiche rien.
 
 ::: {.vscode titre="Résoudre un conflit de rebase"}
 Pendant le rebase, la vue **Source Control** range `reports/panorama.qmd` dans **Merge Changes**. Ouvrez-le avec **Resolve in Merge Editor** : le côté *Current* est la base (`main`), le côté *Incoming* est votre commit rejoué. Cochez les deux, vérifiez le résultat, puis **Complete Merge**, qui fait l'équivalent du `git add`. Poursuivez ensuite avec `git rebase --continue` dans le terminal intégré ; selon votre version, VS Code propose aussi un bouton pour continuer.
@@ -221,7 +228,7 @@ git push --force-with-lease
 
 ```{.text .sortie}
 To https://gitlab.example.org/oei/observatoire-industrie.git
- + 454b029...22919dc 21-regrouper-pcs -> 21-regrouper-pcs (forced update)
+ + 0762c2d...22919dc 21-regrouper-pcs -> 21-regrouper-pcs (forced update)
 ```
 
 Le `+` et *forced update* signalent qu'une référence a été remplacée au lieu d'avancer.
@@ -339,7 +346,7 @@ git rebase origin/main                                 # CONFLICT dans reports/p
 # garder les deux lignes des chiffres clés, supprimer les marqueurs
 git add reports/panorama.qmd
 git rebase --continue
-Rscript -e 'testthat::test_dir("tests/testthat")'
+Rscript -e 'testthat::test_dir("tests/testthat", stop_on_failure = TRUE)'
 git log --oneline -7                                   # mêmes messages, nouveaux hash
 git reflog -n 12                                       # rebase (start), (pick)…, puis les anciens commits
 git push                                               # rejeté (non-fast-forward)
@@ -454,14 +461,14 @@ git reflog -n 10
 3492e7a HEAD@{5}: rebase (pick): corrige le test
 2fce236 HEAD@{6}: rebase (continue): wip
 139015a HEAD@{7}: rebase (pick): Regroupe les PCS en quatre grandes catégories
-7dc63cb HEAD@{8}: rebase (start): checkout origin/main
-454b029 HEAD@{9}: commit: encore
+dd0eadb HEAD@{8}: rebase (start): checkout origin/main
+0762c2d HEAD@{9}: commit: encore
 ```
 
-La ligne `HEAD@{9}` est l'ancienne tête de la branche, **J** : `454b029`. Avant toute manipulation, posez-y une étiquette. C'est sans risque :
+La ligne `HEAD@{9}` est l'ancienne tête de la branche, **J** : `0762c2d`. (Les commits rejoués portent la date du rebase : leurs hash seront différents chez vous ; `dd0eadb` et `0762c2d` sont ceux du dépôt compagnon.) Avant toute manipulation, posez-y une étiquette. C'est sans risque :
 
 ```{.bash risque="reversible"}
-git branch avant-rebase 454b029
+git branch avant-rebase 0762c2d
 ```
 
 Pour annuler le rebase lui-même, on replace la branche sur son ancienne tête :
