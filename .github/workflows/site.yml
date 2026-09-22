@@ -1,0 +1,128 @@
+# ---------------------------------------------------------------------------
+# Site « Git à plusieurs » : rendu, contrôles et déploiement GitHub Pages.
+#
+# - Sur chaque pull request : rendu des deux profils, contrôles automatiques
+#   du site, vérification du dépôt compagnon, et un aperçu du site stagiaire
+#   téléchargeable (artefact « apercu-site »).
+# - Sur main (après le merge d'une PR) : mêmes contrôles, puis déploiement
+#   du site STAGIAIRE sur GitHub Pages. Le site formateur n'est jamais publié.
+#
+# Prérequis (une fois) : Settings › Pages › Build and deployment ›
+# Source = « GitHub Actions ».
+# ---------------------------------------------------------------------------
+name: Site
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: site-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  QUARTO_VERSION: "1.10.18"
+  PLAYWRIGHT_VERSION: "1.56.1"
+
+jobs:
+  construire:
+    name: Rendu et contrôles
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Installer Quarto ${{ env.QUARTO_VERSION }}
+        uses: quarto-dev/quarto-actions/setup@v2
+        with:
+          version: ${{ env.QUARTO_VERSION }}
+
+      - name: Rendre le site stagiaire
+        run: quarto render
+
+      - name: Rendre le site formateur (contrôle uniquement, jamais publié)
+        run: quarto render --profile formateur
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Installer les outils de test
+        working-directory: tests
+        run: |
+          npm ci --no-audit --no-fund
+          npx playwright install --with-deps chromium
+
+      - name: Contrôler le site (liens, console, débordements, clavier, sans JS, accessibilité)
+        working-directory: tests
+        run: npm test
+
+      - name: Publier le rapport de contrôle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rapport-controles
+          path: tests/rapports/
+          retention-days: 14
+
+      - name: Aperçu du site stagiaire (téléchargeable depuis la PR)
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: apercu-site
+          path: _site/
+          retention-days: 14
+
+      - name: Préparer l'artefact GitHub Pages
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site/
+
+  compagnon:
+    name: Dépôt compagnon
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: "4.4"
+          use-public-rspm: true
+
+      - name: Installer les paquets R
+        run: Rscript -e 'install.packages(c("dplyr", "testthat", "lintr", "knitr", "rmarkdown"))'
+
+      - name: Installer Quarto ${{ env.QUARTO_VERSION }}
+        uses: quarto-dev/quarto-actions/setup@v2
+        with:
+          version: ${{ env.QUARTO_VERSION }}
+
+      - name: Installer les paquets Python épinglés du projet
+        run: pip install -r depot-compagnon/historique/requirements-verification.txt
+
+      - name: Construire l'historique scénarisé et vérifier chaque étape
+        run: python depot-compagnon/outils/verifier_historique.py
+
+  deployer:
+    name: Déployer sur GitHub Pages
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [construire, compagnon]
+    runs-on: ubuntu-24.04
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploiement.outputs.page_url }}
+    steps:
+      - id: deploiement
+        uses: actions/deploy-pages@v4
