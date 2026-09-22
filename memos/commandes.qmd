@@ -301,7 +301,7 @@ Le journal **local** des positions successives de HEAD : chaque commit, switch, 
 
 Pour retrouver le commit qui a fait basculer un chiffre parmi des dizaines, voir l'approfondissement [git bisect](../parcours/approfondissements/bisect.qmd).
 
-## Configuration recommandée
+## Configuration recommandée {#configuration}
 
 À faire une fois par poste ou par service Onyxia. Toutes ces options sont des réglages **Git**, enregistrés dans `~/.gitconfig`.
 
