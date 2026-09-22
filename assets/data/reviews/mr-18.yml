@@ -1,0 +1,120 @@
+# ---------------------------------------------------------------------------
+# Review guidée de l'étape E4 : la MR piégée !1 de Tom (issue #18).
+# Le diff est écrit dans parcours/jour-1/e4-merge-request.qmd
+# (::: {.review scenario="mr-18"}). Les numéros de ligne sont ceux du
+# NOUVEAU fichier : les trois fichiers sont des ajouts complets.
+# Voir docs/bible-fil-rouge.md, §5 E4 (huit problèmes plantés).
+# ---------------------------------------------------------------------------
+titre: "!1 · Draft: Ajoute le taux de recrutement par métier"
+branche: "18-taux-recrutement"
+cible: "main"
+auteur: tom
+commit: "maj"
+problemes:
+  - fichier: "R/recrutement.R"
+    ligne: 4
+    categorie: chemins
+    titre: "Chemin absolu vers le poste de Tom"
+    explication: >-
+      `/home/tom/Documents/…` n'existe que sur la machine de Tom. Le script
+      échoue chez Karim, sur un service Onyxia neuf et dans la CI. Surtout,
+      personne ne sait quelle extraction a été lue : le chiffre n'est plus
+      traçable.
+    correction: >-
+      **Bloquant.** Lire la table d'analyse du projet,
+      `data/prepare/recrutements.csv`, produite par `scripts/02_preparer.py`,
+      comme le fait déjà la ligne 5 pour les salariés. Si un autre fichier
+      est nécessaire, le passer en paramètre de la fonction.
+  - fichier: "R/recrutement.R"
+    ligne: 21
+    categorie: reproductibilite
+    titre: "Bootstrap sans graine aléatoire"
+    explication: >-
+      `sample()` tire au hasard : deux exécutions donnent deux intervalles de
+      confiance différents. Le chiffre publié ne peut plus être refait à
+      l'identique, et un écart entre deux rendus du rapport devient
+      inexplicable.
+    correction: >-
+      **Bloquant.** Fixer la graine dans le script appelant
+      (`set.seed(2025)` dans `scripts/03_indicateurs.R`) ou l'exposer en
+      paramètre (`graine = 2025`), et la mentionner dans la note de méthode.
+  - fichier: "R/recrutement.R"
+    ligne: 13
+    categorie: methode
+    titre: "Non-réponses remplacées par zéro"
+    explication: >-
+      Dans la table `recrutements`, `NA` signifie « établissement non
+      répondant », pas « aucun recrutement ». Les remplacer par 0 ajoute des
+      établissements qui semblent n'avoir recruté personne : le taux est biaisé
+      vers le bas, d'autant plus que les non-répondants sont nombreux.
+    correction: >-
+      **Bloquant.** Exclure les non-répondants
+      (`dplyr::filter(!is.na(recrutements))`) **avant** de sommer les
+      effectifs, et publier le taux de réponse par métier à côté du taux.
+  - fichier: "R/recrutement.R"
+    ligne: 17
+    categorie: methode
+    titre: "Moyenne des taux au lieu du rapport des sommes"
+    explication: >-
+      `mean(recrutements / effectif)` donne le même poids à un établissement
+      de 12 salariés et à un établissement de 2 000. Ce n'est pas le taux de
+      recrutement du métier : c'est une moyenne de taux d'établissements, qui
+      répond à une autre question.
+    correction: >-
+      **Bloquant.** Suggestion :
+      `dplyr::summarise(taux = sum(recrutements) / sum(effectif), .groups = "drop")`.
+      Si la moyenne non pondérée est voulue, la nommer autrement et le dire
+      dans le rapport.
+  - fichier: "R/recrutement.R"
+    ligne: 15
+    categorie: methode
+    titre: "Filtre sur les petits établissements non documenté"
+    explication: >-
+      `effectif >= 10` exclut sans le dire les établissements de moins de dix
+      salariés **dans le métier**. C'est peut-être un choix légitime (petits
+      effectifs instables), mais c'est une hypothèse : elle change le champ
+      de l'indicateur et doit être visible.
+    correction: >-
+      **Question.** Pourquoi 10 ? Si le seuil est voulu : en faire un
+      paramètre (`effectif_min = 10`), l'expliquer dans le commentaire de la
+      fonction et dans la note de méthode du panorama.
+  - fichier: "data/extractions/salaries_2025_nominatif.csv"
+    ligne: 1
+    categorie: donnees
+    titre: "Fichier de données individuelles ajouté au dépôt"
+    explication: >-
+      Une extraction nominative (nom, prénom, date de naissance) n'a rien à
+      faire dans Git : tous ceux qui font `git fetch` en reçoivent une copie,
+      et l'historique la conserve même si on la supprime ensuite. Ici les
+      données sont synthétiques, mais la situation est celle d'une vraie
+      fuite.
+    correction: >-
+      **Bloquant.** Retirer le fichier, ajouter `data/extractions/` au
+      `.gitignore` et prévenir Inès, responsable de la publication : le
+      fichier est déjà sur GitLab et dans les clones de ceux qui ont récupéré
+      la branche.
+  - fichier: "scripts/telecharger_recrutements.py"
+    ligne: 6
+    categorie: secrets
+    titre: "Jeton d'API écrit en clair"
+    explication: >-
+      Le jeton est désormais lisible par toute personne ayant accès au projet,
+      dans l'historique, dans les clones et dans les versions de la MR. Le
+      supprimer dans un commit suivant ne change rien : un secret poussé est
+      un secret **compromis**.
+    correction: >-
+      **Bloquant.** Révoquer ce jeton tout de suite et en demander un
+      nouveau. Lire le nouveau avec `os.environ["OEI_API_TOKEN"]` ; dans la
+      CI, le fournir par une variable masquée (Settings › CI/CD › Variables).
+  - fichier: ""
+    categorie: historique
+    titre: "Un commit « maj », sans référence à l'issue"
+    explication: >-
+      Un seul commit mélange un calcul, un script de téléchargement et un
+      fichier de données, sous le message « maj ». Dans six mois, l'historique
+      ne dira ni pourquoi ce code existe, ni à quelle demande il répond (R01).
+    correction: >-
+      **Suggestion.** Des commits qui disent pourquoi et citent l'issue
+      (« Calcule le taux de recrutement par métier (#18) »), et
+      `Closes #18` dans la description de la MR. Au merge, le squash
+      produira un commit propre dont on relira le message.
