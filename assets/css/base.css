@@ -141,6 +141,9 @@ h3 {
 
 h4 { font-size: var(--gf-t-l); font-weight: 650; margin-top: var(--gf-e-5); }
 
+/* Quarto atténue h3–h6 (opacité 0,9) : on rétablit un contraste plein. */
+h3, h4, h5, h6 { opacity: 1; }
+
 p, li { text-wrap: pretty; }
 
 a {

@@ -382,7 +382,7 @@ function M.carte_parcours(div)
   for _, jour in ipairs(p.jours or {}) do
     local duree = 0
     for _, e in ipairs(D.etapes()) do if e.jour == jour.id then duree = duree + (tonumber(e.duree) or 0) end end
-    h[#h + 1] = '<section class="gf-carte__jour"><h3 class="gf-carte__jour-titre"><span class="gf-carte__jour-num">Jour ' .. O.texte(jour.numero)
+    h[#h + 1] = '<section class="gf-carte__jour"><h3 class="gf-carte__jour-titre" id="carte-jour-' .. O.texte(jour.numero) .. '"><span class="gf-carte__jour-num">Jour ' .. O.texte(jour.numero)
       .. '</span><span class="gf-carte__jour-nom">' .. O.texte(jour.titre) .. '</span><span class="gf-carte__jour-duree">' .. O.minutes(duree) .. ' de parcours</span></h3><ol class="gf-carte__etapes">'
     local mv_prec = nil
     for _, e in ipairs(D.etapes()) do
