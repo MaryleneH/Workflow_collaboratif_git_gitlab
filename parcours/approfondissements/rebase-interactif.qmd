@@ -52,7 +52,7 @@ pick 9f4e23f wip 2
 pick cdaa28a corrige le lint
 pick d27f0d7 encore
 
-# Rebase d1eab12..d27f0d7 onto d1eab12 (7 commands)
+# Rebase dd0eadb..d27f0d7 onto dd0eadb (7 commands)
 #
 # Commands:
 # p, pick <commit> = use commit
@@ -82,16 +82,28 @@ Les lignes s'exécutent de haut en bas. Supprimer une ligne supprime le commit, 
 
 ## Nettoyer les sept commits de Tom
 
-Tom veut deux commits : le calcul, puis sa présentation. Il réordonne et édite la liste :
+Tom veut deux commits : le calcul, puis sa présentation. Il regarde d'abord ce que touche chaque commit (`git log --stat --oneline origin/main..HEAD`) :
+
+| Commit | Fichiers | Groupe |
+|---|---|---|
+| Regroupe les PCS… | `R/indicateurs.R` | calcul |
+| wip | `reports/panorama.qmd`, `scripts/03_indicateurs.R` | présentation |
+| corrige le test | `R/indicateurs.R` | calcul |
+| oups | `scripts/03_indicateurs.R` | présentation |
+| wip 2 | `tests/testthat/test-indicateurs.R` | calcul |
+| corrige le lint | `R/indicateurs.R` | calcul |
+| encore | `R/indicateurs.R` | calcul |
+
+Puis il réordonne et édite la liste :
 
 ```{.text .sortie}
 reword 2b672b8 Regroupe les PCS en quatre grandes catégories
 fixup dd04232 corrige le test
-fixup 9969662 oups
-fixup cdaa28a corrige le lint
-reword 1214fcc wip
 fixup 9f4e23f wip 2
+fixup cdaa28a corrige le lint
 fixup d27f0d7 encore
+reword 1214fcc wip
+fixup 9969662 oups
 ```
 
 Il enregistre et ferme. Git rejoue les commits, et ouvre l'éditeur à chaque `reword`. Tom écrit « Regroupe les PCS en quatre grandes catégories (#21) », puis « Présente le regroupement des PCS dans le panorama (#21) ».
@@ -109,7 +121,7 @@ git log --oneline origin/main..HEAD
 5e7c4fb Regroupe les PCS en quatre grandes catégories (#21)
 ```
 
-**Réordonner a un prix.** Déplacer « corrige le test » avant « wip » ne pose pas de problème ici : les deux groupes touchent des fichiers différents (`R/indicateurs.R` d'un côté, `reports/panorama.qmd` de l'autre). Si deux commits déplacés touchaient les mêmes lignes, Git s'arrêterait sur un [conflit]{.t}. Vous le résolvez comme à l'étape 7 (`git add`, puis `git rebase --continue`), ou vous abandonnez tout avec `git rebase --abort`.
+**Réordonner a un prix.** Déplacer « corrige le test », « wip 2 », « corrige le lint » et « encore » avant « wip » ne pose pas de problème ici : les deux groupes touchent des fichiers différents (`R/indicateurs.R` et ses tests d'un côté, `scripts/03_indicateurs.R` et `reports/panorama.qmd` de l'autre). Vérifié sur le dépôt compagnon : le rebase se déroule sans conflit, les tests passent, et l'instantané final est identique à celui d'avant le nettoyage. Si deux commits déplacés touchaient les mêmes lignes, Git s'arrêterait sur un [conflit]{.t}. Vous le résolvez comme à l'étape 7 (`git add`, puis `git rebase --continue`), ou vous abandonnez tout avec `git rebase --abort`.
 
 Avant de pousser, relancez les tests : chaque commit réécrit est un état du code que personne n'a encore exécuté.
 
@@ -184,7 +196,7 @@ git reflog
 375df07 HEAD@{0}: rebase (finish): returning to refs/heads/21-regrouper-pcs
 375df07 HEAD@{1}: rebase (fixup): Présente le regroupement des PCS dans le panorama (#21)
 ...
-d1eab12 HEAD@{10}: rebase (start): checkout origin/main...21-regrouper-pcs
+dd0eadb HEAD@{10}: rebase (start): checkout origin/main...21-regrouper-pcs
 d27f0d7 HEAD@{11}: commit: encore
 cdaa28a HEAD@{12}: commit: corrige le lint
 ```
@@ -241,7 +253,7 @@ Transformer les sept commits de la branche d'exercice en deux commits lisibles, 
 :::
 
 ::: reussite
-`git log --oneline origin/main..HEAD` affiche exactement deux commits, dont les messages citent #21. `git diff <ancienne-tête> HEAD` n'affiche rien : le contenu final est identique, seul l'historique a changé.
+`git log --oneline origin/main..HEAD` affiche exactement deux commits, dont les messages citent #21. `git diff <ancienne-tête> HEAD` n'affiche rien (l'ancienne tête est celle d'après le rebase de la consigne 2) : le contenu final est identique, seul l'historique a changé.
 :::
 
 ::: indice
@@ -249,7 +261,7 @@ Commencez par regarder quels fichiers touche chaque commit : `git log --stat --o
 :::
 
 ::: corrige
-Liste attendue (hash variables) : `reword` sur le commit du regroupement, `fixup` pour « corrige le test », « corrige le lint » et les corrections de `R/indicateurs.R` ; `reword` sur « wip », `fixup` pour les autres commits qui touchent `reports/panorama.qmd`. Si un commit touche les deux fichiers, on le laisse à sa place en `fixup` du commit précédent, ou on l'arrête avec `edit` pour le scinder. Rien n'est poussé : la branche d'essai se supprime avec `git branch -D essai-rebase-i`.
+Liste attendue (hash variables) : `reword` sur le commit du regroupement, puis `fixup` pour « corrige le test », « wip 2 » (le test de `regrouper_pcs()`), « corrige le lint » et « encore », qui touchent `R/indicateurs.R` ou ses tests ; `reword` sur « wip », puis `fixup` pour « oups », qui corrige `scripts/03_indicateurs.R`. Le premier commit touche alors `R/indicateurs.R` et `tests/testthat/test-indicateurs.R`, le second `scripts/03_indicateurs.R` et `reports/panorama.qmd`. Si un commit touchait les deux groupes de fichiers, on le laisserait à sa place en `fixup` du commit précédent, ou on l'arrêterait avec `edit` pour le scinder. Rien n'est poussé : la branche d'essai se supprime avec `git branch -D essai-rebase-i`.
 :::
 :::
 
