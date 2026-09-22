@@ -1,0 +1,29 @@
+titre: "main, une promesse qui résiste à l'équipe"
+commits:
+  A: {x: 0, y: 0, msg: "Initialise le projet de l'Observatoire"}
+  B: {x: 1, y: 0, parents: [A], msg: "Ajoute le générateur de données"}
+  C: {x: 2, y: 0, parents: [B], msg: "Finalise le panorama 2025"}
+  D: {x: 3, y: 1, parents: [C], msg: "Paramètre le seuil des seniors", couleur: travail}
+  E: {x: 3, y: 2, parents: [C], msg: "Exclut les apprentis", couleur: travail2}
+  F: {x: 4, y: 0, parents: [C], label: "F", msg: "Paramètre le seuil (#12) · squash"}
+  G: {x: 5, y: 0, parents: [F], label: "G", msg: "Exclut les apprentis (#13) · squash"}
+etapes:
+  - texte: "Au début, une personne et une ligne : chaque commit s'ajoute au bout de `main`."
+    commits: [A, B, C]
+    refs: {main: C}
+    head: main
+  - texte: "Puis l'équipe grandit : chacun travaille sur une branche courte, née d'une issue."
+    commits: [A, B, C, D, E]
+    refs: {main: C, 12-seuil-seniors: D, 13-apprentis: E}
+    head: 12-seuil-seniors
+  - texte: "Rien n'entre dans `main` sans Merge Request relue et testée ; le squash donne un commit propre par sujet, et les branches sont supprimées."
+    commits: [A, B, C, D, E, F, G]
+    refs: {main: G}
+    head: main
+    estompes: [D, E]
+  - texte: "Chaque publication est un tag : un état précis, reproductible, que l'on peut retrouver des années plus tard."
+    commits: [A, B, C, F, G]
+    refs: {main: G}
+    tags: {"2025.0": C, "2026.0": G}
+    head: main
+    surligne: [G]

@@ -1,0 +1,133 @@
+---
+title: "Git à plusieurs"
+pagetitle: "Git à plusieurs · formation Git/GitLab niveau 2"
+gf-page: accueil
+description: "Deux jours pour passer de « je sais utiliser Git seul » à « je sais collaborer proprement avec Git et GitLab », avec un workflow adapté aux projets statistiques."
+---
+
+::: {.gf-hero}
+::: {.gf-hero__texte}
+[Formation Git & GitLab · niveau 2 · deux jours]{.gf-hero__sur}
+
+```{=html}
+<h1 class="gf-hero__titre"><code>main</code> est une promesse.</h1>
+```
+
+[Comment la tenir quand une équipe grandit ?]{.gf-hero__question}
+
+Vous savez utiliser Git seul. Ici, vous apprenez à **collaborer** : comprendre les
+workflows des développeurs, parler leur langue, travailler avec GitLab. Puis vous
+construisez, à partir de ce que vous aurez vécu, un workflow **adapté aux projets
+statistiques**. Plus simple que Git Flow, il repose sur les mêmes principes :
+intégrité, traçabilité, revue, reproductibilité.
+
+::: {.gf-hero__actions}
+[Commencer le parcours →](parcours/jour-1/e0-ouverture.qmd){.gf-bouton}
+[[Reprendre]{.gf-libelle}](parcours/index.qmd){.gf-bouton .gf-bouton--discret data-gf-reprendre="" hidden=""}
+[Voir la carte du parcours](parcours/index.qmd){.gf-lien-fleche}
+:::
+:::
+
+::: {.gf-hero__visuel}
+::: {.git-graph scenario="accueil-promesse"}
+:::
+:::
+:::
+
+::: {.gf-accueil-section #boussole}
+[01 · La phrase-boussole]{.gf-accueil-num}
+
+## Dans deux jours, cette phrase vous paraîtra évidente {.unlisted}
+
+::: boussole
+Chaque mot renvoie à l'étape où vous le travaillerez. Survolez-les : la définition
+reste à portée de main tout au long du parcours.
+:::
+:::
+
+::: {.gf-accueil-section #parcours}
+[02 · Le parcours]{.gf-accueil-num}
+
+## Douze étapes, une seule question {.unlisted}
+
+::: {.gf-accueil-intro}
+Ici, pas de chapitres « branches, puis merge, puis CI ». L'équipe de l'Observatoire grandit,
+et chaque étape part d'un **problème** qu'elle rencontre. L'outil Git ou GitLab
+arrive parce que ce problème le rend nécessaire. Le parcours se lit comme un historique :
+une ligne principale, et quelques branches d'approfondissement.
+:::
+
+::: {.carte-parcours}
+:::
+:::
+
+::: {.gf-accueil-section .gf-accueil-deux #fil-rouge}
+::: {.gf-accueil-colonne}
+[03 · Le fil rouge]{.gf-accueil-num}
+
+## L'Observatoire des entreprises industrielles {.unlisted}
+
+Une petite équipe publie chaque année le *Panorama de l'emploi dans la filière
+industrielle stratégique* : établissements, effectifs, métiers, pyramides des âges,
+part des 55 ans et plus, recrutements. Tout est **fictif et synthétique**, mais le projet
+ressemble au vôtre : du R, du Python, des fichiers Parquet interrogés avec DuckDB,
+un rapport Quarto, des tests.
+
+Au premier jour, une personne travaille seule. Au second, cinq personnes publient,
+corrigent une erreur déjà diffusée et préparent l'édition suivante.
+
+[Découvrir le projet et l'équipe →](fil-rouge/index.qmd){.gf-lien-fleche}
+:::
+
+::: {.gf-accueil-colonne}
+::: equipe
+:::
+:::
+:::
+
+::: {.gf-accueil-section #enigme}
+[04 · L'énigme]{.gf-accueil-num}
+
+## Ce schéma, vous saurez le lire, et le critiquer {.unlisted}
+
+::: {.gf-accueil-intro}
+Voici le modèle **Git Flow**, celui que l'on vous montrera un jour comme « la » façon
+professionnelle de travailler. Pour l'instant, c'est une énigme. À l'étape 9, vous
+en connaîtrez chaque brique, vous saurez pourquoi il a été conçu et ce qu'il coûte,
+et pourquoi la plupart des équipes modernes, dont la nôtre, travaillent autrement.
+:::
+
+::: {.git-graph .enigme scenario="gitflow-enigme"}
+:::
+:::
+
+::: {.gf-accueil-section #usages}
+[05 · Trois usages]{.gf-accueil-num}
+
+## Un support, trois façons de s'en servir {.unlisted}
+
+::: {.gf-usages}
+::: {.gf-usage}
+### Pendant la formation
+
+Le formateur projette le schéma, vous faites la mission dans VS Code. Chaque étape
+dure entre 20 et 90 minutes et se termine par un pont vers la suivante.
+:::
+
+::: {.gf-usage}
+### En autonomie
+
+Le parcours se suit seul : missions avec indices progressifs, incidents à
+diagnostiquer, checkpoints. Le dépôt compagnon fournit un point de départ pour
+chaque étape.
+:::
+
+::: {.gf-usage}
+### Comme référence
+
+Les [mémos](memos/index.qmd) rassemblent les commandes par intention, le
+[lexique](memos/lexique.qmd), le [carnet de règles](memos/carnet-de-regles.qmd) et
+[notre workflow](memos/notre-workflow.qmd). Ils sont faits pour être relus dans six mois.
+:::
+:::
+:::
