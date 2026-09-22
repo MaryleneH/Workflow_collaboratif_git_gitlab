@@ -312,14 +312,12 @@ décimales directement dans `repartition_pcs()`. Le pipeline de la MR échoue su
 
 ::: symptome
 ```{.text .sortie}
-── Failure ('test-indicateurs.R:31:3'): repartition_pcs() : les parts somment à 1 dans chaque établissement ──
+Failure ('test-indicateurs.R:25:3'): les parts par PCS somment à 1 dans chaque établissement
 sommes$total not equal to rep(1, nrow(sommes)).
-214/806 mismatches (average diff: 0.01)
-[1] 0.99 - 1 == -0.01
-[2] 1.01 - 1 ==  0.01
-[4] 0.99 - 1 == -0.01
-...
-[ FAIL 1 | WARN 0 | SKIP 0 | PASS 23 ]
+1/2 mismatches
+[1] 1.01 - 1 == 0.01
+
+[ FAIL 1 | WARN 0 | SKIP 0 | PASS 19 ]
 Error: Test failures
 Execution halted
 ERROR: Job failed: exit code 1
@@ -331,8 +329,10 @@ ERROR: Job failed: exit code 1
 - L'arrondi dans le calcul a cassé une propriété méthodologique.
 :::
 ::: diagnostic
-Le test est une **assertion méthodologique** écrite en E6 : dans chaque établissement,
-les parts par PCS somment à 1. En arrondissant **dans le calcul**, on propage l'erreur
+Le test est une **assertion méthodologique**, celle-là même qui a arrêté la MR de Tom en
+E6 : dans chaque établissement, les parts par PCS somment à 1. Sur son mini-panel, le
+premier établissement compte six salariés : 1/6, 1/6 et 4/6 deviennent 0,17, 0,17 et
+0,67, qui totalisent 1,01. En arrondissant **dans le calcul**, on propage l'erreur
 d'arrondi à tout ce qui utilise ces parts ensuite. Relancer le job ne changera rien : le
 résultat est déterministe. Assouplir le test ferait disparaître le symptôme, pas le
 problème.
@@ -406,7 +406,7 @@ $ git fetch
 $ git log --oneline 2026.0..origin/main
 9c41d2e Ajoute la part des femmes par PCS (#32)
 71ab0f3 Arrondit les parts à l'affichage seulement (#31)
-d2e9a14 Documente le workflow de l'équipe (#27)
+b51daaf Documente le workflow de l'équipe (#27)
 ```
 :::
 ::: hypotheses
@@ -635,92 +635,108 @@ Répondez sans notes, puis comparez avec ce que vous aviez répondu au premier m
 
 ::: {.checkpoint titre="Post-test : les questions du premier matin"}
 ::: {.question rappel="e1"}
-Que contient réellement un commit ? Et une branche ?
+Que fait exactement `git commit` ? Qu'est-ce qui est enregistré, et qu'arrive-t-il à la
+branche courante ?
 
 ::: reponse
-Un commit est un **instantané complet** du projet (pas un diff), avec son auteur, sa
-date, son message et le hash de son ou ses parents. Le diff se calcule entre deux
-instantanés. Une branche est une **référence mobile** : un nom qui désigne un commit et
-qui avance quand on commite dessus. Ce n'est pas une copie du projet.
+Git enregistre un **instantané complet** du projet tel que l'index le décrit (un arbre),
+avec le hash de son ou ses parents, un auteur, un commiteur, des dates et un message.
+Ce n'est pas un diff : le diff se calcule entre deux instantanés. Le hash dépend de tout
+ce contenu : un commit ne se modifie jamais, il se remplace. Puis Git **déplace la
+branche courante** sur ce nouveau commit ; HEAD, qui désigne la branche, suit. En HEAD
+détachée, aucune branche n'avance : seul HEAD retient le commit.
 :::
 :::
 
 ::: {.question rappel="e2"}
-Quelle différence entre votre `main`, `origin/main` et la branche `main` sur GitLab ?
+Que vous apprend `git status` ? Quand il affiche « Your branch is up to date with
+'origin/main' », qu'est-ce que cela garantit ?
 
 ::: reponse
-Votre `main` est votre branche locale. `origin/main` est une branche distante : la
-mémoire, dans votre dépôt, de l'état de `main` sur le remote nommé `origin` lors du
-dernier `fetch`, `pull` ou `push`. La branche `main` sur GitLab est la vraie branche du
-dépôt distant. `origin` n'est qu'un nom local pour ce dépôt : ce n'est pas GitLab.
-:::
-:::
-
-::: {.question rappel="e2"}
-Que fait exactement `git pull` ?
-
-::: reponse
-Un `git fetch` (télécharger les commits et mettre à jour `origin/…`), puis une
-intégration dans la branche courante : fast-forward, fusion ou rebase, selon les options
-et la configuration. Il ne « synchronise » pas : il n'envoie rien, et il peut créer un
-commit de fusion.
+La branche courante (ou `HEAD detached at …`), les fichiers préparés, modifiés et non
+suivis, et les opérations en cours (fusion ou rebase interrompus par un conflit). « Up to
+date » compare votre branche à `origin/main`, c'est-à-dire à la **photo** de `main` sur
+GitLab prise au dernier `fetch`, `pull` ou `push`. Cela ne garantit rien sur l'état
+actuel du serveur : `git fetch` d'abord (R02).
 :::
 :::
 
 ::: {.question rappel="e3"}
-Quand une fusion est-elle un fast-forward ? Quand est-elle une fusion à trois voies ?
+Pourquoi faut-il un `git add` avant `git commit` ? Quel second rôle `git add` joue-t-il
+pendant un conflit ?
 
 ::: reponse
-Fast-forward : la branche cible n'a pas avancé depuis le départ de l'autre ; l'étiquette
-avance, aucun commit n'est créé. Fusion à trois voies : les deux branches ont divergé ;
-Git compare chacune à leur ancêtre commun et crée un commit de fusion à deux parents,
-avec un conflit si les deux côtés ont modifié les mêmes lignes.
+L'index est l'instantané du **prochain** commit, que vous composez fichier par fichier :
+on commite la correction d'un calcul sans embarquer un graphique en cours. Pendant une
+fusion ou un rebase en conflit, `git add <fichier>` signifie « ce conflit est résolu » :
+il ne crée aucun commit, il autorise `git commit` ou `git rebase --continue`, après
+relecture des deux intentions et relance des tests (R05).
 :::
 :::
 
-::: {.question rappel="e7"}
-Que fait réellement `git rebase origin/main`, et pourquoi pousse-t-on ensuite avec
-`--force-with-lease` plutôt qu'avec `--force` ?
+::: {.question rappel="e1"}
+Quelle commande affiche les cinq derniers commits, un par ligne ? Et laquelle liste les
+changements de code R depuis la publication 2025 ?
 
 ::: reponse
-Il **crée de nouveaux commits** qui rejouent vos changements au-dessus de `origin/main` :
-nouveaux hash, anciens commits toujours retrouvables par `git reflog`. La branche
-distante doit donc être remplacée. `--force-with-lease` refuse si la branche distante a
-changé depuis votre dernier `fetch` : il n'écrase pas le travail d'un autre, alors que
-`--force` le ferait sans prévenir.
+`git log --oneline -5` ; avec `--graph --all`, on voit la forme de tout l'historique,
+branches et tags compris. `git log --oneline 2025.0..main -- R/` liste les commits
+atteignables depuis `main` mais pas depuis le tag `2025.0`, et qui touchent `R/` : c'est
+ainsi qu'on a retrouvé c11 en E1.
 :::
 :::
 
 ::: {.question rappel="e4"}
-Classez : commit, Merge Request, tag, pipeline, branche protégée, rebase, approval,
-GitLab Release, remote, squash au merge.
+Vous ajoutez `data/brut/` au `.gitignore`, mais `git status` signale toujours les
+modifications d'un fichier de `data/brut/`. Pourquoi ? Et si ce fichier contient des
+données individuelles et a déjà été poussé ?
 
 ::: reponse
-**Git** : commit, tag, rebase, remote. **GitLab** : Merge Request, pipeline, branche
-protégée, approval, GitLab Release. Le squash au merge est une **option de GitLab** qui
-crée un commit Git ordinaire.
+Le `.gitignore` ne concerne que les fichiers **non suivis** : il faut `git rm --cached`,
+puis commiter. Mais le fichier reste dans les commits passés, sur GitLab et dans chaque
+clone qui a fait `git fetch`. Des données individuelles poussées sont une fuite : on
+prévient la responsable, on retire le fichier, et l'on décide à plusieurs de la suite
+(R09), comme pour un jeton, qu'on révoque.
 :::
 :::
 
-::: {.question rappel="e8"}
-Pourquoi un `main` vert n'est-il pas encore une publication reproductible ?
-
-::: reponse
-`main` garantit un code exécutable, relu et testé. Une publication reproductible exige
-en plus un commit précis désigné par un tag annoté, la référence exacte des données,
-l'environnement figé (lockfile, image) et le rapport correspondant.
-:::
-:::
-
-::: {.question rappel="e9"}
-Dans quel contexte Git Flow se justifierait-il, et pourquoi l'Observatoire ne l'a-t-il
-pas adopté ?
+::: {.question rappel="e2"}
+Que récupérez-vous avec `git clone` ? Et qu'est-ce que `origin` ?
 
 ::: reponse
-Quand on maintient plusieurs versions en parallèle, avec des cycles de livraison lourds
-et planifiés. L'Observatoire n'a qu'une version vivante à la fois et publie une fois par
-an : `develop` et `release/*` ajouteraient des branches longues et une intégration
-tardive sans bénéfice. Une branche de maintenance ponctuelle suffit pour les errata.
+Un dépôt **complet** et autonome : tout l'historique, les branches du serveur sous forme
+de branches distantes (`origin/main`, `origin/21-regrouper-pcs`…) et les tags. `origin`
+est un **nom local** pour l'URL du dépôt cloné, rangé dans `.git/config` : ce n'est pas
+GitLab, et un dépôt peut avoir plusieurs remotes.
+:::
+:::
+
+::: {.question rappel="e2"}
+Quelle différence entre `git push` et `git pull` ? Quand un push est refusé, comment
+savoir qui refuse ?
+
+::: reponse
+`git push` envoie des commits et demande au serveur de déplacer une branche ; il n'accepte
+qu'un **fast-forward**, sauf push forcé (`--force-with-lease`, sur sa branche seulement).
+`git pull` télécharge (`fetch`), puis **intègre** dans la branche courante : fast-forward,
+fusion ou rebase ; avec `pull.ff only` (R07), il refuse plutôt que de fusionner sur
+`main`. `! [rejected]` : c'est Git qui renonce (le push ne serait pas un fast-forward).
+`! [remote rejected]` et des lignes `remote: GitLab:` : c'est le serveur qui refuse, par
+exemple sur une branche protégée.
+:::
+:::
+
+::: {.question rappel="e7"}
+Parmi ces messages de commit, lequel sera utile dans un an ? « maj » ; « modifs âge » ;
+« Calcule l'âge au 31 décembre de l'année de référence (#7) ». Et avec le squash au merge,
+quel message finit dans `main` ?
+
+::: reponse
+Le troisième : il dit ce qui change et, par l'issue, pourquoi. C'est ce qui rend utiles
+`git log`, `git blame` et `git bisect`, qui désignent un commit sans l'expliquer (R01).
+Avec le squash au merge, les commits de travail de la branche ne vont pas dans `main` :
+GitLab crée un seul commit, dont le message est celui que l'on relit dans le bloc de
+fusion. C'est ce message-là qui doit être soigné (R14).
 :::
 :::
 :::
