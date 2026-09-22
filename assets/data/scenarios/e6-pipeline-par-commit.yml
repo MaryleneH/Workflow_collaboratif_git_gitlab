@@ -1,0 +1,65 @@
+# E6 : un pipeline s'exécute pour UN commit précis (un instantané), jamais
+# pour « la branche » en général. Un correctif crée un nouveau commit, donc
+# un nouveau pipeline ; l'ancien reste rouge dans l'historique.
+titre: "Un pipeline par commit poussé"
+nom_distant: "GitLab (origin)"
+couleurs:
+  "21-regrouper-pcs": travail
+commits:
+  c19: {x: 0, y: 0, msg: "Merge branch '13-exclure-apprentis'"}
+  c20: {x: 1, y: 0, parents: [c19], msg: "Ajoute le taux de recrutement par métier (#18)"}
+  c21: {x: 2, y: 0, parents: [c20], msg: "Met en place l'intégration continue (#20)"}
+  T1: {x: 3, y: 1, parents: [c21], couleur: travail, msg: "Regroupe les PCS en quatre grandes catégories"}
+  T2: {x: 4, y: 1, parents: [T1], couleur: travail, msg: "corrige le test"}
+  T3: {x: 5, y: 1, parents: [T2], couleur: travail, msg: "corrige le lint"}
+etapes:
+  - texte: "Point de départ `etape-6-debut` : `main` pointe sur **c21**, qui contient `.gitlab-ci.yml`. Le pipeline a été ajouté par un commit, comme n'importe quel fichier."
+    commande: "git log --oneline -3 main"
+    local:
+      commits: [c19, c20, c21]
+      refs: {main: c21, origin/main: c21}
+      head: main
+    distant:
+      commits: [c19, c20, c21]
+      refs: {main: c21}
+    surligne: [c21]
+  - texte: "Tom pousse **T1** et ouvre la MR !3. GitLab lance le pipeline #412 **pour ce commit précis**. Résultat : rouge (`lint-r` et `tests-r`)."
+    commande: "git push -u origin 21-regrouper-pcs"
+    local:
+      commits: [c19, c20, c21, T1]
+      refs: {main: c21, origin/main: c21, 21-regrouper-pcs: T1, origin/21-regrouper-pcs: T1}
+      head: 21-regrouper-pcs
+    distant:
+      commits: [c19, c20, c21, T1]
+      refs: {main: c21, 21-regrouper-pcs: T1}
+    surligne: [T1]
+  - texte: "Tom corrige `repartition_pcs()` et commite **T2**. Tant qu'il n'a pas poussé, le correctif n'existe que sur sa machine : GitLab ne le voit pas, aucun pipeline ne tourne."
+    commande: "git commit -am \"corrige le test\""
+    local:
+      commits: [c19, c20, c21, T1, T2]
+      refs: {main: c21, origin/main: c21, 21-regrouper-pcs: T2, origin/21-regrouper-pcs: T1}
+      head: 21-regrouper-pcs
+    distant:
+      commits: [c19, c20, c21, T1]
+      refs: {main: c21, 21-regrouper-pcs: T1}
+    surligne: [T2]
+  - texte: "Après le push, GitLab lance le pipeline #415 **pour T2** : `tests-r` passe, `lint-r` échoue encore. Le pipeline #412 reste rouge : il décrit T1, qui n'a pas changé."
+    commande: "git push"
+    local:
+      commits: [c19, c20, c21, T1, T2]
+      refs: {main: c21, origin/main: c21, 21-regrouper-pcs: T2, origin/21-regrouper-pcs: T2}
+      head: 21-regrouper-pcs
+    distant:
+      commits: [c19, c20, c21, T1, T2]
+      refs: {main: c21, 21-regrouper-pcs: T2}
+    surligne: [T2]
+  - texte: "Tom raccourcit la ligne signalée, commite **T3** et pousse : le pipeline #418 est vert. C'est le pipeline du **dernier** commit de la branche qui compte pour la MR."
+    commande: "git push"
+    local:
+      commits: [c19, c20, c21, T1, T2, T3]
+      refs: {main: c21, origin/main: c21, 21-regrouper-pcs: T3, origin/21-regrouper-pcs: T3}
+      head: 21-regrouper-pcs
+    distant:
+      commits: [c19, c20, c21, T1, T2, T3]
+      refs: {main: c21, 21-regrouper-pcs: T3}
+    surligne: [T3]

@@ -1,0 +1,41 @@
+# Pipeline de MR en échec : premier push de Tom sur 21-regrouper-pcs (MR !3).
+# lint-r et tests-r échouent ; les jobs de « produire » ne sont pas lancés.
+# Pas de stage « publier » : ses jobs sont exclus des pipelines de MR (rules).
+titre: "Pipeline #412 · MR !3 · 21-regrouper-pcs"
+statut: echec
+declencheur: "Push de Tom : commit « Regroupe les PCS en quatre grandes catégories » (#21)"
+stages:
+  - nom: verifier
+    jobs:
+      - nom: lint-python
+        statut: succes
+        image: "python:3.12-slim"
+        question: "Le code Python respecte-t-il les règles de `ruff` ?"
+      - nom: lint-r
+        statut: echec
+        image: "rocker/r-ver:4.4.1"
+        question: "Le code R respecte-t-il les règles de `lintr` ? Non : une ligne de 125 caractères."
+  - nom: tester
+    jobs:
+      - nom: tests-python
+        statut: succes
+        image: "python:3.12-slim"
+        question: "Les données synthétiques régénérées ont-elles le bon schéma et des valeurs plausibles ?"
+      - nom: tests-r
+        statut: echec
+        image: "rocker/r-ver:4.4.1"
+        question: "Les indicateurs respectent-ils les règles méthodologiques ? Non : les parts par PCS ne somment plus à 1."
+  - nom: produire
+    jobs:
+      - nom: donnees
+        statut: ignore
+        image: "python:3.12-slim"
+        question: "Non lancé : un stage précédent a échoué."
+      - nom: indicateurs
+        statut: ignore
+        image: "rocker/r-ver:4.4.1"
+        question: "Non lancé : il attend `donnees`."
+      - nom: rapport
+        statut: ignore
+        image: "rocker/verse:4.4.1"
+        question: "Non lancé : il attend `indicateurs`."
