@@ -199,7 +199,7 @@ code, kbd, pre, samp { font-family: var(--gf-mono); font-variant-ligatures: none
   font-size: .88em;
   white-space: nowrap;
 }
-p :not(pre) > code, li :not(pre) > code, td :not(pre) > code { white-space: normal; overflow-wrap: anywhere; }
+p code, li code, td code, th code, dd code, dt code, blockquote code { white-space: normal; overflow-wrap: anywhere; }
 
 div.sourceCode, pre.sourceCode, .gf-contenu pre {
   background: var(--gf-papier-2) !important;
@@ -218,6 +218,27 @@ div.sourceCode:has(> pre.sortie), pre.sortie {
   border-left-color: var(--gf-encre-3) !important;
 }
 .code-copy-button { opacity: .8; }
+
+/* Coloration syntaxique : teintes contrastées (≥ 4,5:1) sur les fonds papier */
+div.sourceCode code span.kw, div.sourceCode code span.cf, div.sourceCode code span.im { color: #1d4f8c; }
+div.sourceCode code span.at, div.sourceCode code span.va, div.sourceCode code span.bu { color: #6a3a99; }
+div.sourceCode code span.cn, div.sourceCode code span.dv, div.sourceCode code span.fl,
+div.sourceCode code span.bn, div.sourceCode code span.dt { color: #8a3e00; }
+div.sourceCode code span.st, div.sourceCode code span.ss, div.sourceCode code span.ch,
+div.sourceCode code span.vs, div.sourceCode code span.sc { color: #1f6331; }
+div.sourceCode code span.co, div.sourceCode code span.an, div.sourceCode code span.cv,
+div.sourceCode code span.do, div.sourceCode code span.in { color: #525a66; font-style: italic; }
+div.sourceCode code span.fu { color: #7a2f5c; }
+div.sourceCode code span.op, div.sourceCode code span.ot, div.sourceCode code span.pp { color: #3e4855; }
+div.sourceCode code span.al, div.sourceCode code span.er, div.sourceCode code span.wa { color: #a3180f; }
+
+a.uri { overflow-wrap: anywhere; word-break: break-word; }
+pre a.uri { word-break: break-all; }
+
+/* Tableaux larges : défilement interne, jamais de la page */
+.gf-table-defile { overflow-x: auto; max-width: 100%; margin: var(--gf-e-5) auto; }
+.gf-table-defile > table { margin: 0 !important; }
+.gf-table-defile:focus-visible { outline-offset: 4px; }
 
 /* Tableaux ------------------------------------------------------------------- */
 table { font-size: var(--gf-t-s); }

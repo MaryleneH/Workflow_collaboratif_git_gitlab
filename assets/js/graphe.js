@@ -211,6 +211,9 @@ class Graphe {
       }
       const toile = document.createElement('div');
       toile.className = 'gf-graphe__toile';
+      toile.tabIndex = 0;
+      toile.setAttribute('role', 'group');
+      toile.setAttribute('aria-label', m === 'local' ? 'Schéma du dépôt local' : 'Schéma du dépôt distant');
       p.appendChild(toile);
       this.scene.appendChild(p);
       const svg = el('svg', { 'aria-hidden': 'true', focusable: 'false' }, toile);
@@ -500,6 +503,9 @@ class Graphe {
       const code = document.createElement('code');
       code.textContent = etape.commande;
       pre.appendChild(code);
+      // Zone qui peut défiler horizontalement : accessible au clavier.
+      pre.tabIndex = 0;
+      pre.setAttribute('aria-label', `Commande : ${etape.commande}`);
       this.legende.appendChild(pre);
     }
   }

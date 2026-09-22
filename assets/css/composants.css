@@ -287,7 +287,7 @@
   color: var(--gf-papier);
   border-radius: var(--gf-rayon-l);
 }
-.gf-decodeur .gf-label { color: #aebbc6; }
+.gf-decodeur .gf-label { color: #c3ced8; }
 .gf-decodeur__phrase { font-family: var(--gf-serif); font-size: var(--gf-t-xl); line-height: 1.4; }
 .gf-decodeur__phrase p { margin: 0 0 var(--gf-e-3); }
 .gf-decodeur__phrase a.gf-t { color: var(--gf-papier); text-decoration-color: #7fd3c7; text-decoration-style: solid; text-decoration-thickness: .12em; }
@@ -304,7 +304,7 @@
 .gf-decodeur__termes dt { font-family: var(--gf-mono); font-size: var(--gf-t-s); color: #fff; margin-bottom: .2rem; display: flex; align-items: center; flex-wrap: wrap; gap: .2rem; }
 .gf-decodeur__termes dd { margin: 0; font-size: var(--gf-t-s); color: #cfd7de; }
 .gf-decodeur__termes code { background: #2a3440; color: #fff; }
-.gf-decodeur .gf-badge { background: transparent; --c: #e6ecf0; }
+.gf-decodeur .gf-badge { background: var(--gf-encre); --c: #e6ecf0; }
 .gf-decodeur .gf-badge--gitlab { --c: #c9b3f0; }
 .gf-decodeur .gf-badge--pratique { --c: #8fd6cc; }
 .gf-decodeur .gf-badge--vscode { --c: #9cc3f0; }

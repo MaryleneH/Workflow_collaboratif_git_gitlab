@@ -17,6 +17,13 @@ function placerEvitement() {
   if (lien && document.body.firstElementChild !== lien) document.body.prepend(lien);
 }
 
+// Toute zone qui défile horizontalement doit être atteignable au clavier.
+function zonesDefilantes() {
+  for (const el of document.querySelectorAll('main pre, main .sourceCode')) {
+    if (el.scrollWidth > el.clientWidth + 1 && !el.hasAttribute('tabindex')) el.tabIndex = 0;
+  }
+}
+
 function demarrer() {
   const etapes = [
     ['évitement', placerEvitement],
@@ -26,6 +33,7 @@ function demarrer() {
     ['termes', initTermes],
     ['review', initReview],
     ['progression', initProgression],
+    ['zones défilantes', zonesDefilantes],
   ];
   for (const [nom, f] of etapes) {
     try {

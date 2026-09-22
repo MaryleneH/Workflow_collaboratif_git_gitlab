@@ -288,12 +288,13 @@
 .gf-job__statut .gf-icone { width: 14px; height: 14px; }
 .gf-job__nom { font-family: var(--gf-mono); font-weight: 700; font-size: .84rem; }
 .gf-job__question { font-size: .8rem; color: var(--gf-encre-2); line-height: 1.4; }
-.gf-job__image { font-size: .72rem; color: var(--gf-encre-3); }
+.gf-job__image { font-size: .72rem; color: var(--gf-encre-2); }
 .gf-job__image .gf-label { display: inline; font-size: .64rem; }
 .gf-job__image code { font-size: .72rem; }
 .gf-job--succes { --c: var(--gf-r-sur); }
 .gf-job--echec { --c: var(--gf-r-dangereux); border-color: var(--gf-r-dangereux); background: #fff7f5; }
-.gf-job--ignore, .gf-job--attente { opacity: .7; border-style: dashed; }
+.gf-job--ignore, .gf-job--attente { border-style: dashed; background: var(--gf-blanc); }
+.gf-job--ignore .gf-job__nom, .gf-job--attente .gf-job__nom { color: var(--gf-encre-2); }
 .gf-job--manuel { --c: var(--gf-r-reversible); }
 
 /* Review guidée ------------------------------------------------------------------ */
