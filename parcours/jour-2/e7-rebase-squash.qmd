@@ -1,0 +1,561 @@
+---
+title: "Remettre son travail à jour sans réécrire celui des autres"
+etape: e7
+description: "Rebaser une branche de travail qui a divergé de main, pousser avec --force-with-lease, puis livrer un seul commit lisible grâce au squash au moment du merge dans GitLab."
+---
+
+::: situation
+Mercredi, 10 h. La MR !3 de Tom (issue #21, regrouper les PCS en quatre grandes catégories) a enfin un pipeline vert. Pour y arriver, sa branche `21-regrouper-pcs` a accumulé **sept commits** : le commit initial, puis « wip », « corrige le test », « oups », « wip 2 », « corrige le lint », « encore ».
+
+Pendant ce temps, Inès a fusionné la MR !4 de Léa (#19, répartition des établissements par région). `main` a donc avancé. La branche de Tom a **divergé** de `main`, et les deux ajoutent une ligne à la liste des chiffres clés de `reports/panorama.qmd`.
+
+Deux problèmes, donc. La MR ne montre pas ce que donnera le code une fois intégré au `main` actuel. Et si elle est fusionnée telle quelle, sept commits « wip » entreront dans l'historique que l'équipe consultera pendant des années.
+:::
+
+::: {.recit persona="jules"}
+« Rebase ta branche sur main avant la review, et coche *Squash commits* au merge. »
+:::
+
+::: {.recit persona="tom"}
+« Rebase… ça ne va pas casser le travail de Léa ? »
+:::
+
+La réponse de Jules est juste. Mais elle n'est sans danger que si l'on sait **ce que fait réellement** le rebase. C'est l'objet de cette étape.
+
+## Voir la divergence
+
+Commencez par constater les faits. Le dépôt de Tom ne sait rien de la MR !4 tant qu'il n'a pas interrogé GitLab.
+
+```{.bash risque="sur"}
+git fetch
+git status
+```
+
+```{.text .sortie}
+On branch 21-regrouper-pcs
+Your branch is up to date with 'origin/21-regrouper-pcs'.
+```
+
+Piège : `git status` compare votre branche à **sa branche amont**, `origin/21-regrouper-pcs`, et non à `main`. Elle est « à jour » par rapport à elle-même sur GitLab. Pour voir l'écart avec `main`, il faut le demander explicitement :
+
+```{.bash risque="sur"}
+git log --oneline --graph HEAD origin/main
+git rev-list --left-right --count origin/main...HEAD
+```
+
+```{.text .sortie}
+1	7
+```
+
+Un commit dans `origin/main` que la branche n'a pas (celui de Léa), sept commits dans la branche que `main` n'a pas : c'est la définition de la [divergence]{.t}, vue en E2.
+
+::: {.vscode titre="Voir la divergence avec main"}
+La barre d'état de VS Code affiche les flèches `↓` et `↑` par rapport à la branche amont, pas par rapport à `main` : ici, elle ne montre rien. Ouvrez plutôt le graphe de la vue **Source Control** (<kbd>Ctrl</kbd>+<kbd>Maj</kbd>+<kbd>G</kbd>) après le `git fetch` : `origin/main` y apparaît sur une autre ligne que votre branche.
+:::
+
+## Deux façons de mettre sa branche à jour
+
+Pour que la MR montre le résultat réel, la branche doit contenir le travail de Léa. Git offre deux moyens.
+
+::: {.git-graph scenario="e7-merge-vs-rebase"}
+:::
+
+- **Merger `main` dans sa branche** (`git merge origin/main`) : un commit de fusion réunit les deux lignes. Rien n'est réécrit. C'est la solution **sûre** dès que quelqu'un d'autre travaille sur la branche.
+- **Rebaser** (`git rebase origin/main`) : vos commits sont rejoués au-dessus du `main` actuel. L'historique devient linéaire, mais les commits sont **remplacés** par d'autres. C'est la solution **propre** tant que la branche n'appartient qu'à vous.
+
+Dans les deux cas, la branche locale `main` n'est pas modifiée. Seule la branche courante change.
+
+## Ce que fait réellement le rebase
+
+::: {.git-graph scenario="e7-rebase"}
+:::
+
+Un [commit]{.t} est un instantané relié à **son parent**, et son [hash]{.t} dépend de ce parent (E1). Un commit ne peut donc pas changer de parent : ce serait un autre commit. Le [rebase]{.t} fait donc trois choses :
+
+1. il calcule la modification apportée par chacun de vos commits (**D** par rapport à **C**, **E** par rapport à **D**…) ;
+2. il **crée**, un par un, de nouveaux commits qui appliquent ces modifications au-dessus de la nouvelle base : **D′** a pour parent **L**, **E′** a pour parent **D′**… ;
+3. il place l'étiquette de la branche sur le dernier, **J′**.
+
+Les commits d'origine ne sont ni modifiés ni supprimés sur-le-champ. Ils ne sont simplement plus désignés par votre branche. `origin/21-regrouper-pcs` les désigne encore jusqu'au prochain push, et le reflog s'en souvient pendant plusieurs semaines.
+
+::: idee-fausse
+::: fausse
+« Le rebase déplace mes commits. »
+:::
+::: juste
+Le rebase **fabrique de nouveaux commits** qui rejouent vos modifications sur une autre base, puis y place votre branche. Les originaux restent intacts, mais abandonnés. D'où deux conséquences : les hash changent, et quiconque possédait les originaux (le serveur, un collègue) a désormais un historique **différent** du vôtre.
+:::
+:::
+
+### `git rebase main` ou `git rebase origin/main` ?
+
+Les deux commandes désignent la nouvelle base par un nom différent.
+
+- `git rebase main` rejoue vos commits sur votre branche locale `main`. Elle n'est à jour que si vous avez fait `git switch main` puis `git pull` juste avant.
+- `git rebase origin/main` rejoue vos commits sur la dernière position **connue** de `main` sur GitLab. Il suffit d'un `git fetch` : vous n'avez pas à changer de branche.
+
+La seconde forme est plus directe, et c'est celle de notre workflow : `git fetch`, puis `git rebase origin/main`.
+
+## Rebaser la branche de Tom, pas à pas
+
+```{.bash risque="reecrit"}
+git rebase origin/main
+```
+
+Git rejoue les commits dans l'ordre. Le deuxième ajoute une ligne aux chiffres clés, là où Léa en a ajouté une : le rebase **s'arrête**.
+
+```{.text .sortie}
+Auto-merging reports/panorama.qmd
+CONFLICT (content): Merge conflict in reports/panorama.qmd
+error: could not apply ab68ba4... wip
+hint: Resolve all conflicts manually, mark them as resolved with
+hint: "git add/rm <conflicted_files>", then run "git rebase --continue".
+hint: You can instead skip this commit: run "git rebase --skip".
+hint: To abort and get back to the state before "git rebase", run "git rebase --abort".
+Could not apply ab68ba4... wip
+```
+
+C'est un [conflit]{.t} ordinaire, comme en E3, mais **pendant** une opération en plusieurs temps. `git status` le rappelle :
+
+```{.text .sortie}
+interactive rebase in progress; onto 7dc63cb
+Last commands done (2 commands done):
+   pick fbd0ac8 Regroupe les PCS en quatre grandes catégories
+   pick ab68ba4 wip
+Next commands to do (5 remaining commands):
+   pick 330dfe3 corrige le test
+   pick 2741a2e oups
+  (use "git rebase --edit-todo" to view and edit)
+You are currently rebasing branch '21-regrouper-pcs' on '7dc63cb'.
+  (fix conflicts and then run "git rebase --continue")
+  (use "git rebase --skip" to skip this patch)
+  (use "git rebase --abort" to check out the original branch)
+
+Unmerged paths:
+  (use "git restore --staged <file>..." to unstage)
+  (use "git add <file>..." to mark resolution)
+	both modified:   reports/panorama.qmd
+```
+
+Ne vous laissez pas dérouter par *interactive rebase in progress* : depuis Git 2.26, un rebase ordinaire est affiché ainsi. Vous êtes au commit 2 sur 7, et HEAD est **détachée** : Git construit la nouvelle suite de commits avant d'y déplacer la branche.
+
+Le fichier contient les marqueurs habituels, avec un piège :
+
+```{.text .sortie}
+<<<<<<< HEAD
+- Répartition des établissements par région
+=======
+- Répartition par grande catégorie de PCS
+>>>>>>> ab68ba4 (wip)
+```
+
+Pendant un rebase, les rôles sont **inversés** par rapport à un merge. `HEAD` désigne la base en construction, c'est-à-dire `main` avec le travail de Léa. L'autre côté est **votre** commit en cours de rejeu. Les deux intentions sont compatibles (R05) : on garde les deux lignes.
+
+```{.bash risque="reversible"}
+git add reports/panorama.qmd
+git rebase --continue
+```
+
+Git peut ouvrir votre éditeur pour confirmer le message du commit rejoué : enregistrez et fermez sans rien changer. Le rebase reprend et se termine :
+
+```{.text .sortie}
+Successfully rebased and updated refs/heads/21-regrouper-pcs.
+```
+
+Si la situation vous échappe, `git rebase --abort` ramène la branche exactement où elle était avant le rebase. C'est une sortie de secours toujours disponible tant que le rebase n'est pas terminé.
+
+Enfin, **relancez les tests** : les sept nouveaux commits n'ont jamais été testés, et la combinaison « travail de Léa + travail de Tom » n'a jamais existé avant.
+
+```{.bash risque="sur"}
+Rscript -e 'testthat::test_dir("tests/testthat")'
+```
+
+::: {.vscode titre="Résoudre un conflit de rebase"}
+Pendant le rebase, la vue **Source Control** range `reports/panorama.qmd` dans **Merge Changes**. Ouvrez-le avec **Resolve in Merge Editor** : le côté *Current* est la base (`main`), le côté *Incoming* est votre commit rejoué. Cochez les deux, vérifiez le résultat, puis **Complete Merge**, qui fait l'équivalent du `git add`. Poursuivez ensuite avec `git rebase --continue` dans le terminal intégré ; selon votre version, VS Code propose aussi un bouton pour continuer.
+:::
+
+## Pousser une branche rebasée
+
+```{.bash risque="sur"}
+git push
+```
+
+```{.text .sortie}
+To https://gitlab.example.org/oei/observatoire-industrie.git
+ ! [rejected]        21-regrouper-pcs -> 21-regrouper-pcs (non-fast-forward)
+error: failed to push some refs to 'https://gitlab.example.org/oei/observatoire-industrie.git'
+hint: Updates were rejected because the tip of your current branch is behind
+hint: its remote counterpart. If you want to integrate the remote changes,
+hint: use 'git pull' before pushing again.
+hint: See the 'Note about fast-forwards' in 'git push --help' for details.
+```
+
+Ce refus est **normal**, et le conseil de Git est ici un mauvais conseil. Voyons pourquoi.
+
+::: {.incident #inc-e7-1 titre="Après le rebase, le push est refusé"}
+::: symptome
+Le message ci-dessus, et un `git status` qui annonce :
+
+```{.text .sortie}
+Your branch and 'origin/21-regrouper-pcs' have diverged,
+and have 8 and 7 different commits each, respectively.
+  (use "git pull" if you want to integrate the remote branch with yours)
+```
+:::
+::: hypotheses
+- Quelqu'un a poussé sur `21-regrouper-pcs` pendant le rebase.
+- Le rebase a raté : il faut suivre le conseil et faire `git pull`.
+- Le rebase a remplacé les commits : GitLab refuse de perdre ceux qu'il connaît.
+:::
+::: diagnostic
+Sur GitLab, la branche pointe sur **J**. Votre branche pointe sur **J′**, qui ne descend pas de **J** : les sept commits d'origine sont remplacés par sept copies. Un [push]{.t} ne peut que faire **avancer** une branche distante (fast-forward, E2). Ici, il faudrait retirer **D** à **J** : GitLab refuse. Les « 8 et 7 » de `git status` le confirment : 8 commits chez vous (**L** et les copies), 7 sur le serveur (les originaux).
+
+Faire `git pull`, ce serait fusionner les originaux avec leurs copies : chaque modification apparaîtrait deux fois dans l'historique. Si vous avez configuré `pull.ff only` (R07), Git le refuse d'ailleurs (`fatal: Not possible to fast-forward, aborting.`).
+:::
+::: correction
+Vous êtes seul sur cette branche, et vous voulez que GitLab adopte **votre** version. Demandez-le, en protégeant le travail éventuel des autres :
+
+```{.bash risque="reecrit"}
+git push --force-with-lease
+```
+
+```{.text .sortie}
+To https://gitlab.example.org/oei/observatoire-industrie.git
+ + 454b029...22919dc 21-regrouper-pcs -> 21-regrouper-pcs (forced update)
+```
+
+Le `+` et *forced update* signalent qu'une référence a été remplacée au lieu d'avancer.
+:::
+::: prevention
+Après un rebase d'une branche déjà poussée, le push forcé est **attendu**. Pour éviter la surprise, ne suivez pas le conseil `git pull` que Git affiche dans ce cas précis, et forcez toujours avec `--force-with-lease`, jamais avec `--force`.
+:::
+:::
+
+### `--force-with-lease` plutôt que `--force`
+
+`git push --force` dit à GitLab : « remplace ta branche par la mienne, quoi qu'elle contienne ». Si un collègue y a poussé un commit depuis votre dernier fetch, ce commit disparaît de la branche, sans avertissement.
+
+[`--force-with-lease`]{.t ref="force-with-lease"} ajoute une condition. Git compare la position actuelle de la branche sur GitLab à celle que mémorise votre `origin/21-regrouper-pcs`. Si elles diffèrent, quelqu'un a poussé entre-temps, et le push est refusé.
+
+::: {.incident #inc-e7-2 titre="--force-with-lease refuse de pousser"}
+::: symptome
+Tom vient de rebaser, les tests passent. Il pousse :
+
+```{.text .sortie}
+To https://gitlab.example.org/oei/observatoire-industrie.git
+ ! [rejected]        21-regrouper-pcs -> 21-regrouper-pcs (stale info)
+error: failed to push some refs to 'https://gitlab.example.org/oei/observatoire-industrie.git'
+```
+:::
+::: hypotheses
+- Le rebase est incomplet : un conflit n'a pas été résolu.
+- Quelqu'un a poussé sur `21-regrouper-pcs` depuis le dernier `git fetch` de Tom.
+- `--force-with-lease` est interdit sur ce projet : il faut utiliser `--force`.
+:::
+::: diagnostic
+*Stale info* signifie « information périmée » : `origin/21-regrouper-pcs` ne correspond plus à la branche sur GitLab. Récupérez l'état réel, puis regardez ce qui est arrivé depuis l'ancienne tête de la branche (`ORIG_HEAD`, que le rebase a mémorisée) :
+
+```{.bash risque="sur"}
+git fetch
+git log --oneline ORIG_HEAD..origin/21-regrouper-pcs
+```
+
+```{.text .sortie}
+488f13a Apply 1 suggestion(s) to 1 file(s)
+```
+
+Pendant que Tom rebasait, Karim a appliqué une **suggestion** de review directement dans l'interface de la MR (E4). GitLab a créé ce commit sur la branche. Un `--force` l'aurait effacé sans bruit.
+:::
+::: correction
+Intégrez ce commit à votre branche rebasée. Comme il a été créé sur l'ancienne base, on en reporte la modification par un `git cherry-pick`, commande que vous étudierez en E8 :
+
+```{.bash risque="reversible"}
+git cherry-pick 488f13a
+```
+
+Relancez les tests, puis poussez de nouveau avec `git push --force-with-lease` : cette fois, `origin/21-regrouper-pcs` est à jour, et le push passe.
+:::
+::: prevention
+Une branche sur laquelle quelqu'un d'autre a poussé, même par une suggestion, est une branche **partagée**. Prévenez avant de rebaser, ou mettez-la à jour par un merge (`git merge origin/main`), qui ne réécrit rien.
+:::
+:::
+
+::: {.regle ref="R13"}
+:::
+
+Deux précisions d'expert :
+
+- `--force-with-lease` se fie à `origin/<branche>`. Si un fetch automatique a tourné en arrière-plan (option `git.autofetch` de VS Code, par exemple), cette référence a pu avancer sans que vous ayez regardé ce qu'elle contient : la protection ne joue plus. Git ≥ 2.30 propose `git push --force-with-lease --force-if-includes`, qui vérifie en plus que la tête distante figure dans l'historique de votre branche locale.
+- Sur une [branche protégée]{.t}, GitLab interdit le force-push par défaut (réglage *Allowed to force push*, dans **Settings › Repository › Protected branches**). Sur `main`, même `--force-with-lease` est refusé par le serveur :
+
+  ```{.text .sortie}
+  remote: GitLab: You are not allowed to force push code to a protected branch on this project.
+   ! [remote rejected] main -> main (pre-receive hook declined)
+  ```
+
+::: {.vscode titre="Forcer un push depuis VS Code"}
+Le menu **…** de la vue Source Control propose **Pull, Push › Push (Force)** uniquement si le réglage `git.allowForcePush` est activé (il ne l'est pas par défaut). VS Code utilise alors `--force-with-lease` (réglage `git.useForcePushWithLease`, activé par défaut). Le terminal reste la référence : vous y voyez le message *stale info* ou *forced update*.
+:::
+
+## À vous : rebaser la MR de Tom
+
+::: {.mission #m-e7-1 titre="Rebaser une branche qui a divergé, puis la pousser sans danger" duree="25 min" mode="seul" depart="etape-7-debut"}
+::: objectif
+Mettre à jour une branche de travail sur le `main` actuel, résoudre le conflit en cours de rebase, pousser avec `--force-with-lease` et **constater** que les hash ont changé.
+:::
+
+Au tag `etape-7-debut`, `main` contient le commit de Léa (c22). La branche `21-regrouper-pcs-e7` contient les sept commits de Tom et part de c21. Pour ne pas gêner les autres participants, vous travaillez sur **votre copie** de cette branche.
+
+::: consignes
+1. Créez votre copie et publiez-la :
+   `git fetch`, puis `git switch -c 21-regrouper-pcs-<prenom> origin/21-regrouper-pcs-e7`, puis `git push -u origin 21-regrouper-pcs-<prenom>`.
+2. Mesurez la divergence avec `git rev-list --left-right --count origin/main...HEAD`. Notez les hash des sept commits : `git log --oneline -7`.
+3. Rebasez : `git rebase origin/main`. Au conflit dans `reports/panorama.qmd`, lisez `git status`, gardez les deux lignes, puis `git add` et `git rebase --continue`.
+4. Relancez les tests R.
+5. Comparez : `git log --oneline -7` (nouveaux hash) et `git reflog -n 12` (les anciens y figurent).
+6. Essayez `git push` et lisez le refus. Puis `git push --force-with-lease`.
+:::
+
+::: reussite
+`git rev-list --left-right --count origin/main...HEAD` affiche `0	7` ; `git status` indique *Your branch is up to date with 'origin/21-regrouper-pcs-<prenom>'* ; les hash de `git log --oneline -7` diffèrent de ceux notés à l'étape 2, avec les mêmes messages.
+:::
+
+::: indice
+Pendant le conflit, `HEAD` dans les marqueurs désigne la base (`main`), pas votre travail.
+:::
+
+::: {.indice titre="Indice 2 : retrouver les anciens hash"}
+`git log --oneline -7 ORIG_HEAD` montre la branche telle qu'elle était avant le rebase.
+:::
+
+::: corrige
+```bash
+git fetch
+git switch -c 21-regrouper-pcs-ines origin/21-regrouper-pcs-e7
+git push -u origin 21-regrouper-pcs-ines
+git rev-list --left-right --count origin/main...HEAD   # 1  7
+git log --oneline -7                                   # noter les hash
+git rebase origin/main                                 # CONFLICT dans reports/panorama.qmd
+# garder les deux lignes des chiffres clés, supprimer les marqueurs
+git add reports/panorama.qmd
+git rebase --continue
+Rscript -e 'testthat::test_dir("tests/testthat")'
+git log --oneline -7                                   # mêmes messages, nouveaux hash
+git reflog -n 12                                       # rebase (start), (pick)…, puis les anciens commits
+git push                                               # rejeté (non-fast-forward)
+git push --force-with-lease                            # forced update
+git rev-list --left-right --count origin/main...HEAD   # 0  7
+```
+:::
+:::
+
+::: formateur
+Compter 25 min, dont 5 de débriefing au tableau avec le graphe `e7-rebase`. Piège fréquent : l'éditeur ouvert par `git rebase --continue` (vim par défaut sur certains postes). Vérifier dès E0 que `core.editor` vaut `code --wait`, ou montrer comment quitter vim (`:wq`). Faire lire à voix haute la ligne *You are currently rebasing branch…* : beaucoup de stagiaires ignorent qu'ils sont « au milieu » d'une opération. Variante pour un groupe en avance : faire pousser un commit par le binôme sur la branche avant le `--force-with-lease`, pour provoquer *stale info*.
+:::
+
+## Rebaser avant la review, pas pendant
+
+Le relecteur doit juger ce qui entrera **réellement** dans `main`. Mettez donc votre branche à jour **avant** de sortir la MR du mode [Draft]{.t} et de demander une review.
+
+- **Avant la review** : un rebase ne gêne personne. La MR montre un diff à jour, et le pipeline teste la combinaison réelle.
+- **Pendant la review** : chaque rebase suivi d'un push forcé crée une nouvelle **version** de la MR. GitLab les conserve, et la liste déroulante de l'onglet *Changes* permet de comparer deux versions. Mais le relecteur doit reprendre sa lecture, et ses commentaires peuvent porter sur une version dépassée. Si `main` avance pendant la review, prévenez avant de rebaser.
+
+GitLab peut aussi rebaser à votre place. Selon la méthode de fusion du projet, un bouton **Rebase** apparaît dans la MR quand la branche est en retard sur sa cible, et la commande rapide `/rebase`, tapée en commentaire, fait de même. Le rebase est alors exécuté sur le serveur. Il échoue en cas de conflit : il faut alors rebaser en local. Après un rebase fait par GitLab, votre branche locale est en retard : `git pull --rebase` la réaligne.
+
+## Squash : un sujet, un commit dans `main`
+
+Le rebase a réglé la divergence, pas les sept commits « wip ». Fusionnés tels quels, ils entreraient dans `main`. Dans deux ans, un `git blame` sur `repartition_pcs()` pointerait vers « oups », et il faudrait lire sept commits pour comprendre un seul changement.
+
+Le [squash]{.t} regroupe plusieurs commits en un seul. Dans notre workflow, **c'est GitLab qui le fait, au moment du merge** : vous n'avez rien à réécrire vous-même.
+
+::: {.git-graph scenario="e7-squash"}
+:::
+
+Le commit squashé, **S**, est un **nouveau** commit. Son instantané est identique à celui de **J′**, mais il a un seul parent (**L**) et son propre message. Les commits de travail restent visibles dans l'onglet *Commits* de la MR fusionnée, qui garde la trace de la discussion.
+
+Côté GitLab, trois réglages entrent en jeu. Vous les fixerez pour le projet en E10 :
+
+- **Settings › Merge requests › Squash commits when merging** : *Do not allow*, *Allow*, *Encourage* (case cochée par défaut) ou *Require* ;
+- **Settings › Merge requests › Merge method** : avec *Fast-forward merge*, le commit squashé est ajouté seul au bout de `main`. Avec *Merge commit*, la méthode par défaut, GitLab ajoute **en plus** un commit de fusion ;
+- l'option **Delete source branch**, cochée par défaut si le projet le prévoit (R10).
+
+Au moment de fusionner, relisez le message proposé (case **Edit commit message** dans le bloc de fusion, selon votre version). Il deviendra **le** message de ce sujet dans `main` : il doit dire pourquoi, et citer l'issue (R01).
+
+```{.text .sortie}
+Regroupe les PCS en quatre grandes catégories (#21)
+
+Les cinq codes PCS de travail sont regroupés en quatre catégories :
+cadres et ingénieurs (37), techniciens et agents de maîtrise (47),
+employés (54), ouvriers (62 et 67). repartition_pcs() calcule les
+parts par établissement ; le test vérifie qu'elles somment à 1.
+
+Closes #21
+```
+
+::: {.regle ref="R14"}
+:::
+
+### Et en local : `--amend`, `rebase -i`
+
+Deux outils locaux complètent le squash de GitLab. Aucun n'est obligatoire.
+
+- [`git commit --amend`]{.t ref="amend"} remplace **le dernier commit** par un nouveau : message corrigé, fichier oublié ajouté. C'est une réécriture. Si le commit a déjà été poussé sur votre branche, il faudra `--force-with-lease`.
+
+  ```{.bash risque="reecrit"}
+  git add tests/testthat/test-indicateurs.R
+  git commit --amend --no-edit
+  ```
+
+- `git rebase -i` permet de réordonner, fusionner ou reformuler plusieurs commits avant de les partager. C'est de la culture technique utile, présentée dans l'approfondissement [Réécrire son propre historique avant de le partager](../approfondissements/rebase-interactif.qmd). Notre workflow ne l'exige pas : le squash au merge suffit.
+
+::: {.mission #m-e7-2 titre="Fusionner la MR en squash et lire l'historique de main" duree="15 min" mode="seul"}
+::: objectif
+Constater qu'un squash au merge fait entrer **un seul** commit dans `main`, avec un message que vous avez choisi.
+:::
+
+::: consignes
+1. Sur GitLab, ouvrez une MR de `21-regrouper-pcs-<prenom>` vers `main`. Titre : « Regroupe les PCS en quatre grandes catégories » ; description : `Closes #21`.
+2. Attendez le pipeline vert. Dans l'onglet *Commits*, comptez les commits.
+3. Dans le bloc de fusion, cochez **Squash commits** et **Delete source branch**, puis rédigez le message du commit squashé (pourquoi, et `#21`).
+4. Fusionnez. Dans VS Code : `git switch main`, `git pull`, puis `git fetch --prune`.
+5. Lisez `git log --oneline --graph -4`.
+:::
+
+::: reussite
+`git log --oneline -2 main` montre votre commit squashé juste au-dessus du commit de Léa (#19) ; `git show --stat HEAD` affiche votre message et tous les fichiers modifiés par les sept commits ; `git branch -r` ne liste plus `origin/21-regrouper-pcs-<prenom>`.
+:::
+
+::: indice
+Vous voyez deux nouveaux commits dans `main`, dont un « Merge branch… » ? Regardez la méthode de fusion du projet dans **Settings › Merge requests**.
+:::
+
+::: corrige
+Avec la méthode *Fast-forward merge*, `main` reçoit un seul commit S, de parent c22. Avec *Merge commit*, GitLab crée le commit squashé **et** un commit de fusion : c'est le moment d'expliquer pourquoi l'équipe choisira la méthode fast-forward en E10. `git fetch --prune` supprime `origin/21-regrouper-pcs-<prenom>`, puisque la branche n'existe plus sur GitLab. La branche locale peut être supprimée avec `git branch -D 21-regrouper-pcs-<prenom>` : `-D`, car Git ne reconnaît pas les commits squashés comme « fusionnés ».
+:::
+:::
+
+## Le filet de sécurité : reflog et `ORIG_HEAD`
+
+Un rebase qui tourne mal ne détruit rien immédiatement. Git garde deux traces.
+
+- `ORIG_HEAD` : le rebase y enregistre la position de la branche **avant** de commencer.
+- Le [reflog]{.t} : le journal local de toutes les positions de HEAD et de vos branches.
+
+```{.bash risque="sur"}
+git reflog -n 10
+```
+
+```{.text .sortie}
+22919dc HEAD@{0}: rebase (finish): returning to refs/heads/21-regrouper-pcs
+22919dc HEAD@{1}: rebase (pick): encore
+0b9ea3e HEAD@{2}: rebase (pick): corrige le lint
+05d28e3 HEAD@{3}: rebase (pick): wip 2
+4c618f6 HEAD@{4}: rebase (pick): oups
+3492e7a HEAD@{5}: rebase (pick): corrige le test
+2fce236 HEAD@{6}: rebase (continue): wip
+139015a HEAD@{7}: rebase (pick): Regroupe les PCS en quatre grandes catégories
+7dc63cb HEAD@{8}: rebase (start): checkout origin/main
+454b029 HEAD@{9}: commit: encore
+```
+
+La ligne `HEAD@{9}` est l'ancienne tête de la branche, **J** : `454b029`. Avant toute manipulation, posez-y une étiquette. C'est sans risque :
+
+```{.bash risque="reversible"}
+git branch avant-rebase 454b029
+```
+
+Pour annuler le rebase lui-même, on replace la branche sur son ancienne tête :
+
+```{.bash risque="dangereux"}
+git reset --hard ORIG_HEAD
+```
+
+Cette commande est **dangereuse** pour deux raisons. `--hard` écrase sans retour les modifications non commitées de votre copie de travail. Et `ORIG_HEAD` est réécrit par d'autres commandes (`reset`, `merge`, `pull`…) : vérifiez d'abord avec `git log --oneline -3 ORIG_HEAD` qu'il désigne bien ce que vous croyez. Une forme plus explicite existe : `git reset --hard 21-regrouper-pcs@{1}`, soit la position précédente de la branche d'après son reflog.
+
+Le reflog est **local** : il n'est ni poussé ni partagé, et un service Onyxia supprimé l'emporte avec lui (R03). Ses entrées expirent : 90 jours par défaut, 30 jours pour les commits qui ne sont plus accessibles depuis une branche.
+
+## Ce que disent les développeurs
+
+Vous pouvez maintenant lire la phrase-boussole de la page d'accueil sans rien laisser de côté.
+
+::: decodeur
+« J'ai ouvert une [MR]{.t ref="merge-request"} sur ma [feature branch]{.t}, mais elle a [divergé]{.t ref="divergence"} de [main]{.t}. Je vais [rebase]{.t} avant la [review]{.t} et [squash]{.t} mes commits au [merge]{.t}. »
+
+::: traduction
+J'ai demandé sur GitLab l'intégration de ma branche de travail, née d'une issue. Depuis, d'autres MR ont été fusionnées : ma branche et `main` contiennent chacune des commits que l'autre n'a pas. Avant de demander une relecture, je vais rejouer mes commits au-dessus du `main` actuel (`git fetch`, puis `git rebase origin/main`), relancer les tests et pousser avec `--force-with-lease`, puisque la branche n'est qu'à moi. Le relecteur verra ainsi exactement ce qui entrera dans `main`. Au moment de fusionner, je cocherai *Squash commits* : GitLab créera un seul commit dans `main`, avec un message qui cite l'issue.
+:::
+:::
+
+D'autres formules que vous entendrez :
+
+- « *Rebase on main* » ou « *rebase onto main* » : mettre sa branche à jour par un rebase ;
+- « *Can you rebase? There are conflicts* » : GitLab ne peut pas fusionner, il faut rebaser en local et résoudre ;
+- « *Don't force-push to shared branches* » : c'est la règle R13 ;
+- « *LGTM, squash and merge* » (*Looks good to me*) : approuvé, à fusionner en squash.
+
+::: {.rosette principe="integrite"}
+::: principe
+Personne ne perd le travail d'un autre, et l'historique de `main` reste digne de confiance.
+:::
+::: dev
+Historique linéaire : rebase avant le merge, branches courtes. Le force-push est réservé à sa propre branche, toujours avec `--force-with-lease`, et interdit sur les branches protégées.
+:::
+::: stat
+Un sujet, un commit dans `main`, qui cite son issue. Dans deux ans, `git log` et `git blame` diront pourquoi la part des ouvriers qualifiés a changé entre deux éditions, sans passer par sept commits « wip ». C'est l'archéologie de E1, rendue facile pour l'équipe qui vous succédera.
+:::
+:::
+
+## En pratique statistique
+
+- **Rebasez tôt et souvent** une branche qui est à vous seul. Plus `main` avance, plus les conflits sont gros, et un conflit dans un rapport annuel se règle mieux sur deux lignes que sur deux pages.
+- **Une branche à plusieurs** (Karim et Léa sur un même indicateur, par exemple) se met à jour par `git merge origin/main`. Le squash au merge effacera de toute façon ces commits de fusion de l'historique de `main`.
+- **Toujours retester après un rebase** : un indicateur calculé correctement sur l'ancienne base peut être faux sur la nouvelle, par exemple si Léa a changé le champ des établissements. Le pipeline le fait à chaque push, mais lancer `testthat` en local vous évite un aller-retour.
+- **Le message du commit squashé est une note de méthode.** Il sera lu par celui qui cherchera pourquoi la répartition par PCS de 2026 ne se compare pas directement à celle de 2025.
+
+::: retenir
+- Le rebase **crée de nouveaux commits** (nouveaux hash) au-dessus d'une autre base ; les originaux ne sont plus désignés par la branche mais restent retrouvables un temps (`git reflog`, `ORIG_HEAD`).
+- On ne rebase qu'une branche **à soi** et l'on pousse avec `--force-with-lease`, jamais `--force` ; une branche partagée se met à jour par `git merge origin/main`.
+- On rebase **avant** la review, et GitLab **squashe au merge** : un sujet, un commit dans `main`, avec un message qui cite l'issue.
+:::
+
+::: {.checkpoint titre="Avant de passer à la suite"}
+::: {.question rappel="e2"}
+Après le rebase, `git push` est refusé avec *non-fast-forward*. Dans le vocabulaire de E2, pourquoi ?
+
+::: reponse
+Un push ne peut que faire avancer une branche distante : le commit visé doit descendre de celui qu'elle désigne. Or **J′** ne descend pas de **J** : les copies ont d'autres parents. Accepter le push reviendrait à retirer **D** à **J** de la branche sur GitLab, d'où le refus.
+:::
+:::
+
+::: {.question rappel="e6"}
+Le rebase s'est déroulé sans le moindre conflit. Faut-il quand même relancer les tests ?
+
+::: reponse
+Oui. Les instantanés rejoués n'ont jamais existé avant : ils combinent le travail de Léa et celui de Tom. Absence de conflit textuel ne veut pas dire absence de conflit de sens. Le pipeline relancera les tests au push, mais les lancer avant évite de pousser une branche rouge.
+:::
+:::
+
+::: question
+Karim a poussé deux commits sur votre branche pour vous aider. `main` a avancé. Comment mettez-vous la branche à jour ?
+
+::: reponse
+La branche est partagée : pas de rebase (R13). On la met à jour par `git fetch` puis `git merge origin/main`, et un simple `git push`. Le squash au merge produira quand même un seul commit dans `main`.
+:::
+:::
+
+::: question
+Juste après un rebase, que désigne `ORIG_HEAD`, et que fait `git reset --hard ORIG_HEAD` ?
+
+::: reponse
+`ORIG_HEAD` désigne l'ancienne tête de la branche, avant le rebase (**J**). La commande replace la branche sur **J**, ce qui annule le rebase, mais elle écrase aussi toute modification non commitée de la copie de travail : d'où son niveau « dangereux ».
+:::
+:::
+:::
+
+::: formateur
+Pour le débriefing de la phrase-boussole, faire traduire la phrase par un stagiaire **avant** d'afficher la traduction, en exigeant pour chaque mot « Git ou GitLab ? » : MR, review et squash au merge (GitLab) ; feature branch (pratique) ; divergence, main, rebase et merge (Git). Rappeler que le squash existe aussi dans Git (`git merge --squash`, `rebase -i`), d'où son double badge.
+:::
+
+::: pont
+Votre branche est à jour, et `main` se lit comme un journal : un sujet, un commit. Mais `main` avance sans cesse. Comment désigner pour toujours l'état exact d'une publication, et comment corriger une édition déjà diffusée sans embarquer le travail de l'année suivante ?
+:::
