@@ -299,7 +299,8 @@ class Graphe {
       p.svg.setAttribute('viewBox', `0 0 ${p.largeur} ${p.hauteur}`);
       p.svg.setAttribute('width', p.largeur);
       p.svg.setAttribute('height', p.hauteur);
-      p.svg.style.maxWidth = o === 'h' ? `${p.largeur}px` : 'none';
+      // Petits scénarios : on autorise un léger agrandissement (lisibilité).
+      p.svg.style.maxWidth = o === 'h' ? `${Math.round(p.largeur * 1.3)}px` : 'none';
     }
   }
 
@@ -376,8 +377,9 @@ class Graphe {
         g = el('g', {}, p.gCommits);
         el('circle', { class: 'gf-g-halo', r: r + 5 }, g);
         el('circle', { class: 'gf-g-disque', r }, g);
-        const t = el('text', { class: 'gf-g-id', x: 0, y: 0 }, g);
-        t.textContent = c.label || id;
+        if (this.donnees.ids !== false) {
+          el('text', { class: 'gf-g-id', x: 0, y: 0 }, g).textContent = c.label || id;
+        }
         if (c.msg) el('title', {}, g).textContent = `${c.label || id} · ${c.msg}`;
         p.noeuds.set(id, g);
       }

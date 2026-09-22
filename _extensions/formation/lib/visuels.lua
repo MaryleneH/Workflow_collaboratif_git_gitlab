@@ -100,6 +100,7 @@ function M.graphe(div)
   -- Données transmises au composant JS (chaînes brutes, sans HTML).
   local donnees = { titre = titre, commits = {}, etapes = {}, couleurs = {}, nom_distant = sc.nom_distant and O.texte(sc.nom_distant) or 'GitLab (origin)' }
   for k, v in pairs(sc.couleurs or {}) do donnees.couleurs[O.texte(k)] = O.texte(v) end
+  if sc.ids == false then donnees.ids = false end
   for cid, c in pairs(sc.commits or {}) do
     donnees.commits[O.texte(cid)] = {
       x = tonumber(O.texte(c.x)) or 0,

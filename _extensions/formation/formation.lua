@@ -50,7 +50,28 @@ local composants = {
 
 local badges = { git = true, gitlab = true, github = true, vscode = true, pratique = true, outil = true }
 
+-- Typographie française : espace insécable avant « : ; ! ? » » et après « « ».
+local NBSP, FINE = '\u{00A0}', '\u{202F}'
+local function typographie(inlines)
+  local modifie = false
+  for i = 1, #inlines - 1 do
+    local a, b = inlines[i], inlines[i + 1]
+    if a.t == 'Space' and b.t == 'Str' then
+      local c = b.text:sub(1, 1)
+      if c == ':' or b.text:sub(1, 2) == '»' then
+        inlines[i] = pandoc.Str(NBSP); modifie = true
+      elseif c == ';' or c == '!' or c == '?' then
+        inlines[i] = pandoc.Str(FINE); modifie = true
+      end
+    elseif a.t == 'Str' and a.text:sub(-2) == '«' and b.t == 'Space' then
+      inlines[i + 1] = pandoc.Str(NBSP); modifie = true
+    end
+  end
+  return modifie and inlines or nil
+end
+
 local filtre_contenu = {
+  Inlines = typographie,
   Span = function(s)
     if s.classes:includes('t') then return V.terme(s) end
     for _, c in ipairs(s.classes) do

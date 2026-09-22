@@ -52,7 +52,8 @@
   overflow-x: auto;
   overscroll-behavior-x: contain;
 }
-.gf-graphe__toile svg { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+.gf-graphe__toile svg { display: block; margin: 0 auto; width: 100%; height: auto; }
+.gf-graphe__panneau--local .gf-graphe__toile svg, .gf-graphe__toile svg { min-width: 0; }
 
 /* Éléments SVG ------------------------------------------------------------- */
 .gf-g-lien {
