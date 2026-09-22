@@ -107,7 +107,7 @@ jobs:
           version: ${{ env.QUARTO_VERSION }}
 
       - name: Installer les paquets Python épinglés du projet
-        run: pip install -r depot-compagnon/historique/requirements-verification.txt
+        run: pip install -r depot-compagnon/requirements-verification.txt
 
       - name: Construire l'historique scénarisé et vérifier chaque étape
         run: python depot-compagnon/outils/verifier_historique.py
