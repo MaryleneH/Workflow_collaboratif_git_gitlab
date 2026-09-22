@@ -1,0 +1,63 @@
+titre: "« J'ai commité sur main » : rattraper sans rien perdre"
+nom_distant: "GitLab (origin)"
+couleurs:
+  "32-part-femmes-pcs": travail
+commits:
+  A: {x: 0, y: 0, label: "c25", msg: "Documente le workflow de l'équipe (#27)"}
+  C: {x: 1, y: 0, msg: "Arrondit les parts à l'affichage seulement (#31)"}
+  B: {x: 2, y: 1, msg: "Ajoute la part des femmes par PCS (#32)"}
+etapes:
+  - texte: "Vous avez commité **B** alors que vous étiez sur `main`. B n'existe que dans votre dépôt : rien n'est encore partagé, rien n'est perdu. Pendant ce temps, l'équipe #31 a fait fusionner **C** dans `main` sur GitLab."
+    commande: "git commit -m \"Ajoute la part des femmes par PCS (#32)\""
+    local:
+      commits: [A, B]
+      refs: {main: B, origin/main: A}
+      head: main
+    distant:
+      commits: [A, C]
+      refs: {main: C}
+  - texte: "Le push est refusé : `main` est une **branche protégée**. Le refus vient de GitLab, pas de Git. Rien n'a bougé, ni chez vous ni sur le serveur."
+    commande: "git push"
+    local:
+      commits: [A, B]
+      refs: {main: B, origin/main: A}
+      head: main
+    distant:
+      commits: [A, C]
+      refs: {main: C}
+  - texte: "`git fetch` télécharge C et met à jour `origin/main`. Votre `main` et `origin/main` ont **divergé** : B d'un côté, C de l'autre."
+    commande: "git fetch"
+    local:
+      commits: [A, B, C]
+      refs: {main: B, origin/main: C}
+      head: main
+    distant:
+      commits: [A, C]
+      refs: {main: C}
+  - texte: "Une nouvelle branche est créée **sur le commit courant** : B a désormais une étiquette qui le protège. HEAD suit la nouvelle branche."
+    commande: "git switch -c 32-part-femmes-pcs"
+    local:
+      commits: [A, B, C]
+      refs: {main: B, 32-part-femmes-pcs: B, origin/main: C}
+      head: 32-part-femmes-pcs
+    distant:
+      commits: [A, C]
+      refs: {main: C}
+  - texte: "L'étiquette `main` est replacée sur `origin/main`. Aucun commit n'est créé ni détruit : seule une référence a bougé."
+    commande: "git branch -f main origin/main"
+    local:
+      commits: [A, B, C]
+      refs: {main: C, 32-part-femmes-pcs: B, origin/main: C}
+      head: 32-part-femmes-pcs
+    distant:
+      commits: [A, C]
+      refs: {main: C}
+  - texte: "La branche est poussée : B arrive sur GitLab, sous son vrai nom. Vous pouvez ouvrir la Draft MR. Comme elle part de c25, il faudra la remettre à jour sur `origin/main` avant la review (E7)."
+    commande: "git push -u origin 32-part-femmes-pcs"
+    local:
+      commits: [A, B, C]
+      refs: {main: C, 32-part-femmes-pcs: B, origin/main: C, origin/32-part-femmes-pcs: B}
+      head: 32-part-femmes-pcs
+    distant:
+      commits: [A, B, C]
+      refs: {main: C, 32-part-femmes-pcs: B}
