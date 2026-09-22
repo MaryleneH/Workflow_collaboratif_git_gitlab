@@ -54,8 +54,9 @@ et chaque publication peut être refaite à l'identique.
 ## Réglages GitLab du projet
 
 - `main` protégée : *Allowed to push and merge* : No one ; *Allowed to
-  merge* : Maintainers + Developers (Settings › Repository › Protected
-  branches). Même protection pour `maintenance/*`.
+  merge* : Developers + Maintainers (Settings › Repository › Protected
+  branches). `maintenance/*` protégée aussi, avec *Allowed to merge* :
+  Maintainers.
 - Settings › Merge requests : *Merge method* : Fast-forward merge ;
   *Squash commits when merging* : Encourage ; *Delete source branch* coché
   par défaut ; *Pipelines must succeed* et *All threads must be resolved*.
