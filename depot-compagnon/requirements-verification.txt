@@ -1,0 +1,10 @@
+# Paquets Python nécessaires à outils/verifier_historique.py (Python 3.12).
+# Mêmes versions que le requirements.txt du projet compagnon : la vérification
+# exécute les tests pytest, ruff et la chaîne de production de chaque tag.
+# Le constructeur (outils/construire_historique.py), simuler_collegue.py et
+# creer_issues.py n'utilisent que la bibliothèque standard.
+pyarrow==25.0.1
+duckdb==1.5.5
+matplotlib==3.11.2
+pytest==9.1.1
+ruff==0.16.8
