@@ -1,0 +1,43 @@
+---
+title: "Les mémos"
+surtitre: "Mémo"
+chapeau: "Ce qu'il faut garder sous la main pendant la formation, et relire dans six mois : des pages de référence, organisées par intention plutôt que par commande."
+description: "Index des mémos de la formation Git à plusieurs : commandes, lexique, carnet de règles, Git ou GitLab, VS Code, dépannage, relecture de MR, workflows et notre workflow."
+---
+
+Le [parcours](../parcours/index.qmd) explique **pourquoi** chaque outil existe, en partant d'un problème. Les mémos, eux, répondent à une question plus pressante : **que dois-je taper, vérifier ou décider maintenant ?** Chaque mémo renvoie à l'étape où la notion a été construite, pour ceux qui veulent retrouver le raisonnement.
+
+## Agir
+
+[Commandes par intention](commandes.qmd)
+: « Je veux voir où j'en suis », « je veux annuler », « je veux publier » : les commandes Git classées par ce que vous cherchez à faire, chacune avec son niveau de risque, ce qu'elle fait réellement et son piège. Commencez par là si vous hésitez devant le terminal.
+
+[J'ai cassé quelque chose](depannage.qmd)
+: Douze situations de panne réelles (push refusé, HEAD détachée, rebase raté, secret poussé…), avec le message exact que vous voyez, le diagnostic et la réparation la moins risquée. À ouvrir **avant** de tenter un `reset --hard`.
+
+[Git dans VS Code](vscode.qmd)
+: Ce que fait vraiment chaque bouton de la vue Source Control, où trouver le graphe, le Merge Editor et la Timeline, quels réglages éviter. Un encadré aide ceux qui arrivent de RStudio à retrouver leurs repères.
+
+## Collaborer
+
+[Relire une Merge Request statistique](relecture-mr.qmd)
+: La liste de contrôle d'une review qui porte sur le code **et** sur la méthode : données, reproductibilité, secrets, tests, historique. Avec des exemples de commentaires utiles et la bonne posture de relecteur.
+
+[Git ou GitLab ?](git-ou-gitlab.qmd)
+: Ce qui se passe sur votre machine et ce qu'ajoute le serveur. Les cas trompeurs (tag ou Release, squash, bouton *Merge*, branche protégée) et un petit quiz pour vérifier que la frontière est nette.
+
+## Décider
+
+[Notre workflow](notre-workflow.qmd)
+: La référence de l'équipe, de l'issue au tag, étape par étape : commandes, règles associées, réglages GitLab et `git config`. C'est le résultat de l'étape 10.
+
+[Les workflows professionnels](workflows.qmd)
+: Git Flow, GitHub Flow, GitLab Flow et trunk-based development comparés sur le même scénario. Pour savoir lequel choisir, et pourquoi le nôtre ressemble à l'un d'eux sans l'être tout à fait.
+
+## Comprendre les mots
+
+[Lexique](lexique.qmd)
+: Tous les termes du parcours, avec leur définition exacte, le piège associé, leur propriétaire (Git, GitLab, VS Code, pratique d'équipe) et l'étape où ils apparaissent.
+
+[Carnet de règles](carnet-de-regles.qmd)
+: Les dix-sept règles de l'équipe, chacune née d'un incident du parcours, rangées par ordre d'apparition puis par principe : intégrité, traçabilité, revue, reproductibilité.
