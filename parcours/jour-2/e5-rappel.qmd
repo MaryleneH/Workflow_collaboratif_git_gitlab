@@ -111,14 +111,14 @@ La MR de Léa vient d'être fusionnée en squash, avec suppression de la branche
 
 ## Un incident mixte
 
-Hier, Tom est parti avant la fin de l'étape 4 : il n'a pas configuré `pull.ff only`. En attendant la fusion de sa MR, il a corrigé une coquille dans la liste des chiffres clés de `reports/panorama.qmd`, directement sur `main`, et l'a commitée sans la pousser. Ce matin, il met son dépôt à jour.
+Hier, Tom est parti avant la fin de l'étape 4 : il n'a pas configuré `pull.ff only`. En attendant la fusion de sa MR, il a corrigé une formulation de la note de méthode de `reports/panorama.qmd` (la ligne sur l'âge), directement sur `main`, et l'a commitée sans la pousser. Ce matin, il met son dépôt à jour.
 
 ::: {.incident #inc-e5-1 titre="Un pull du matin qui tourne au conflit"}
 ::: symptome
 ```{.text .sortie}
 $ git pull
 From https://gitlab.example.org/oei/observatoire-industrie
-   5d2e8c1..a41f9b7  main       -> origin/main
+   f478ddb..432145a  main       -> origin/main
 hint: You have divergent branches and need to specify how to reconcile them.
 ...
 fatal: Need to specify how to reconcile divergent branches.
@@ -154,14 +154,14 @@ Unmerged paths:
   (use "git add <file>..." to mark resolution)
 	both modified:   reports/panorama.qmd
 
-* a41f9b7 (origin/main, origin/HEAD) Ajoute le taux de recrutement par métier (#18)
-| * e19a7c2 (HEAD -> main) Corrige une coquille dans les chiffres clés
+* 432145a (origin/main, origin/HEAD) Ajoute le taux de recrutement par métier (#18)
+| * e19a7c2 (HEAD -> main) Corrige une coquille dans la note de méthode
 |/
-* 5d2e8c1 Merge branch '13-exclure-apprentis'
+* f478ddb Merge branch '13-exclure-apprentis'
 ```
 
 - **Étape 2 : la divergence.** La `main` de Tom et `origin/main` ont chacune un commit que l'autre n'a pas. Le premier pull, sans réglage, a refusé de choisir ; le second a demandé une fusion.
-- **Étape 3 : le conflit.** Le squash de la MR !1 a ajouté le taux de recrutement à la liste des chiffres clés, juste à côté de la ligne corrigée par Tom. Les deux côtés ont modifié la même zone depuis l'ancêtre commun `5d2e8c1`.
+- **Étape 3 : le conflit.** Le squash de la MR !1 (c20) a ajouté à la note de méthode une ligne « Recrutements », juste sous la ligne sur l'âge corrigée par Tom. Les deux côtés ont modifié la même zone depuis l'ancêtre commun `f478ddb` (c19) : pour Git, deux modifications de lignes adjacentes forment un conflit.
 - **Étape 4 : la vraie cause.** Tom a commité sur `main`. Même s'il résolvait le conflit, le push de sa `main` serait refusé : elle est protégée. Le dépôt n'est pas abîmé, et le reclonage ferait perdre la correction.
 :::
 ::: correction
@@ -169,18 +169,18 @@ On annule la fusion, on range la correction sur une branche, et on remet `main` 
 
 ```{.bash risque="reversible"}
 git merge --abort                            # revenir à l'état d'avant le pull
-git switch -c <n>-coquille-chiffres-cles     # <n> : numéro de l'issue ouverte pour la coquille
+git switch -c <n>-coquille-methode          # <n> : numéro de l'issue ouverte pour la coquille
 git branch -f main origin/main               # main rejoint GitLab ; aucun commit n'est perdu
 ```
 
-La correction vit désormais sur sa branche, qui a toujours divergé de `main`. On y intègre `main`, comme à l'étape 3, en gardant les deux intentions (la coquille corrigée **et** le nouveau chiffre clé) :
+La correction vit désormais sur sa branche, qui a toujours divergé de `main`. On y intègre `main`, comme à l'étape 3, en gardant les deux intentions (la formulation corrigée **et** la nouvelle ligne sur les recrutements) :
 
 ```{.bash risque="reversible"}
 git merge origin/main
 # résoudre reports/panorama.qmd, relancer le rendu, puis :
 git add reports/panorama.qmd
 git commit --no-edit                         # garde le message de fusion proposé par Git
-git push -u origin <n>-coquille-chiffres-cles
+git push -u origin <n>-coquille-methode
 ```
 
 Puis une MR, comme pour tout changement. L'étape 7 montrera une autre façon de remettre une branche à jour : le rebase.
