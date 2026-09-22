@@ -1,0 +1,35 @@
+# ---------------------------------------------------------------------------
+# L'équipe de l'Observatoire des entreprises industrielles (fictive).
+# Les personnages servent la pédagogie : chacun porte un point de vue.
+# ---------------------------------------------------------------------------
+personas:
+  - id: ines
+    nom: "Inès"
+    role: "Responsable de la publication"
+    detail: "Maintainer du projet GitLab. Elle répond du chiffre publié."
+    voix: "Pose la question de la confiance : peut-on publier ce chiffre ?"
+    teinte: 1
+  - id: karim
+    nom: "Karim"
+    role: "Statisticien, R"
+    detail: "Préparation des données, calcul des indicateurs, tests testthat."
+    voix: "Pose la question de la méthode : que mesure-t-on exactement ?"
+    teinte: 2
+  - id: lea
+    nom: "Léa"
+    role: "Data scientist, Python"
+    detail: "DuckDB, Parquet, dataviz. Travaille vite, pousse souvent."
+    voix: "Pose la question de l'outillage : comment le faire proprement et vite ?"
+    teinte: 3
+  - id: tom
+    nom: "Tom"
+    role: "Nouvel arrivant"
+    detail: "Statisticien, vient de RStudio, découvre VS Code et le travail à plusieurs."
+    voix: "Fait les erreurs que tout le monde fait, et les pose à voix haute."
+    teinte: 4
+  - id: jules
+    nom: "Jules"
+    role: "Ingénieur plateforme, DSI"
+    detail: "Administre GitLab et les runners. Parle couramment le jargon des développeurs."
+    voix: "Apporte la culture Git professionnelle, et doit apprendre les contraintes d'une publication."
+    teinte: 5

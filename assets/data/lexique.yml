@@ -1,0 +1,504 @@
+# ---------------------------------------------------------------------------
+# Lexique vivant : source unique du vocabulaire.
+#
+# Champs :
+#   terme    : forme affichée
+#   proprio  : git | gitlab | github | vscode | pratique | outil  (liste possible)
+#              → qui fournit la notion ? (Git, la plateforme, VS Code,
+#                une pratique d'équipe, un outil tiers)
+#   niveau   : pratiquer | comprendre | reconnaitre
+#   etape    : étape où la notion est introduite (e0…e11)
+#   revise   : true si la notion a déjà été vue au niveau 1 (révision)
+#   def      : définition (Markdown en ligne autorisé)
+#   piege    : idée fausse fréquente (optionnel)
+#   en       : terme anglais d'origine si différent (optionnel)
+#
+# Dans les pages : [texte]{.t} ou [texte]{.t ref="id"}.
+# ---------------------------------------------------------------------------
+termes:
+  # --- E0 / E1 : modèle mental ---------------------------------------------
+  - id: terminal-integre
+    terme: "terminal intégré"
+    proprio: vscode
+    niveau: pratiquer
+    etape: e0
+    def: "Terminal ouvert à l'intérieur de VS Code (menu **Terminal › Nouveau terminal**). C'est la référence du cours : on y tape les commandes Git et on y lit leurs réponses."
+  - id: source-control
+    terme: "Source Control"
+    proprio: vscode
+    niveau: pratiquer
+    etape: e0
+    en: "Contrôle de code source"
+    def: "Vue Git de VS Code (`Ctrl+Maj+G`) : fichiers modifiés, index, commit, synchronisation. Elle exécute des commandes Git à votre place : utile pour voir, pas pour comprendre."
+  - id: commit
+    terme: "commit"
+    proprio: git
+    niveau: pratiquer
+    etape: e1
+    revise: true
+    def: "Instantané complet des fichiers suivis à un moment donné, avec un auteur, une date, un message et un lien vers son ou ses parents. Git stocke des instantanés ; un diff est calculé à la demande en comparant deux instantanés."
+    piege: "« Un commit est un diff. » Non : c'est une photo de tout le projet suivi."
+  - id: hash
+    terme: "hash"
+    proprio: git
+    niveau: comprendre
+    etape: e1
+    def: "Identifiant d'un objet Git (par exemple `3f9a2c1`), calculé à partir de son contenu, de ses métadonnées et de ses parents. Changer quoi que ce soit, même un parent, produit un autre hash : c'est ce qui rend l'historique infalsifiable."
+  - id: parent
+    terme: "parent"
+    proprio: git
+    niveau: comprendre
+    etape: e1
+    def: "Commit dont un autre commit est issu. Un commit ordinaire a un parent, un commit de fusion en a deux, le tout premier n'en a aucun. Les liens vont du plus récent vers le plus ancien : un commit connaît son passé, jamais son futur."
+  - id: graphe
+    terme: "graphe de commits"
+    proprio: git
+    niveau: comprendre
+    etape: e1
+    en: "DAG, directed acyclic graph"
+    def: "L'historique est un graphe orienté acyclique : chaque commit pointe vers ses parents. Branches, tags et HEAD ne sont que des noms posés sur les nœuds de ce graphe."
+  - id: copie-de-travail
+    terme: "copie de travail"
+    proprio: git
+    niveau: pratiquer
+    etape: e1
+    revise: true
+    en: "working tree"
+    def: "Les fichiers tels qu'ils sont sur votre disque, que vous éditez dans VS Code. Ils peuvent différer du dernier commit : c'est ce que montre `git status`."
+  - id: index
+    terme: "index"
+    proprio: git
+    niveau: pratiquer
+    etape: e1
+    revise: true
+    en: "staging area"
+    def: "Zone de préparation : l'instantané du prochain commit, que l'on compose avec `git add`. Dans VS Code, c'est la rubrique « Staged Changes »."
+  - id: branche
+    terme: "branche"
+    proprio: git
+    niveau: pratiquer
+    etape: e1
+    revise: true
+    en: "branch"
+    def: "Référence mobile : un nom qui pointe vers un commit et avance automatiquement quand on commite dessus. Créer une branche ne copie aucun fichier ; Git écrit simplement un nom et un hash."
+    piege: "« Une branche est une copie du projet. » Non : c'est une étiquette posée sur un commit."
+  - id: main
+    terme: "main"
+    proprio: git
+    niveau: pratiquer
+    etape: e1
+    revise: true
+    def: "Nom conventionnel de la branche principale (anciennement `master`). Git ne lui donne aucun pouvoir particulier : c'est l'équipe, et les réglages GitLab, qui en font la référence partagée."
+  - id: head
+    terme: "HEAD"
+    proprio: git
+    niveau: pratiquer
+    etape: e1
+    def: "Pointeur vers votre position. En temps normal, HEAD pointe vers une branche, qui pointe elle-même vers un commit : le prochain commit fera avancer cette branche."
+    piege: "« HEAD est le dernier commit du dépôt. » Non : c'est l'endroit où vous vous trouvez."
+  - id: blame
+    terme: "blame"
+    proprio: git
+    niveau: pratiquer
+    etape: e1
+    def: "`git blame fichier` indique, pour chaque ligne, le dernier commit qui l'a modifiée. Le nom est trompeur : on s'en sert pour comprendre une décision, pas pour accuser."
+  - id: diff
+    terme: "diff"
+    proprio: git
+    niveau: pratiquer
+    etape: e1
+    revise: true
+    def: "Différences, ligne à ligne, entre deux instantanés. Calculé à la demande par Git ; affiché dans l'onglet *Changes* d'une MR et dans l'éditeur de diff de VS Code."
+
+  # --- E2 : dépôt partagé ----------------------------------------------------
+  - id: remote
+    terme: "remote"
+    proprio: git
+    niveau: pratiquer
+    etape: e2
+    revise: true
+    en: "dépôt distant"
+    def: "Autre dépôt Git avec lequel le vôtre échange des commits, désigné localement par un nom et une URL. `git remote -v` les liste."
+  - id: origin
+    terme: "origin"
+    proprio: git
+    niveau: pratiquer
+    etape: e2
+    def: "Nom que `git clone` donne par défaut au remote d'où vous avez cloné. C'est un alias local, que vous pouvez renommer : votre dépôt appelle ainsi une URL."
+    piege: "« origin, c'est GitLab. » Non : c'est le nom local d'une URL, qui peut désigner n'importe quel dépôt."
+  - id: branche-distante
+    terme: "branche distante"
+    proprio: git
+    niveau: pratiquer
+    etape: e2
+    en: "remote-tracking branch"
+    def: "Référence locale en lecture seule, comme `origin/main`, qui mémorise où en était une branche du remote lors de votre dernière communication avec lui. Elle ne bouge qu'au `fetch`, au `pull` ou au `push`."
+    piege: "« origin/main est à jour en temps réel. » Non : c'est une photo datée de votre dernier fetch."
+  - id: clone
+    terme: "clone"
+    proprio: git
+    niveau: pratiquer
+    etape: e2
+    revise: true
+    def: "Crée un dépôt local complet, avec tout l'historique, à partir d'un remote ; nomme ce remote `origin` et crée une branche locale qui suit sa branche par défaut."
+  - id: fetch
+    terme: "fetch"
+    proprio: git
+    niveau: pratiquer
+    etape: e2
+    def: "Télécharge les commits du remote que vous n'avez pas et met à jour les branches distantes (`origin/main`…). Ne touche ni à vos branches locales ni à vos fichiers : toujours sans risque."
+  - id: pull
+    terme: "pull"
+    proprio: git
+    niveau: pratiquer
+    etape: e2
+    revise: true
+    def: "`git fetch`, puis intégration de la branche suivie dans la branche courante : fast-forward, fusion ou rebase selon la configuration et la situation."
+    piege: "« pull synchronise. » Non : pull télécharge puis intègre, et peut créer un commit de fusion."
+  - id: push
+    terme: "push"
+    proprio: git
+    niveau: pratiquer
+    etape: e2
+    revise: true
+    def: "Envoie vos commits au remote et lui demande de déplacer sa branche. Refusé si ce déplacement ferait disparaître des commits côté serveur (push non fast-forward)."
+    piege: "« push envoie mes fichiers. » Non : il envoie des commits et déplace une référence."
+  - id: upstream
+    terme: "upstream"
+    proprio: git
+    niveau: comprendre
+    etape: e2
+    def: "Deux sens. (1) La branche amont suivie par une branche locale : `git push -u origin ma-branche` la définit, `git status` s'y compare. (2) Dans un workflow de fork, le nom conventionnel du dépôt d'origine, à côté d'`origin` qui désigne votre fork."
+  - id: divergence
+    terme: "divergence"
+    proprio: git
+    niveau: pratiquer
+    etape: e2
+    def: "Deux branches ont divergé quand chacune contient des commits que l'autre n'a pas. Aucune ne peut alors rejoindre l'autre par fast-forward : il faut fusionner ou rebaser."
+  - id: fast-forward
+    terme: "fast-forward"
+    proprio: git
+    niveau: comprendre
+    etape: e2
+    en: "avance rapide"
+    def: "Intégration sans nouveau commit : lorsque la branche cible est un ancêtre de la branche intégrée, Git se contente d'avancer l'étiquette. Aucun conflit n'est possible."
+  - id: stash
+    terme: "stash"
+    proprio: git
+    niveau: reconnaitre
+    etape: e2
+    def: "`git stash` met de côté des modifications non commitées pour retrouver une copie de travail propre ; `git stash pop` les réapplique."
+
+  # --- E3 : branches et conflits ------------------------------------------------
+  - id: branche-de-travail
+    terme: "feature branch"
+    proprio: pratique
+    niveau: pratiquer
+    etape: e3
+    en: "branche de fonctionnalité"
+    def: "Branche courte, créée pour un sujet (une issue), destinée à être fusionnée puis supprimée. Dans un projet statistique : une analyse, une correction, une figure."
+    piege: "En data science, *feature* désigne aussi une variable. Ici, c'est une fonctionnalité, un sujet de travail."
+  - id: merge
+    terme: "merge"
+    proprio: git
+    niveau: pratiquer
+    etape: e3
+    en: "fusion"
+    def: "Intègre l'historique d'une branche dans la branche courante. Si le fast-forward est impossible, Git réalise une fusion à trois voies et crée un commit de fusion à deux parents."
+  - id: fusion-trois-voies
+    terme: "fusion à trois voies"
+    proprio: git
+    niveau: comprendre
+    etape: e3
+    en: "3-way merge"
+    def: "Git compare trois instantanés : l'ancêtre commun (la *base*) et les deux extrémités. Un changement fait d'un seul côté est repris ; une même zone modifiée différemment des deux côtés produit un conflit."
+  - id: commit-de-fusion
+    terme: "commit de fusion"
+    proprio: git
+    niveau: comprendre
+    etape: e3
+    en: "merge commit"
+    def: "Commit à deux parents qui réunit deux lignes d'historique. Il ne contient que ce qu'il faut pour réconcilier les deux côtés."
+  - id: conflit
+    terme: "conflit"
+    proprio: git
+    niveau: pratiquer
+    etape: e3
+    en: "conflict"
+    def: "Situation où Git ne peut pas décider seul : la même zone a été modifiée différemment de part et d'autre depuis l'ancêtre commun. Ce n'est pas une panne : c'est une décision qui revient à un humain."
+  - id: merge-editor
+    terme: "Merge Editor"
+    proprio: vscode
+    niveau: pratiquer
+    etape: e3
+    def: "Éditeur de VS Code pour résoudre un conflit : la version entrante (*Incoming*), la vôtre (*Current*) et, en bas, le résultat que vous construisez."
+
+  # --- E4 : Merge Request --------------------------------------------------------
+  - id: issue
+    terme: "issue"
+    proprio: gitlab
+    niveau: pratiquer
+    etape: e4
+    def: "Ticket GitLab qui décrit un besoin, une anomalie ou une question, identifié par un numéro (`#18`). On le cite dans le nom de branche, les commits et la MR pour relier le travail à sa raison d'être."
+  - id: merge-request
+    terme: "Merge Request"
+    proprio: gitlab
+    niveau: pratiquer
+    etape: e4
+    en: "MR, demande de fusion"
+    def: "Demande, sur GitLab, d'intégrer une branche dans une autre. Elle réunit le diff, la discussion, la review, le pipeline et les approbations. Ce n'est pas une commande Git : c'est un objet de la plateforme."
+  - id: pull-request
+    terme: "Pull Request"
+    proprio: github
+    niveau: reconnaitre
+    etape: e4
+    en: "PR"
+    def: "Nom du même objet sur GitHub. « Ouvrir une PR » sur GitHub, c'est « ouvrir une MR » sur GitLab."
+  - id: draft
+    terme: "Draft"
+    proprio: gitlab
+    niveau: pratiquer
+    etape: e4
+    en: "brouillon"
+    def: "MR marquée comme brouillon : visible, discutable, son pipeline tourne, mais elle ne peut pas être fusionnée. On l'ouvre tôt pour montrer son travail."
+  - id: review
+    terme: "review"
+    proprio: pratique
+    niveau: pratiquer
+    etape: e4
+    en: "revue de code"
+    def: "Relecture d'une MR par un collègue avant fusion. Dans un projet statistique, elle porte sur le code *et* sur la méthode : données, hypothèses, reproductibilité, secrets, clarté."
+  - id: suggestion
+    terme: "suggestion"
+    proprio: gitlab
+    niveau: comprendre
+    etape: e4
+    def: "Commentaire de review qui contient une modification proposée ; l'auteur peut l'appliquer en un clic et GitLab crée le commit correspondant."
+  - id: approval
+    terme: "approval"
+    proprio: gitlab
+    niveau: comprendre
+    etape: e4
+    en: "approbation"
+    def: "Validation formelle d'une MR par un relecteur. Des règles peuvent imposer un nombre minimal d'approbations avant fusion ; les règles obligatoires dépendent de l'édition de GitLab."
+  - id: branche-protegee
+    terme: "branche protégée"
+    proprio: gitlab
+    niveau: comprendre
+    etape: e4
+    en: "protected branch"
+    def: "Réglage GitLab qui interdit sur une branche le push direct, le force-push ou la suppression, et réserve la fusion à certains rôles. Git lui-même ignore cette notion : c'est le serveur qui refuse."
+
+  # --- E6 : intégration continue -------------------------------------------------
+  - id: ci
+    terme: "CI"
+    proprio: pratique
+    niveau: comprendre
+    etape: e6
+    en: "continuous integration, intégration continue"
+    def: "Pratique qui consiste à intégrer souvent et à vérifier automatiquement chaque modification : tests, contrôles, rendu du rapport. Sur GitLab, elle est réalisée par des pipelines."
+  - id: ci-cd
+    terme: "CI/CD"
+    proprio: pratique
+    niveau: comprendre
+    etape: e6
+    en: "continuous integration / continuous delivery"
+    def: "Intégration continue suivie de livraison continue : ce qui passe les contrôles est publié automatiquement. Pour l'Observatoire, le rapport est reconstruit et mis en ligne à chaque fusion dans `main`."
+  - id: pipeline
+    terme: "pipeline"
+    proprio: gitlab
+    niveau: pratiquer
+    etape: e6
+    def: "Exécution, par GitLab, des jobs décrits dans `.gitlab-ci.yml` pour un commit donné. Il est vert quand tous les jobs obligatoires réussissent."
+  - id: gitlab-ci-yml
+    terme: ".gitlab-ci.yml"
+    proprio: gitlab
+    niveau: pratiquer
+    etape: e6
+    def: "Fichier versionné à la racine du dépôt qui décrit le pipeline. Parce qu'il est versionné, il se relit en MR comme le reste du code."
+  - id: stage
+    terme: "stage"
+    proprio: gitlab
+    niveau: comprendre
+    etape: e6
+    def: "Étape d'un pipeline qui regroupe des jobs. Les stages s'exécutent dans l'ordre ; les jobs d'un même stage, en parallèle."
+  - id: job
+    terme: "job"
+    proprio: gitlab
+    niveau: pratiquer
+    etape: e6
+    def: "Unité de travail d'un pipeline : un script exécuté dans une image. Son code de sortie décide du résultat : 0, le job réussit ; autre chose, il échoue."
+  - id: runner
+    terme: "runner"
+    proprio: gitlab
+    niveau: comprendre
+    etape: e6
+    def: "Machine, ou pod Kubernetes, qui exécute les jobs pour GitLab. Il ne voit que ce que le dépôt et les variables CI lui donnent : jamais vos fichiers locaux."
+  - id: image
+    terme: "image"
+    proprio: outil
+    niveau: comprendre
+    etape: e6
+    en: "image de conteneur"
+    def: "Environnement logiciel figé (système, R, Python, paquets) dans lequel un job s'exécute. Épingler sa version (`rocker/r-ver:4.4.1`), c'est figer l'environnement."
+  - id: artefact
+    terme: "artefact"
+    proprio: gitlab
+    niveau: reconnaitre
+    etape: e6
+    en: "artifact"
+    def: "Fichier produit par un job et conservé par GitLab (rapport, figures, tables), téléchargeable ou transmis aux jobs suivants."
+  - id: test
+    terme: "test automatique"
+    proprio: pratique
+    niveau: pratiquer
+    etape: e6
+    def: "Vérification écrite en code (testthat, pytest) qui s'exécute sans intervention humaine. En statistique, beaucoup de règles méthodologiques s'écrivent ainsi : parts qui somment à 1, effectifs positifs, âges bornés."
+  - id: lint
+    terme: "lint"
+    proprio: outil
+    niveau: comprendre
+    etape: e6
+    def: "Analyse statique du code, sans l'exécuter, qui signale erreurs probables et écarts de style : `lintr` pour R, `ruff` pour Python."
+
+  # --- E7 : rebase, squash --------------------------------------------------------
+  - id: rebase
+    terme: "rebase"
+    proprio: git
+    niveau: pratiquer
+    etape: e7
+    def: "Rejoue vos commits, un par un, sur une autre base. Git crée de **nouveaux** commits (nouveaux hash) qui portent les mêmes modifications, et déplace la branche dessus ; les anciens ne sont plus référencés par la branche."
+    piege: "« Le rebase déplace mes commits. » Non : il en fabrique des copies et abandonne les originaux."
+  - id: force-with-lease
+    terme: "--force-with-lease"
+    proprio: git
+    niveau: pratiquer
+    etape: e7
+    def: "`git push --force-with-lease` remplace la branche distante par la vôtre, **seulement** si elle est encore là où vous l'avez vue au dernier fetch. Contrairement à `--force`, il refuse d'écraser un travail que vous n'avez pas vu."
+  - id: squash
+    terme: "squash"
+    proprio: [git, gitlab]
+    niveau: pratiquer
+    etape: e7
+    def: "Regrouper plusieurs commits en un seul. Dans notre workflow, c'est GitLab qui le fait au moment du merge (option *Squash commits*). En local, `git rebase -i` ou `git merge --squash` le permettent."
+  - id: amend
+    terme: "amend"
+    proprio: git
+    niveau: comprendre
+    etape: e7
+    def: "`git commit --amend` remplace le dernier commit par un nouveau (message ou contenu corrigé). C'est une réécriture : à réserver aux commits pas encore partagés."
+  - id: reflog
+    terme: "reflog"
+    proprio: git
+    niveau: comprendre
+    etape: e7
+    def: "Journal local des positions successives de HEAD et des branches. Il permet de retrouver un commit « perdu » après un rebase ou un reset malheureux (90 jours par défaut)."
+  - id: conventional-commits
+    terme: "Conventional Commits"
+    proprio: pratique
+    niveau: reconnaitre
+    etape: e7
+    def: "Convention de messages (`feat:`, `fix:`, `docs:`, `test:`…) qui rend l'historique lisible par les humains et exploitable par des outils."
+
+  # --- E8 : publier ----------------------------------------------------------------
+  - id: tag
+    terme: "tag"
+    proprio: git
+    niveau: pratiquer
+    etape: e8
+    def: "Référence fixe vers un commit : contrairement à une branche, elle n'avance jamais. Le tag annoté (`git tag -a`) porte un auteur, une date et un message ; c'est lui qui marque une publication."
+  - id: gitlab-release
+    terme: "GitLab Release"
+    proprio: gitlab
+    niveau: comprendre
+    etape: e8
+    def: "Objet GitLab attaché à un tag : notes de version, liens, fichiers joints (le rapport PDF, par exemple). Le tag vit dans Git, la Release dans GitLab."
+  - id: hotfix
+    terme: "hotfix"
+    proprio: pratique
+    niveau: pratiquer
+    etape: e8
+    def: "Correction urgente d'une version déjà publiée, faite à partir du tag de cette version (et non du travail en cours), puis retrouvée dans la branche principale. Pour une publication statistique : un erratum."
+  - id: detached-head
+    terme: "detached HEAD"
+    proprio: git
+    niveau: comprendre
+    etape: e8
+    en: "HEAD détachée"
+    def: "HEAD pointe directement vers un commit, et non vers une branche (après `git switch --detach 2025.0` par exemple). On peut explorer, et même commiter, mais aucun nom ne retient ces commits : créez une branche pour les garder."
+  - id: cherry-pick
+    terme: "cherry-pick"
+    proprio: git
+    niveau: comprendre
+    etape: e8
+    def: "Crée sur la branche courante un nouveau commit qui applique les mêmes modifications qu'un commit existant. Sert à reporter une correction vers une version antérieure (*backport*)."
+  - id: calver
+    terme: "version calendaire"
+    proprio: pratique
+    niveau: comprendre
+    etape: e8
+    en: "CalVer"
+    def: "Numérotation fondée sur la date ou le millésime : `2025.0` pour la publication initiale, `2025.1` pour son premier erratum. Adaptée aux publications statistiques."
+  - id: semver
+    terme: "SemVer"
+    proprio: pratique
+    niveau: reconnaitre
+    etape: e8
+    en: "Semantic Versioning"
+    def: "Numérotation `MAJEUR.MINEUR.CORRECTIF` des logiciels et packages : le numéro majeur augmente quand l'interface casse la compatibilité."
+  - id: lockfile
+    terme: "lockfile"
+    proprio: outil
+    niveau: comprendre
+    etape: e8
+    def: "Fichier qui fige les versions exactes des dépendances : `renv.lock` pour R, `requirements.txt` épinglé ou `uv.lock` pour Python. Versionné avec le code, il permet de reconstruire l'environnement d'une publication."
+
+  # --- E9 : workflows professionnels ------------------------------------------------
+  - id: git-flow
+    terme: "Git Flow"
+    proprio: pratique
+    niveau: comprendre
+    etape: e9
+    def: "Modèle de branches publié par Vincent Driessen en 2010 : `main`, `develop`, `feature/*`, `release/*`, `hotfix/*`. Conçu pour des logiciels livrés par versions, dont plusieurs sont maintenues en parallèle."
+  - id: develop
+    terme: "develop"
+    proprio: pratique
+    niveau: comprendre
+    etape: e9
+    def: "Dans Git Flow, branche d'intégration permanente qui reçoit les fonctionnalités terminées ; `main` n'y reçoit que les versions publiées."
+  - id: release
+    terme: "release"
+    proprio: pratique
+    niveau: comprendre
+    etape: e9
+    def: "Une version publiée. Dans Git Flow, `release/*` désigne aussi la branche où l'on stabilise une version avant publication, sans bloquer `develop`."
+  - id: github-flow
+    terme: "GitHub Flow"
+    proprio: pratique
+    niveau: comprendre
+    etape: e9
+    def: "Workflow minimal : `main` toujours déployable, branches courtes, Pull Request, review, CI, fusion, déploiement."
+  - id: gitlab-flow
+    terme: "GitLab Flow"
+    proprio: pratique
+    niveau: comprendre
+    etape: e9
+    def: "Famille de workflows décrite par GitLab : la base de GitHub Flow, complétée si besoin par des branches d'environnement (`production`) ou de versions maintenues (`2-3-stable`)."
+  - id: trunk-based
+    terme: "trunk-based development"
+    proprio: pratique
+    niveau: comprendre
+    etape: e9
+    def: "Pratique où chacun intègre dans la branche principale (le *tronc*) au moins une fois par jour, par des branches de quelques heures. Suppose une CI solide et, souvent, des feature flags."
+  - id: feature-flag
+    terme: "feature flag"
+    proprio: pratique
+    niveau: reconnaitre
+    etape: e9
+    def: "Interrupteur dans le code qui permet de livrer une fonctionnalité inachevée sans l'activer : on intègre tôt sans publier tôt."
+  - id: fork
+    terme: "fork"
+    proprio: gitlab
+    niveau: reconnaitre
+    etape: e9
+    def: "Copie d'un projet, faite sur la plateforme, dans votre propre espace : on y pousse ses branches puis on propose une MR vers le projet d'origine, sans droit d'écriture sur celui-ci."
