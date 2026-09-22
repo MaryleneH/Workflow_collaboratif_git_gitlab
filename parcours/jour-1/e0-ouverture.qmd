@@ -1,0 +1,311 @@
+---
+title: "Ce que vous ne comprenez pas encore"
+etape: e0
+description: "Ouverture de la formation : la promesse de main, la logique du parcours, une phrase de jargon à décoder à l'aveugle, un diagnostic de départ et un poste VS Code prêt pour GitLab."
+---
+
+::: situation
+Lundi, 9 h. Inès vous accueille à l'Observatoire des entreprises industrielles, en même temps que Tom, qui arrive d'une autre équipe.
+
+Pendant un an, le *Panorama de l'emploi dans la filière industrielle stratégique* a été porté presque seul par Inès : Karim y ajoutait ses calculs de temps en temps, directement sur `main`. Cela suffisait. Désormais, cinq personnes vont modifier le même dépôt, et l'édition 2026 doit sortir au printemps.
+:::
+
+::: {.recit persona="ines"}
+« Sur `main`, il y a un code qui tourne et des chiffres que je peux défendre. Tant que nous étions deux, je savais ce qui y entrait. À cinq, je ne le saurai plus. Comment garder cette promesse ? »
+:::
+
+## Une promesse, et une question
+
+`main` n'est qu'un nom de branche : Git ne lui accorde aucun pouvoir particulier. C'est l'équipe qui en fait une **promesse**. Ce qui est sur `main` fonctionne. Quelqu'un d'autre que son auteur l'a relu. Les vérifications automatiques sont passées. Et l'on sait pourquoi chaque ligne est là.
+
+Seul, cette promesse tient dans votre tête : vous savez ce que vous avez modifié. À plusieurs, elle se heurte à des problèmes très concrets :
+
+- deux personnes poussent en même temps, et l'une des deux est refusée ;
+- deux personnes modifient la même ligne de `part_seniors()`, avec deux intentions différentes ;
+- un calcul discutable, un chemin vers le disque de Tom ou un jeton d'accès arrivent sur `main` sans que personne ne les voie ;
+- un chiffre publié l'an dernier ne peut plus être refait.
+
+La question qui guide les deux jours tient en une ligne : **comment tenir la promesse de `main` quand une équipe grandit ?**
+
+Une précision dès maintenant. `main` promet un code **exécutable, relu et vérifié**. Elle ne promet pas que chaque état de `main` puisse reproduire à l'identique un chiffre publié. Cette promesse-là est plus forte : elle est portée par la **publication**. Une publication fige un commit précis, la référence exacte des données, un environnement logiciel figé et le rapport correspondant. Vous y arriverez à l'étape 8.
+
+## Comment le parcours est construit
+
+Ce site n'a pas de chapitre « branches », puis « merge », puis « CI ». Chaque outil de Git ou de GitLab apparaît **parce qu'un problème de l'équipe le rend nécessaire**. Chaque étape suit le même chemin :
+
+| Temps | Ce que vous y faites | Où le trouver dans la page |
+|---|---|---|
+| Problème | Une situation réelle de l'équipe, qui bloque | l'encadré « La situation » |
+| Comprendre | Ce que fait **réellement** Git, graphe à l'appui | « Ce qui se passe réellement » |
+| Pratiquer | Une mission dans le dépôt compagnon, sous VS Code | les encadrés « Mission » |
+| Se tromper | Un incident, avec le vrai message d'erreur, à diagnostiquer | les encadrés « Incident » |
+| Retenir | Une règle d'équipe, qui naît de l'incident | les encadrés « Nouvelle règle au carnet » |
+
+Les étapes sont regroupées en quatre mouvements : **Partager** (observer, comprendre, expérimenter), **Collaborer** (se tromper, corriger), **Industrialiser** (automatiser, nettoyer, publier), puis **Choisir** (comparer, adapter, décider). La [carte du parcours](../index.qmd) les montre d'un coup d'œil.
+
+### Un carnet qui se remplit
+
+Chaque incident laisse une trace : une **règle** courte, datée de l'étape où elle est née. Cette étape n'en contient aucune, car vous n'avez encore rien cassé. Les règles s'accumulent dans le [carnet de règles](../../memos/carnet-de-regles.qmd).
+
+Ce carnet a une fonction précise. À l'étape 10, vous ne recevrez pas « le workflow de l'équipe » tout fait : vous le **déduirez** des règles que vous aurez vous-même vu naître. Un workflow compris se défend ; un workflow imposé se contourne.
+
+### Git, GitLab, VS Code : qui fait quoi ?
+
+Tout au long du site, chaque terme technique porte un badge qui dit **qui fournit la notion**. Ce n'est pas un détail : la moitié des malentendus entre collègues vient de là.
+
+- []{.git} **Git** est un logiciel installé sur votre machine. Il fonctionne sans réseau. Il connaît les commits, les branches, les tags, les remotes.
+- []{.gitlab} **GitLab** est un serveur qui héberge des dépôts Git et y ajoute la collaboration : issues, demandes de fusion, relecture, pipelines, protections, publications. Rien de cela n'existe dans Git.
+- []{.vscode} **VS Code** est une interface. Quand vous cliquez dans sa vue Git, il exécute des commandes Git à votre place.
+- []{.pratique} Une **pratique** est une convention d'équipe : ni Git ni GitLab ne l'imposent.
+
+Le mémo [Git ou GitLab ?](../../memos/git-ou-gitlab.qmd) range tout le vocabulaire du parcours dans ces cases.
+
+## Une phrase à décoder à l'aveugle
+
+Voici une phrase que vous entendrez tôt ou tard de la bouche d'un développeur ou d'un ingénieur de la DSI :
+
+> « J'ai ouvert une MR sur ma feature branch, mais elle a divergé de main. Je vais rebase avant la review et squash mes commits au merge. »
+
+Ne cherchez pas les définitions : **elles ne sont pas sur cette page**, et c'est volontaire. Ce que vous croyez comprendre aujourd'hui est plus utile que ce que vous lirez.
+
+Sur une feuille ou dans un fichier de notes, faites un tableau à quatre colonnes :
+
+| Mot | Mon hypothèse | Git, GitLab ou autre ? | Ma confiance (0 à 3) |
+|---|---|---|---|
+| MR | | | |
+| feature branch | | | |
+| divergé | | | |
+| rebase | | | |
+| review | | | |
+| squash | | | |
+| merge | | | |
+
+Gardez ce tableau. Vous le reprendrez à l'étape 7, quand la phrase sera devenue votre situation réelle, puis à l'étape 11, où vous devrez la prononcer et l'appliquer.
+
+::: formateur
+**Phrase à l'aveugle (7 min).** Deux minutes de travail individuel, puis un tour rapide : notez au tableau les hypothèses **sans les corriger**. Photographiez le tableau : il servira en E7 (comparaison avant/après) et en E11.
+
+Idées reçues fréquentes à laisser émerger sans les commenter : « une MR est une commande Git » ; « le rebase déplace les commits » ; « squash, c'est supprimer des commits » ; « divergé veut dire qu'il y a un conflit » ; « feature, c'est une variable du modèle ». Chacune sera démontée à son étape.
+:::
+
+## Diagnostic de départ
+
+Cette formation suppose le niveau 1 : utiliser Git seul, sur son propre projet. Les huit questions ci-dessous vous permettent de vous situer. Répondez **avant** de déplier les réponses.
+
+::: {.checkpoint titre="Où en êtes-vous avec Git seul ?"}
+::: question
+Que fait exactement `git commit` ? Qu'est-ce qui est enregistré ?
+
+::: reponse
+Il enregistre un **instantané** de ce qui a été préparé dans l'index, avec un auteur, une date, un message et un lien vers le commit précédent (son parent). Ce n'est pas « la liste des modifications » : l'étape 1 vous montrera ce que Git stocke vraiment.
+:::
+:::
+
+::: question
+Que vous apprend `git status` ?
+
+::: reponse
+La branche courante ; les fichiers modifiés mais pas encore préparés (*Changes not staged for commit*) ; les fichiers préparés pour le prochain commit (*Changes to be committed*) ; les fichiers non suivis (*Untracked files*). Quand la branche suit une branche distante, il indique aussi l'avance ou le retard, par rapport à ce que votre dépôt en sait au dernier échange.
+:::
+:::
+
+::: question
+Pourquoi faut-il un `git add` avant `git commit` ? À quoi sert l'index ?
+
+::: reponse
+L'index (ou *staging area*) est l'instantané du prochain commit, que vous composez fichier par fichier, voire morceau par morceau (`git add -p`). Il permet de commiter la correction du calcul d'âge sans embarquer le graphique que vous étiez en train de retoucher dans un autre fichier.
+:::
+:::
+
+::: question
+Quelle commande affiche les cinq derniers commits, un par ligne ?
+
+::: reponse
+`git log --oneline -5`. Chaque ligne montre le début du hash et la première ligne du message. Ajoutez `--graph` pour voir la forme de l'historique : ce sera votre outil principal dès l'étape 1.
+:::
+:::
+
+::: question
+Vous ajoutez `data/brut/` au `.gitignore`, mais `git status` signale toujours les modifications de `data/brut/salaries_2025.parquet`. Pourquoi ?
+
+::: reponse
+Le `.gitignore` ne concerne que les fichiers **non suivis**. Ce fichier a déjà été commité : Git continue de le suivre. Il faut le retirer du suivi sans l'effacer du disque (`git rm --cached data/brut/salaries_2025.parquet`), puis commiter. Il reste présent dans les commits passés, ce qui pose problème pour des données individuelles : vous le verrez à l'étape 4.
+:::
+:::
+
+::: question
+Que récupérez-vous avec `git clone` : les derniers fichiers, ou autre chose ?
+
+::: reponse
+Un dépôt **complet** : tout l'historique, toutes les branches du serveur (sous forme de branches distantes), les tags. Vous pouvez consulter `git log` sans réseau. `git clone` mémorise aussi l'adresse du dépôt d'origine sous un nom local, `origin`.
+:::
+:::
+
+::: question
+Quelle différence entre `git push` et `git pull` ?
+
+::: reponse
+`git push` envoie vos **commits** au serveur et lui demande de déplacer sa branche pour qu'elle pointe sur le dernier. `git pull` fait l'inverse en deux temps : il télécharge (`git fetch`), puis **intègre** ce qu'il a reçu dans votre branche courante, ce qui peut créer un commit. Ces deux temps seront au cœur de l'étape 2.
+:::
+:::
+
+::: question
+Parmi ces messages de commit, lequel sera utile dans un an ? « maj » ; « modifs âge » ; « Calcule l'âge au 31 décembre de l'année de référence (#7) ».
+
+::: reponse
+Le troisième : il dit **ce qui change** et, grâce au numéro d'issue, où trouver **pourquoi**. Les deux premiers obligent à relire le code pour savoir ce qui s'est passé. Vous mesurerez le coût de ces messages à l'étape 1.
+:::
+:::
+:::
+
+Si vous hésitez sur plus de trois questions, prenez dix minutes avec le mémo [Commandes par intention](../../memos/commandes.qmd) avant l'étape 1 : le parcours va vite sur ces bases.
+
+## Préparer son poste
+
+L'équipe travaille sous **VS Code**, sur un service Onyxia ou sur un poste local. Toutes les commandes du parcours se tapent dans le [terminal intégré]{.t} de VS Code : c'est la référence. La vue [Source Control]{.t} vient ensuite, comme équivalent visuel.
+
+::: {.mission #m-e0-1 titre="Préparer son poste" duree="15 min" mode="seul"}
+::: objectif
+Disposer d'un Git correctement identifié, configuré pour l'équipe, et capable de lire le dépôt de l'Observatoire sur GitLab.
+:::
+
+L'adresse du dépôt compagnon vous est donnée par le formateur. Sur ce site, elle s'écrit `https://gitlab.example.org/oei/observatoire-industrie.git`.
+
+::: consignes
+1. Dans VS Code, ouvrez le terminal intégré : menu **Terminal › New Terminal** (*Nouveau terminal*). Vérifiez la version de Git. Le parcours suppose Git 2.40 ou plus récent.
+
+   ```{.bash risque="sur"}
+   git --version
+   ```
+
+2. Déclarez votre identité. Elle sera inscrite dans **chaque** commit que vous créerez, et vos collègues la liront dans l'historique : utilisez votre vrai nom et votre adresse professionnelle.
+
+   ```{.bash risque="reversible"}
+   git config --global user.name "Prénom Nom"
+   git config --global user.email "prenom.nom@example.org"
+   ```
+
+3. Fixez le nom de la branche créée par `git init`, et faites de VS Code l'éditeur de Git (messages de commit longs, résolution de certaines opérations) :
+
+   ```{.bash risque="reversible"}
+   git config --global init.defaultBranch main
+   git config --global core.editor "code --wait"
+   ```
+
+   L'option `--wait` fait patienter Git jusqu'à la fermeture de l'onglet. Testez : `git config --global --edit` doit ouvrir votre fichier de configuration dans un onglet de VS Code. Fermez l'onglet ; le terminal reprend la main.
+
+4. Préparez l'accès à GitLab en HTTPS avec un **jeton d'accès personnel** (*personal access token*). Dans GitLab : votre avatar › **Edit profile** › **Access tokens** (*Personal access tokens* selon la version) › **Add new token**. Donnez-lui un nom (`formation-git`), une date d'expiration, et cochez uniquement les scopes `read_repository` et `write_repository`. Copiez le jeton : GitLab ne l'affichera plus.
+
+   Sur un service Onyxia, votre instance permet souvent de renseigner nom, e-mail et jeton une fois pour toutes dans les paramètres de votre compte (onglet **Git**) : ils sont alors injectés dans chaque nouveau service. Suivez la consigne du formateur.
+
+5. Vérifiez l'accès au dépôt, sans rien télécharger d'autre que la liste de ses références :
+
+   ```{.bash risque="sur"}
+   git ls-remote https://gitlab.example.org/oei/observatoire-industrie.git
+   ```
+
+   Si Git demande `Username for 'https://gitlab.example.org':`, donnez votre identifiant GitLab ; à `Password for …`, collez le **jeton**, pas votre mot de passe. Ne mettez jamais le jeton dans l'URL du dépôt ni dans un script : il finirait dans un fichier lisible par d'autres.
+
+6. Relisez toute votre configuration, avec l'origine de chaque valeur :
+
+   ```{.bash risque="sur"}
+   git config --list --show-origin
+   ```
+:::
+
+::: reussite
+`git config --list --show-origin` affiche, depuis votre fichier de configuration global (`file:/home/…/.gitconfig`), les quatre lignes `user.name=…`, `user.email=…`, `init.defaultbranch=main` et `core.editor=code --wait` (Git écrit les noms de clés en minuscules). Et `git ls-remote …` affiche au moins une ligne se terminant par `refs/heads/main`, sans message d'erreur.
+:::
+
+::: indice
+`git ls-remote` répond `HTTP Basic: Access denied` ? Le jeton est erroné, expiré, ou il lui manque le scope `read_repository`. Recréez-en un plutôt que de réessayer votre mot de passe GitLab.
+:::
+
+::: {.indice titre="Indice 2 : la même clé apparaît deux fois"}
+Dans `git config --list --show-origin`, une clé peut apparaître dans plusieurs fichiers : système, global (`~/.gitconfig`), dépôt (`.git/config`). C'est la **dernière** valeur listée qui s'applique. La colonne de gauche vous dit quel fichier corriger.
+:::
+
+::: corrige
+Sortie attendue (extrait) :
+
+```{.text .sortie}
+file:/home/onyxia/.gitconfig	user.name=Prénom Nom
+file:/home/onyxia/.gitconfig	user.email=prenom.nom@example.org
+file:/home/onyxia/.gitconfig	init.defaultbranch=main
+file:/home/onyxia/.gitconfig	core.editor=code --wait
+```
+
+Pièges observés :
+
+- `user.name` défini à la fois par l'injection Onyxia et à la main, avec deux valeurs différentes : la dernière listée l'emporte.
+- `code: command not found` sur certaines images de service : laisser l'éditeur par défaut pour la journée (supprimer la clé avec `git config --global --unset core.editor`) et le signaler.
+- Jeton créé sans `write_repository` : `ls-remote` fonctionne, mais le premier `push` de l'étape 2 sera refusé. Faire vérifier les scopes maintenant.
+- Pour ne pas retaper le jeton à chaque échange : `git config --global credential.helper "cache --timeout=28800"` le garde en mémoire huit heures. Sur un poste Windows, Git Credential Manager s'en charge. Déconseiller `store`, qui écrit le jeton en clair dans `~/.git-credentials`.
+:::
+:::
+
+Un avertissement, que l'étape 2 développera : **un service Onyxia est éphémère**. Quand il est supprimé, tout ce qu'il contient disparaît avec lui : votre `~/.gitconfig`, vos fichiers, et vos commits s'ils n'ont pas été envoyés sur GitLab. Ce qui est injecté par les paramètres du compte revient au prochain lancement ; le reste, non.
+
+::: {.vscode titre="Le terminal intégré et la vue Source Control"}
+Le **terminal intégré** s'ouvre en bas de la fenêtre, déjà placé dans le dossier ouvert dans VS Code. C'est un vrai terminal : ce que vous y tapez est exactement ce qu'exécute Git.
+
+La vue **Source Control** (*Contrôle de code source*, <kbd>Ctrl</kbd>+<kbd>Maj</kbd>+<kbd>G</kbd>) montre les fichiers modifiés, l'index (*Staged Changes*), le champ du message de commit et un bouton de synchronisation. Elle n'a aucun pouvoir propre : **chaque clic lance une ou plusieurs commandes Git**. Vous pouvez les voir : menu **View › Output** (*Affichage › Sortie*), puis choisissez **Git** dans la liste déroulante du panneau.
+
+Pourquoi partir du terminal ? Parce qu'un bouton « Sync » peut enchaîner un `pull` et un `push` sans vous dire ce qu'ils ont fait, et que c'est précisément ce que vous devez comprendre. Quand la commande est claire, le clic devient un raccourci légitime.
+:::
+
+::: formateur
+**Vérifications techniques (avant la séance).**
+
+- Chaque stagiaire a un compte GitLab actif et le rôle *Developer* sur le projet `oei/observatoire-industrie` (ou sur sa copie de binôme).
+- Le dépôt compagnon est à jour et ses tags de reprise (`etape-1-debut`…) existent : `git ls-remote --tags <url>`.
+- Les services Onyxia VS Code démarrent (image R + Python), avec un quota suffisant pour le groupe. Tester `code --version` dans le terminal intégré d'un service.
+- Le proxy ou le certificat de l'instance GitLab ne bloque pas `git ls-remote` depuis un service.
+
+**Pendant la mission.** Circuler : c'est le seul moment où les problèmes de poste se règlent sans retarder tout le groupe. Un stagiaire bloqué par l'accès GitLab au-delà de dix minutes rejoint un binôme ; son accès se règle à la pause.
+:::
+
+## Pourquoi tant d'exigence pour un script ?
+
+Un script statistique n'est pas terminé parce qu'il produit le bon chiffre. Il est terminé quand ce chiffre peut être **défendu** : relu par quelqu'un d'autre, versionné, testé, documenté, exécutable sur une autre machine que la vôtre, et reproductible quand il a été publié.
+
+C'est une chaîne. Chaque maillon s'ajoute au précédent, et le parcours les construit un par un. Au début de ces deux jours, seul le premier est acquis : le calcul est écrit dans un script plutôt que fait à la main.
+
+::: {.chaine-confiance jusqua="code"}
+:::
+
+Git et GitLab n'assurent pas toute la chaîne. Git donne à chaque état du code un identifiant et une histoire. GitLab porte la relecture, les vérifications automatiques et la publication. L'environnement logiciel et la référence des données demandent d'autres outils (fichier de versions figées, image, empreinte des données) : Git les relie entre eux, sans les remplacer.
+
+## Une énigme pour la fin
+
+Sur la [page d'accueil](../../index.qmd#enigme) figure un schéma à cinq familles de branches : le modèle **Git Flow**. On vous le présentera un jour comme « la » manière professionnelle de travailler. Aujourd'hui, c'est une énigme.
+
+À l'[étape 9](../jour-2/e9-workflows-pros.qmd), vous en connaîtrez chaque brique, car vous les aurez toutes utilisées. Vous saurez pourquoi il a été conçu, ce qu'il résout, ce qu'il coûte, et pourquoi l'Observatoire peut s'en passer.
+
+::: formateur
+**Timing indicatif (45 min).**
+
+| Temps | Séquence |
+|---|---|
+| 0–10 min | Accueil, tour de table |
+| 10–18 min | La promesse de `main`, la logique du parcours, Git / GitLab / VS Code |
+| 18–25 min | Phrase-boussole à l'aveugle |
+| 25–30 min | Diagnostic de départ (individuel, correction orale express) |
+| 30–45 min | Mission m-e0-1 et bloc VS Code |
+
+La chaîne de confiance et l'énigme Git Flow se présentent en deux minutes chacune, pendant que les derniers terminent la mission.
+
+**Tour de table (une phrase par personne).** Prénom ; langage principal (R, Python, les deux) ; usage actuel de Git (jamais, seul, déjà à plusieurs) ; une situation Git qui vous a déjà fait peur. Noter ces situations : elles reviendront presque toutes dans les incidents du parcours, et le dire au groupe rassure.
+
+**Diagnostic.** Faire lever la main sur les questions 5 (`.gitignore`) et 7 (`push`/`pull`) : ce sont les plus mal réussies, et elles conditionnent l'étape 2. Si plus d'un tiers du groupe échoue à plus de trois questions, prévoir cinq minutes de rappel au début de l'étape 1.
+:::
+
+::: retenir
+- `main` est une promesse faite à l'équipe et aux lecteurs du panorama : tout le parcours sert à la tenir quand l'équipe grandit.
+- Git est sur votre machine, GitLab est un serveur qui ajoute la collaboration, VS Code est une interface qui exécute des commandes Git.
+- Le terminal est la référence : la vue Source Control en est l'équivalent visuel, pas le substitut.
+:::
+
+::: pont
+Votre poste est prêt, et vous savez ce que l'on attend de `main`. Pour tenir une promesse sur un historique, il faut d'abord savoir le lire : l'étape 1 part d'un chiffre publié qui ne correspond plus au code actuel, et vous apprend ce que Git stocke réellement.
+:::
