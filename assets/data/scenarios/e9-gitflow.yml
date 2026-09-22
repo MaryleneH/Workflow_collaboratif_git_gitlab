@@ -1,0 +1,52 @@
+titre: "Git Flow"
+couleurs:
+  "feature/30-taux-difficulte": travail
+  "feature/31-arrondi-parts": travail2
+  "release/2027.0": release
+  "hotfix/2027.1": hotfix
+  develop: develop
+commits:
+  P: {x: 0, y: 0, msg: "Documente le workflow de l'équipe (#27)"}
+  A: {x: 1, y: 4, parents: [P], couleur: travail, msg: "Ajoute le taux de difficulté de recrutement par métier (#30)"}
+  B: {x: 1, y: 5, parents: [P], couleur: travail2, msg: "Arrondit les parts du tableau de synthèse : première version (#31)"}
+  D1: {x: 2, y: 3, parents: [P, A], couleur: develop, msg: "Merge branch 'feature/30-taux-difficulte' into develop"}
+  R: {x: 3, y: 2, parents: [D1], couleur: release, msg: "Fixe le millésime 2027 et relit le rapport"}
+  B2: {x: 3, y: 5, parents: [B], couleur: travail2, msg: "Arrondit les parts : total forcé à 100 % (#31)"}
+  M1: {x: 4, y: 0, parents: [P, R], msg: "Merge branch 'release/2027.0'"}
+  D2: {x: 4, y: 3, parents: [D1, R], couleur: develop, msg: "Merge branch 'release/2027.0' into develop"}
+  D3: {x: 5, y: 3, parents: [D2, B2], couleur: develop, msg: "Merge branch 'feature/31-arrondi-parts' into develop"}
+  H: {x: 6, y: 1, parents: [M1], couleur: hotfix, msg: "Corrige l'erratum du panorama 2027"}
+  M2: {x: 7, y: 0, parents: [M1, H], msg: "Merge branch 'hotfix/2027.1'"}
+  D4: {x: 7, y: 3, parents: [D3, H], couleur: develop, msg: "Merge branch 'hotfix/2027.1' into develop"}
+etapes:
+  - texte: "Deux branches permanentes : `main` (ce qui est publié) et `develop` (l'intégration). Chaque sujet part de `develop`, dans une branche `feature/*`."
+    commande: "git switch -c feature/30-taux-difficulte develop"
+    commits: [P, A, B]
+    refs: {main: P, develop: P, "feature/30-taux-difficulte": A, "feature/31-arrondi-parts": B}
+    head: "feature/30-taux-difficulte"
+  - texte: "#30 est terminé : il est fusionné dans `develop` avec `--no-ff` (commit de fusion **D1**, alors qu'un fast-forward était possible). On ouvre `release/2027.0` pour stabiliser la publication, pendant que #31 continue."
+    commande: "git switch -c release/2027.0 develop"
+    commits: [P, A, B, D1, R, B2]
+    refs: {main: P, develop: D1, "release/2027.0": R, "feature/31-arrondi-parts": B2}
+    head: "release/2027.0"
+    surligne: [R]
+  - texte: "La release est prête. Elle est fusionnée dans `main` (**M1**, tag `2027.0`) **et** dans `develop` (**D2**), pour que la stabilisation n'y soit pas perdue. La branche `release/2027.0` est supprimée."
+    commande: "git switch main && git merge --no-ff release/2027.0"
+    commits: [P, A, B, D1, R, B2, M1, D2]
+    refs: {main: M1, develop: D2, "feature/31-arrondi-parts": B2}
+    tags: {"2027.0": M1}
+    head: main
+    surligne: [M1, D2]
+  - texte: "#31 est fusionné dans `develop` (**D3**). Il n'atteindra `main` qu'à la prochaine release."
+    commande: "git switch develop && git merge --no-ff feature/31-arrondi-parts"
+    commits: [P, A, B, D1, R, B2, M1, D2, D3]
+    refs: {main: M1, develop: D3}
+    tags: {"2027.0": M1}
+    head: develop
+  - texte: "L'erratum part de `main`, dans `hotfix/2027.1`. Il est fusionné **deux fois** : dans `main` (**M2**, tag `2027.1`) et dans `develop` (**D4**). Oublier la seconde fusion, c'est retrouver l'erreur dans l'édition suivante."
+    commande: "git switch -c hotfix/2027.1 main"
+    commits: [P, A, B, D1, R, B2, M1, D2, D3, H, M2, D4]
+    refs: {main: M2, develop: D4}
+    tags: {"2027.0": M1, "2027.1": M2}
+    head: main
+    surligne: [H, M2, D4]

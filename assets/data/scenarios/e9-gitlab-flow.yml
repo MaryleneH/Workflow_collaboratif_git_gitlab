@@ -1,0 +1,48 @@
+titre: "GitLab Flow"
+couleurs:
+  "30-taux-difficulte": travail
+  "31-arrondi-parts": travail2
+  "erratum-2027": hotfix
+  "maintenance/2027": release
+commits:
+  P: {x: 0, y: 0, msg: "Documente le workflow de l'équipe (#27)"}
+  A: {x: 1, y: 1, parents: [P], couleur: travail, msg: "Ajoute le taux de difficulté de recrutement par métier (#30)"}
+  B: {x: 1, y: 2, parents: [P], couleur: travail2, msg: "Arrondit les parts du tableau de synthèse : première version (#31)"}
+  S1: {x: 2, y: 0, parents: [P], msg: "Ajoute le taux de difficulté de recrutement par métier (#30) · squash"}
+  B2: {x: 3, y: 2, parents: [B], couleur: travail2, msg: "Arrondit les parts : total forcé à 100 % (#31)"}
+  S2: {x: 4, y: 0, parents: [S1], msg: "Arrondit les parts du tableau de synthèse (#31) · squash"}
+  H: {x: 5, y: 1, parents: [S2], couleur: hotfix, msg: "Corrige l'erratum du panorama 2027"}
+  F: {x: 6, y: 0, parents: [S2], msg: "Corrige l'erratum du panorama 2027 · squash"}
+  "F'": {x: 6, y: -1, parents: [S1], label: "F′", couleur: release, msg: "Corrige l'erratum du panorama 2027 (cherry picked from commit F)"}
+etapes:
+  - texte: "Même base que GitHub Flow : `main` et des branches courtes. Ici, les MR sont fusionnées en **squash** : un sujet, un commit dans `main`."
+    commande: "git switch -c 30-taux-difficulte main"
+    commits: [P, A, B]
+    refs: {main: P, "30-taux-difficulte": A, "31-arrondi-parts": B}
+    head: "30-taux-difficulte"
+  - texte: "La MR de #30 est fusionnée : GitLab crée le commit **S1**, qui n'a qu'un parent. La publication `2027.0` est un tag sur `main`."
+    commande: "git tag -a 2027.0 -m \"Panorama 2027 : publication\""
+    commits: [P, A, B, S1]
+    refs: {main: S1, "31-arrondi-parts": B}
+    tags: {"2027.0": S1}
+    head: main
+    estompes: [A]
+  - texte: "#31 arrive dans `main` après la publication (**S2**) : `main` prépare déjà l'édition suivante."
+    commits: [P, S1, B, B2, S2]
+    refs: {main: S2}
+    tags: {"2027.0": S1}
+    head: main
+    estompes: [B, B2]
+  - texte: "Un lecteur signale une erreur dans le panorama 2027. Règle **upstream first** : on corrige d'abord dans `main`, par une MR ordinaire."
+    commande: "git switch -c erratum-2027 main"
+    commits: [P, S1, S2, H]
+    refs: {main: S2, "erratum-2027": H}
+    tags: {"2027.0": S1}
+    head: "erratum-2027"
+  - texte: "La correction **F** est dans `main`. La branche de version `maintenance/2027`, créée depuis le tag `2027.0`, la reçoit par `cherry-pick -x` (**F′**, un nouveau commit). Le tag `2027.1` publie l'erratum **sans** #31 : c'est ce que vous avez fait en E8 avec `maintenance/2025`."
+    commande: "git switch -c maintenance/2027 2027.0 && git cherry-pick -x F"
+    commits: [P, S1, S2, F, "F'"]
+    refs: {main: F, "maintenance/2027": "F'"}
+    tags: {"2027.0": S1, "2027.1": "F'"}
+    head: "maintenance/2027"
+    surligne: [F, "F'"]
