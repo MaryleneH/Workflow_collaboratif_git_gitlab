@@ -1,0 +1,276 @@
+---
+title: "Le parcours"
+surtitre: "Parcours"
+chapeau: "Douze étapes sur deux jours, une seule question : comment tenir la promesse de main quand une équipe grandit ? Voici la carte, et la manière de lire chaque page."
+description: "La carte du parcours de la formation Git à plusieurs : les étapes, les quatre mouvements, la navigation en forme d'historique Git et la légende des composants."
+---
+
+Le parcours ne suit pas le plan d'un manuel (« les branches, puis le merge, puis la
+CI »). Il suit l'histoire d'une équipe, l'[Observatoire](../fil-rouge/index.qmd), qui
+passe d'une personne à cinq. À chaque étape, un **problème** survient ; l'outil Git ou
+GitLab arrive parce que ce problème le rend nécessaire ; une règle d'équipe en naît.
+
+## La carte
+
+::: {.carte-parcours detail="complet"}
+:::
+
+## Quatre mouvements
+
+Les étapes se regroupent en quatre mouvements. Chacun change la nature de ce que vous
+faites, pas seulement le sujet.
+
+| Mouvement | Étapes | Ce que vous faites | Ce que vous en tirez |
+|---|---|---|---|
+| **Partager** | E0 à E2 | observer, comprendre, expérimenter | Un modèle mental exact : commits, branches, HEAD, dépôt local et dépôt distant |
+| **Collaborer** | E3 et E4 | se tromper, corriger, collaborer | Travailler à côté, réunir, faire relire : branches, conflits, Merge Request |
+| **Industrialiser** | E5 à E8 | automatiser, nettoyer, publier | Confier la relecture mécanique à la CI, livrer un historique lisible, publier et corriger une version |
+| **Choisir** | E9 à E11 | comparer, adapter, décider | Situer Git Flow et les workflows modernes, déduire le vôtre, l'éprouver en simulation |
+
+Le premier jour s'arrête à la Merge Request : vous savez alors collaborer. Le second
+jour industrialise cette collaboration, puis vous fait choisir, en connaissance de cause,
+le workflow de l'équipe.
+
+## Lire la navigation : le rail est un historique Git
+
+Sur chaque page d'étape, le **rail** de gauche (replié en haut de page sur un petit écran) n'est pas une
+simple table des matières. Il est dessiné comme un graphe de commits, et se lit comme
+tel :
+
+- **Chaque étape est un commit** sur la ligne principale, dans l'ordre du parcours.
+- **HEAD, c'est vous.** L'étiquette « HEAD · vous êtes ici » est posée sur la page que
+  vous lisez, comme [HEAD]{.t} désigne dans Git l'endroit où vous vous trouvez.
+- **Les branches latérales sont des approfondissements.** Elles partent d'une étape
+  et y reviennent : `git bisect` depuis E1, les forks depuis E2, `rebase -i` depuis E7,
+  les données et l'environnement depuis E8. Elles sont facultatives.
+- **Un commit plein est une étape terminée** dans ce navigateur : vous l'avez marquée
+  avec le bouton « Marquer l'étape comme terminée », en bas de page.
+
+La métaphore a ses limites, et c'est volontaire de le dire : dans Git, un commit ne
+dépend pas de votre lecture, et HEAD ne dit pas « où vous en êtes » mais « sur quoi vous
+travaillez ». Le rail emprunte le dessin, pas la mécanique.
+
+## Anatomie d'une étape
+
+Chaque étape s'ouvre sur un **en-tête** généré automatiquement : numéro, jour,
+mouvement, durée, puis **le problème**, les outils qui vont servir, la capacité visée,
+les membres de l'équipe présents et les termes nouveaux. Viennent ensuite :
+
+1. **La situation** : ce qui arrive à l'équipe, en quelques lignes.
+2. **Ce qui se passe réellement** : le mécanisme Git ou GitLab, souvent avec un graphe
+   que l'on fait avancer étape par étape.
+3. **Les missions** : ce que vous faites dans VS Code, sur le dépôt compagnon.
+4. **Les incidents** : un message d'erreur réel à diagnostiquer.
+5. **Le pont vers notre travail statistique**, les points **à retenir** (trois au plus)
+   et un **checkpoint** qui revient aussi sur les étapes précédentes.
+6. **Et maintenant** : ce que vous avez acquis, et pourquoi l'étape suivante devient
+   nécessaire.
+
+## Légende des composants
+
+Les exemples ci-dessous sont de vrais composants, tels qu'ils apparaissent dans les
+étapes.
+
+### Git, GitLab ou VS Code ?
+
+Chaque notion porte un badge qui dit **qui la fournit** : []{.git} fonctionne sur votre
+machine, sans serveur ; []{.gitlab} est une fonction de la plateforme, qui n'existe pas
+dans Git ; []{.vscode} est l'interface, qui exécute des commandes Git pour vous ;
+[]{.pratique} est une convention d'équipe que ni Git ni GitLab n'imposent.
+
+Les termes du lexique sont soulignés et colorés selon leur propriétaire : un
+[commit]{.t} est un objet Git, une [Merge Request]{.t} un objet GitLab, une
+[feature branch]{.t} une pratique. Survolez-les pour la définition ; cliquez pour le
+[lexique](../memos/lexique.qmd).
+
+### Les commandes et leur niveau de risque
+
+Toute commande à taper indique ce qu'elle peut abîmer. Le terminal intégré de VS Code
+est la référence ; l'interface vient ensuite.
+
+```{.bash risque="sur"}
+git fetch
+git log --oneline --graph --all
+```
+
+```{.bash risque="reversible"}
+git switch -c 30-difficulte-recrutement
+```
+
+```{.bash risque="reecrit"}
+git rebase origin/main
+git push --force-with-lease
+```
+
+```{.bash risque="dangereux"}
+git reset --hard origin/main
+```
+
+- **Sans risque** : lecture, ou téléchargement qui ne touche pas à votre travail.
+- **Réversible** : crée ou déplace une référence ; on revient en arrière simplement.
+- **Réécrit l'historique** : remplace des commits par de nouveaux. Réservé à ce qui n'est
+  pas partagé.
+- **Dangereux** : peut détruire du travail non sauvegardé, le vôtre ou celui des autres.
+
+Une sortie de terminal (ce que Git **répond**) n'a pas de niveau de risque :
+
+```{.text .sortie}
+On branch 30-difficulte-recrutement
+Your branch is up to date with 'origin/30-difficulte-recrutement'.
+
+nothing to commit, working tree clean
+```
+
+### Mission
+
+::: {.mission #m-parcours-exemple titre="Exemple : lire l'historique du projet" duree="5 min" mode="seul" depart="etape-1-debut"}
+::: objectif
+Retrouver dans l'historique le commit qui a changé le calcul de l'âge.
+:::
+
+::: consignes
+1. Dans le terminal, affichez l'historique de `R/age.R` : `git log --oneline -- R/age.R`.
+2. Repérez le commit dont le message parle du 31 décembre.
+:::
+
+::: reussite
+Vous savez donner le hash abrégé de ce commit et l'issue qu'il cite.
+:::
+
+::: indice
+Le message d'un bon commit cite l'issue qu'il traite, sous la forme `#7`.
+:::
+:::
+
+Une mission a un **objectif**, des **consignes**, un **critère de réussite vérifiable**
+(une commande et ce qu'elle doit montrer) et des **indices** repliés, à ouvrir dans
+l'ordre. Le bouton « Mission terminée » mémorise votre avancement dans ce navigateur.
+
+### Incident
+
+::: {.incident #inc-parcours-exemple titre="Exemple : un push refusé"}
+::: symptome
+```{.text .sortie}
+ ! [rejected]        main -> main (fetch first)
+error: failed to push some refs to 'https://gitlab.example.org/oei/observatoire-industrie.git'
+```
+:::
+::: hypotheses
+- Mes identifiants GitLab ont expiré.
+- Quelqu'un a poussé sur `main` depuis mon dernier `fetch`.
+:::
+::: diagnostic
+Le dépôt GitLab contient un commit que vous n'avez pas. Git refuse de le perdre en
+remplaçant `main` par votre version. Un problème d'identifiants donnerait un message
+d'authentification, pas `fetch first`.
+:::
+::: correction
+`git fetch`, puis `git log --oneline --graph --all` pour voir les deux historiques,
+avant de les réunir. L'étape E2 détaille la suite.
+:::
+::: prevention
+Avant d'intégrer, faire `git fetch` et regarder où est `origin/main`.
+:::
+:::
+
+Un incident part d'un **message réel**. Vous formulez d'abord vos hypothèses ; le
+diagnostic et la correction sont repliés. La prévention reste visible : c'est elle qui
+devient une habitude.
+
+### Règle du carnet
+
+::: {.regle ref="R02"}
+:::
+
+Chaque règle **naît d'un incident** vécu dans le parcours, au moment où il se produit.
+Les dix-sept règles forment le [carnet de règles](../memos/carnet-de-regles.qmd), à
+partir duquel l'équipe déduit son workflow en E10. La couleur indique le principe
+servi : intégrité, traçabilité, revue ou reproductibilité.
+
+### Décodeur de jargon
+
+::: decodeur
+« Mon [push]{.t} a été refusé, j'ai fait un [fetch]{.t} pour voir où en était
+[origin]{.t}. »
+
+::: traduction
+GitLab a refusé ma mise à jour parce qu'il contenait un travail que je n'avais pas.
+J'ai téléchargé ce travail, sans rien modifier du mien, pour comparer les deux
+historiques.
+:::
+:::
+
+Le décodeur prend une phrase telle que la disent les développeurs, la traduit, puis
+définit chaque terme en précisant s'il relève de Git ou de GitLab.
+
+### Rosette : un principe, deux pratiques
+
+::: {.rosette principe="tracabilite"}
+::: principe
+Chaque changement dit pourquoi il existe.
+:::
+::: dev
+Messages de commit normalisés, lien vers le ticket, journal des modifications généré.
+:::
+::: stat
+Le message explique le choix méthodologique et cite l'issue : « âge au 31 décembre
+de l'année de référence (#7) ».
+:::
+:::
+
+La rosette montre qu'un statisticien applique **les mêmes principes** que les
+développeurs, avec ses propres contraintes. Ce n'est pas une version au rabais.
+
+### Dans VS Code
+
+::: {.vscode titre="Voir l'historique"}
+Dans la vue **Source Control** (<kbd>Ctrl</kbd>+<kbd>Maj</kbd>+<kbd>G</kbd>), la section
+**Source Control Graph** dessine le même graphe que `git log --graph` (selon votre version
+de VS Code).
+:::
+
+L'équivalent visuel vient **toujours après** la commande. Vous devez pouvoir faire sans
+lui ; il vous aide à voir, pas à comprendre à votre place.
+
+### Idée reçue
+
+::: idee-fausse
+::: fausse
+Une branche est une copie du projet.
+:::
+::: juste
+Une branche est une référence mobile : un nom qui désigne un commit, et qui avance
+quand on commite dessus.
+:::
+:::
+
+### Checkpoint et points à retenir
+
+Un **checkpoint** termine chaque étape : quelques questions, réponses repliées. L'une
+d'elles, marquée « rappel E*n* », revient sur une étape antérieure : on retient mieux ce
+que l'on doit retrouver. Le bloc **À retenir** ne contient jamais plus de trois idées.
+
+## Reprendre en cours de route
+
+Chaque mission indique son **point de départ**, par exemple `etape-4-debut` : un tag du
+dépôt compagnon qui désigne l'état exact du projet au début de l'étape. Si vous avez
+manqué une étape, ou si votre dépôt s'est égaré, vous repartez de là :
+
+```{.bash risque="reversible"}
+git fetch --tags
+git switch -c reprise-e4 etape-4-debut
+```
+
+La liste complète des tags et les précautions d'usage sont sur la page du
+[dépôt compagnon](../fil-rouge/depot-compagnon.qmd#les-tags-de-reprise).
+
+## Votre progression
+
+Les étapes et missions que vous marquez comme terminées sont mémorisées **dans ce
+navigateur uniquement** : rien n'est envoyé nulle part, et un autre navigateur ne les
+connaît pas. En navigation privée, ou si votre poste bloque le stockage local, le site
+fonctionne à l'identique, sans mémoire.
+
+```{=html}
+<button type="button" class="gf-bouton gf-bouton--discret" data-gf-reinitialiser hidden>Effacer ma progression dans ce navigateur</button>
+```
