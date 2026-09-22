@@ -10,7 +10,7 @@ commits:
   c13: {x: 4, y: 0, parents: [c12], msg: "Paramètre le millésime du panorama"}
   c14: {x: 5, y: 0, parents: [c13], msg: "Ajoute la répartition par PCS et ses tests de cohérence"}
   c15: {x: 6, y: 0, parents: [c14], msg: "Teste le schéma et la cohérence des données générées"}
-  N: {x: 7, y: 1, parents: [c15], couleur: travail, msg: "Essai : seuil de la part des seniors en paramètre"}
+  S: {x: 7, y: 1, parents: [c15], couleur: travail, msg: "Essai : seuil de la part des seniors en paramètre"}
 etapes:
   - texte: "Au point de départ `etape-1-debut` (extrait : de c09 à c15), chaque commit pointe vers son **parent**, du plus récent vers le plus ancien. Le tag `2025.0` est posé sur **c10**, la branche `main` sur **c15**, et HEAD désigne `main`."
     commande: "git log --oneline --graph"
@@ -30,10 +30,10 @@ etapes:
     refs: {main: c15, essai-seuil: c15}
     tags: {"2025.0": c10}
     head: essai-seuil
-  - texte: "Un commit crée l'instantané **N**, dont le parent est **c15**, puis fait avancer **la branche désignée par HEAD**. `main` et le tag `2025.0` n'ont pas bougé."
+  - texte: "Un commit crée l'instantané **S**, dont le parent est **c15**, puis fait avancer **la branche désignée par HEAD**. `main` et le tag `2025.0` n'ont pas bougé."
     commande: "git commit -m \"Essai : seuil de la part des seniors en paramètre\""
-    commits: [c09, c10, c11, c12, c13, c14, c15, N]
-    refs: {main: c15, essai-seuil: N}
+    commits: [c09, c10, c11, c12, c13, c14, c15, S]
+    refs: {main: c15, essai-seuil: S}
     tags: {"2025.0": c10}
     head: essai-seuil
-    surligne: [N]
+    surligne: [S]
