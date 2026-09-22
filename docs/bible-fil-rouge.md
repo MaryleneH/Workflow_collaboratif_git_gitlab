@@ -139,7 +139,7 @@ servent l'archéologie de E1.
 |---|---|---|---|---|
 | c01 | 2025-01-13 | Inès | Initialise le projet de l'Observatoire | README, .gitignore, _quarto.yml, data/README.md, reports/panorama.qmd (squelette) |
 | c02 | 2025-01-20 | Inès | Ajoute le générateur de données synthétiques du panel | python/observatoire/generation.py, scripts/01_generer_donnees.py, data/reference/*, requirements.txt |
-| c03 | 2025-02-03 | Karim | Ajoute le calcul de l'âge et des classes d'âge | R/age.R (**version boguée** : âge à la date d'extraction) |
+| c03 | 2025-02-03 | Karim | Ajoute le calcul de l'âge et des classes d'âge | R/age.R (**version boguée** : âge à la date d'extraction, le 30 juin N+1) |
 | c04 | 2025-02-10 | Karim | maj | R/indicateurs.R (`part_seniors`, `pyramide_ages`) |
 | c05 | 2025-02-24 | Inès | Prépare les données avec DuckDB | python/observatoire/preparation.py, scripts/02_preparer.py |
 | c06 | 2025-03-10 | Karim | modifs | scripts/03_indicateurs.R |
@@ -191,8 +191,10 @@ servent l'archéologie de E1.
 ### E1 : archéologie (lecture seule, dépôt à `etape-1-debut`)
 
 **Question.** « Pour les mêmes données 2025, le panorama publié (tag `2025.0`)
-donne une part des 55 ans et plus supérieure d'environ 2 points à celle que
-calcule le code actuel. Pourquoi ? »
+donne une part des 55 ans et plus supérieure d'environ 1,5 point à celle que
+calcule le code actuel. Pourquoi ? » (La valeur exacte est mesurée par
+`depot-compagnon/outils/verifier_historique.py` et reportée dans
+`depot-compagnon/README.md` ; les pages disent « environ un point et demi ».)
 
 **Chemin attendu.**
 
@@ -204,9 +206,10 @@ git blame R/age.R
 git show <c11>
 ```
 
-**Réponse.** c11 : l'âge était calculé à la date d'extraction (mars de l'année
-suivante) au lieu du 31 décembre, ce qui vieillissait artificiellement une
-partie des salariés.
+**Réponse.** c11 : l'âge était calculé à la date d'extraction des données (le
+30 juin de l'année suivante) au lieu du 31 décembre de l'année de référence :
+environ la moitié des salariés « gagnaient » un an, ce qui gonflait la part des
+55 ans et plus.
 
 **Leçon annexe.** « maj » et « modifs » (c04, c06) n'expliquent rien. C'est de
 là que naît la règle R01.
