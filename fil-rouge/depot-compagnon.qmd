@@ -15,7 +15,10 @@ Il a trois particularités qui en font un outil de formation :
 
 - **Son historique est scénarisé.** Les 25 commits de `main` ont des auteurs, des dates
   et des messages fixes (y compris quelques mauvais messages, volontairement). Tous
-  les groupes voient le même graphe, et les missions peuvent s'y référer.
+  les groupes voient le même graphe, avec **les mêmes hash** : le dépôt est reconstruit
+  à l'identique à partir d'un scénario, et les missions peuvent s'y référer. L'équipe y
+  signe de son nom complet : Inès Moreau, Karim Haddad, Léa Fontaine, Tom Mercier et
+  Jules Perrin, avec des adresses `prenom.nom@oei.example.org`.
 - **Il contient des branches d'exercice** : des branches préparées avec un problème
   à trouver (une MR à relire, un pipeline qui échoue, une branche qui a divergé).
 - **Il porte des tags de reprise** : `etape-3-debut` désigne l'état exact du projet au
@@ -83,8 +86,8 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-R (4.4 conseillé) : la chaîne n'utilise que cinq paquets, listés dans
-`dependances-r.txt`.
+R (4.4 conseillé ; la CI utilise R 4.4.1) : la chaîne n'utilise que cinq paquets, listés
+dans `dependances-r.txt`.
 
 ```{.bash risque="sur"}
 Rscript -e 'install.packages(c("dplyr", "testthat", "lintr", "knitr", "rmarkdown"))'
@@ -102,15 +105,17 @@ python scripts/01_generer_donnees.py --millesime 2026
 python scripts/02_preparer.py --millesime 2026
 Rscript scripts/03_indicateurs.R 2026
 python scripts/04_figures.py --millesime 2026
-quarto render reports/panorama.qmd
+quarto render reports/panorama.qmd -P millesime:2026
 ```
 
-1. La génération écrit les tables Parquet dans `data/brut/`, avec leur `MANIFEST.json`.
+1. La génération écrit les tables Parquet dans `data/brut/2026/`, avec leur `MANIFEST.json`
+   (option `--sortie` pour écrire ailleurs que dans `data/brut/`).
 2. La préparation interroge ces tables avec DuckDB et écrit les tables d'analyse dans
    `data/prepare/`.
 3. R calcule les indicateurs dans `resultats/indicateurs_2026.csv`.
 4. Python produit les figures dans `resultats/figures/`.
-5. Quarto assemble le panorama.
+5. Quarto assemble le panorama, pour le millésime passé en paramètre, dans
+   `_output/reports/panorama.html`.
 
 Après une exécution, `git status` ne doit montrer **aucun** fichier nouveau : les données
 et les résultats sont exclus par le `.gitignore`. Si un fichier de données apparaît comme
@@ -136,9 +141,17 @@ pytest
 Rscript -e 'testthat::test_dir("tests/testthat", stop_on_failure = TRUE)'
 ```
 
-Les tests Python vérifient le schéma et la cohérence des données générées ; les tests R
-vérifient les indicateurs (par exemple, que les parts par PCS somment à 1 dans chaque
-établissement). À partir de E6, le pipeline GitLab lance ces mêmes commandes à chaque
+Lancez-les depuis la racine du dépôt : `pytest` y trouve sa configuration
+(`pyproject.toml`), et `tests/testthat/helper-projet.R` charge les fonctions de `R/`.
+Si R signale `invalid input found on input connection` au chargement, votre terminal
+n'est pas en UTF-8 : `export LC_ALL=C.UTF-8`, puis relancez.
+
+Les tests Python vérifient le schéma et la cohérence des données générées, sur un
+petit panel qu'ils fabriquent eux-mêmes ; les tests R vérifient les indicateurs (par
+exemple, que les parts par PCS somment à 1 dans chaque établissement). Les lints se
+lancent de même : `ruff check python/ scripts/ tests/python/` et
+`Rscript -e 'print(lintr::lint_dir("."))'` (lignes de 100 caractères au plus, réglage
+du fichier `.lintr`). À partir de E6, le pipeline GitLab lance ces mêmes commandes à chaque
 push : ce qui passe chez vous doit passer dans la CI.
 
 ## Les tags de reprise

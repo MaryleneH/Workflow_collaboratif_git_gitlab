@@ -80,14 +80,16 @@ observatoire-industrie/
 ├── CONTRIBUTING.md          ← écrit par l'équipe en E10
 ├── .gitignore               ← data/brut/, data/prepare/, resultats/, _output/
 ├── .gitlab-ci.yml           ← apparaît en E6 (MR !2, issue #20)
+├── .lintr                   ← règles de lintr (lignes de 100 caractères au plus)
+├── pyproject.toml           ← réglages de ruff et de pytest
 ├── _quarto.yml
-├── requirements.txt         ← versions Python épinglées
+├── requirements.txt         ← versions Python épinglées (dont pytest et ruff)
 ├── dependances-r.txt        ← paquets R utilisés
 ├── data/
 │   ├── README.md            ← où sont les données, comment les référencer
 │   └── reference/           ← petites nomenclatures publiques, versionnées
 ├── R/
-│   ├── age.R                ← age_au_31_decembre(), classe_age()
+│   ├── age.R                ← age_au_31_decembre() (age_fin_annee() avant c11), classe_age()
 │   └── indicateurs.R        ← part_seniors(), repartition_pcs(), taux_recrutement()…
 ├── python/observatoire/
 │   ├── generation.py        ← générateur synthétique déterministe
@@ -101,7 +103,7 @@ observatoire-industrie/
 ├── reports/
 │   └── panorama.qmd         ← le rapport annuel
 └── tests/
-    ├── testthat/            ← tests R
+    ├── testthat/            ← tests R ; helper-projet.R charge les fonctions de R/
     └── python/              ← tests Python
 ```
 
@@ -114,12 +116,13 @@ données et les petites nomenclatures publiques, jamais les microdonnées.
 Quatre scripts, puis le rapport. Chacun lit ce que le précédent a écrit.
 
 1. **Générer** (Python) : `01_generer_donnees.py` écrit les tables brutes au format
-   Parquet, avec un `MANIFEST.json` qui contient l'empreinte SHA-256 du **contenu** de
+   Parquet dans `data/brut/<millésime>/`, avec un `MANIFEST.json` qui contient l'empreinte SHA-256 du **contenu** de
    chaque table. La génération est déterministe : la graine dépend du millésime.
 2. **Préparer** (Python et DuckDB) : `02_preparer.py` interroge les fichiers Parquet avec
    DuckDB, sans tout charger en mémoire, et produit des tables d'analyse compactes en CSV.
 3. **Calculer** (R) : `03_indicateurs.R` lit ces CSV et calcule les indicateurs avec
-   dplyr.
+   dplyr. Il les écrit au format long (`indicateur`, `dimension`, `modalite`, `valeur`)
+   dans `resultats/indicateurs_<millésime>.csv`.
 4. **Illustrer** (Python) : `04_figures.py` produit les figures avec la charte commune.
 5. **Publier** (Quarto) : `reports/panorama.qmd` assemble indicateurs et figures.
 
