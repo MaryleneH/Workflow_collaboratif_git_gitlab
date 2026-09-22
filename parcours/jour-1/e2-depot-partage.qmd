@@ -95,19 +95,19 @@ git fetch
 
 ```{.text .sortie}
 From https://gitlab.example.org/oei/observatoire-industrie
-   4e1d2b7..9c3f8a2  main       -> origin/main
+   42c49f5..9c3f8a2  main       -> origin/main
 ```
 
-La ligne se lit : « sur le serveur, `main` est passée de `4e1d2b7` à `9c3f8a2` ; j'ai mis à jour `origin/main` en conséquence ». Après le fetch, `git log --oneline --graph --all` montre enfin ce que le serveur contient :
+La ligne se lit : « sur le serveur, `main` est passée de `42c49f5` à `9c3f8a2` ; j'ai mis à jour `origin/main` en conséquence ». (`42c49f5` est le commit `etape-2-debut` du dépôt compagnon ; les hash des commits créés pendant l'exercice dépendent de l'heure et de l'auteur, les vôtres seront différents.) Après le fetch, `git log --oneline --graph --all` montre enfin ce que le serveur contient :
 
 ```{.text .sortie}
 * 7b2e5d1 (HEAD -> main) Documente les sources du panel
-| * 9c3f8a2 (origin/main) Documente le champ du panel
+| * 9c3f8a2 (origin/main) Décrit le champ du panel dans data/README.md
 |/
-* 4e1d2b7 Teste le schéma et la cohérence des données générées
+* 42c49f5 Teste le schéma et la cohérence des données générées
 ```
 
-C'est une [divergence]{.t} : votre `main` et `origin/main` ont un ancêtre commun (`4e1d2b7`), puis chacune contient un commit que l'autre n'a pas. Aucune des deux ne peut rejoindre l'autre par fast-forward. Il faut **intégrer** : réunir les deux historiques dans un nouveau commit.
+C'est une [divergence]{.t} : votre `main` et `origin/main` ont un ancêtre commun (`42c49f5`), puis chacune contient un commit que l'autre n'a pas. Aucune des deux ne peut rejoindre l'autre par fast-forward. Il faut **intégrer** : réunir les deux historiques dans un nouveau commit.
 
 ### Pull : télécharger, puis intégrer
 
@@ -254,7 +254,7 @@ Aucun conflit : A et B ont modifié des zones différentes du fichier, séparée
 
 **Pièges fréquents.** (1) Un stagiaire a déjà `pull.rebase` ou `pull.ff` dans sa configuration globale : l'incident 2 ne se produit pas. Vérifiez avec `git config --get pull.rebase` et `git config --get pull.ff`. (2) A et B modifient des lignes **adjacentes** : conflit prématuré. Rappelez de rester sous son propre titre. (3) L'éditeur par défaut est `vim` ou `nano` : montrez `--no-edit` ou `:wq`.
 
-**Variante seul.** Le formateur joue Karim : il pousse un commit sur `data/README.md` (section `## Champ`) dans le projet de chaque stagiaire, par script, pendant que les stagiaires rédigent la section `## Sources`.
+**Variante seul.** Le formateur joue Karim : il pousse un commit sur `data/README.md` dans le projet de chaque stagiaire, par script, pendant que les stagiaires rédigent la section `## Sources`. Le script du dépôt compagnon, lancé dans le clone du formateur (`python3 depot-compagnon/outils/simuler_collegue.py --depot <clone>`, `--dry-run` pour voir sans rien faire), commite au nom de Karim Haddad « Décrit le champ du panel dans data/README.md » : trois lignes ajoutées sous `## Champ`, rien sous `## Sources`. Le push du stagiaire est refusé (`fetch first`), puis `git pull --no-rebase` fusionne sans conflit.
 :::
 
 ::: {.mission #m-e2-2 titre="Lire l'écart avec le serveur avant d'agir" duree="15 min" mode="en binôme" depart="etape-2-debut"}
