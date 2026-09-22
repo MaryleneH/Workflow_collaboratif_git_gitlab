@@ -1,0 +1,56 @@
+titre: "L'erratum 2025.1 : partir du tag publié, sans le travail en cours"
+couleurs:
+  "maintenance/2025": release
+  "hotfix/25-erratum-age": hotfix
+commits:
+  c10: {x: 0, y: 0, msg: "Finalise le panorama 2025 pour publication"}
+  c11: {x: 1, y: 0, parents: [c10], msg: "Corrige le calcul de l'âge : âge au 31 décembre de l'année de référence"}
+  R: {x: 2, y: 0, parents: [c11], label: "⋯", msg: "c12 à c23, résumés en un seul point pour la lisibilité"}
+  c24: {x: 3, y: 0, parents: [R], msg: "Finalise le panorama 2026"}
+  "P": {x: 4, y: 1, parents: [c10], couleur: hotfix, label: "c11′", msg: "Corrige le calcul de l'âge… (cherry picked from commit <hash de c11>)"}
+  "N": {x: 5, y: 1, parents: ["P"], couleur: hotfix, label: "N", msg: "Ajoute la note d'erratum du panorama 2025 (#25)"}
+etapes:
+  - texte: "`main` contient déjà la correction (**c11**), mais aussi tout le travail 2026. Publier un erratum depuis `main` embarquerait l'édition 2026 dans le panorama 2025."
+    commits: [c10, c11, R, c24]
+    refs: {main: c24}
+    tags: {"2025.0": c10, "2026.0": c24}
+    head: main
+  - texte: "Inès crée `maintenance/2025` **sur le tag 2025.0**, la pousse et la protège dans GitLab. Cette branche représentera désormais l'édition 2025 et ses erratums."
+    commande: "git switch -c maintenance/2025 2025.0"
+    commits: [c10, c11, R, c24]
+    refs: {main: c24, "maintenance/2025": c10}
+    tags: {"2025.0": c10, "2026.0": c24}
+    head: "maintenance/2025"
+  - texte: "Karim crée sa branche de correction à partir de `maintenance/2025`, comme toute branche de travail naît de la branche qu'elle vise."
+    commande: "git switch -c hotfix/25-erratum-age maintenance/2025"
+    commits: [c10, c11, R, c24]
+    refs: {main: c24, "maintenance/2025": c10, "hotfix/25-erratum-age": c10}
+    tags: {"2025.0": c10, "2026.0": c24}
+    head: "hotfix/25-erratum-age"
+  - texte: "`git cherry-pick -x` applique la modification de **c11** au-dessus de **c10** : c'est un **nouveau** commit (**c11′**). Même parent et même instantané que **c11**, mais un autre auteur de commit, une autre date et un autre message : donc un autre hash. L'option `-x` ajoute au message la ligne *(cherry picked from commit …)*."
+    commande: "git cherry-pick -x <hash-de-c11>"
+    commits: [c10, c11, R, c24, "P"]
+    refs: {main: c24, "maintenance/2025": c10, "hotfix/25-erratum-age": "P"}
+    tags: {"2025.0": c10, "2026.0": c24}
+    head: "hotfix/25-erratum-age"
+    surligne: [c11, "P"]
+  - texte: "Karim ajoute la note d'erratum au rapport (**N**), puis pousse sa branche et ouvre la MR !5 **vers `maintenance/2025`**, pas vers `main`."
+    commande: "git commit -am \"Ajoute la note d'erratum du panorama 2025 (#25)\""
+    commits: [c10, c11, R, c24, "P", "N"]
+    refs: {main: c24, "maintenance/2025": c10, "hotfix/25-erratum-age": "N"}
+    tags: {"2025.0": c10, "2026.0": c24}
+    head: "hotfix/25-erratum-age"
+    surligne: ["N"]
+  - texte: "Review, puis fusion de la MR !5 (ici en fast-forward, sans squash) ; GitLab supprime la branche de hotfix. En local, après `git pull`, `maintenance/2025` pointe sur **N** ; `git branch -d hotfix/25-erratum-age` supprime la copie locale de la branche."
+    commande: "git switch maintenance/2025 ; git pull"
+    commits: [c10, c11, R, c24, "P", "N"]
+    refs: {main: c24, "maintenance/2025": "N"}
+    tags: {"2025.0": c10, "2026.0": c24}
+    head: "maintenance/2025"
+  - texte: "Inès tague **N** en `2025.1` et pousse le tag. `2025.0` reste intact, `main` n'a pas bougé : la correction y était déjà (**c11**)."
+    commande: "git tag -a 2025.1 -m \"Panorama 2025 : erratum sur la part des 55 ans et plus (#25)\""
+    commits: [c10, c11, R, c24, "P", "N"]
+    refs: {main: c24, "maintenance/2025": "N"}
+    tags: {"2025.0": c10, "2025.1": "N", "2026.0": c24}
+    head: "maintenance/2025"
+    surligne: ["N", c11]

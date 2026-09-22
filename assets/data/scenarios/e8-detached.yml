@@ -1,0 +1,43 @@
+titre: "HEAD détachée : visiter 2025.0, et ce qu'il advient d'un commit fait là"
+couleurs:
+  sauvetage: travail
+commits:
+  c10: {x: 0, y: 0, msg: "Finalise le panorama 2025 pour publication"}
+  c11: {x: 1, y: 0, parents: [c10], msg: "Corrige le calcul de l'âge : âge au 31 décembre de l'année de référence"}
+  R: {x: 2, y: 0, parents: [c11], label: "⋯", msg: "c12 à c23, résumés en un seul point pour la lisibilité"}
+  c24: {x: 3, y: 0, parents: [R], msg: "Finalise le panorama 2026"}
+  X: {x: 1, y: 1, parents: [c10], couleur: travail, msg: "Ajoute une note d'erratum (commit fait en HEAD détachée)"}
+etapes:
+  - texte: "Situation normale : HEAD est **attachée** à `main`, qui pointe sur **c24**. Les tags `2025.0` et `2026.0` marquent les deux publications."
+    commits: [c10, c11, R, c24]
+    refs: {main: c24}
+    tags: {"2025.0": c10, "2026.0": c24}
+    head: main
+  - texte: "`git switch --detach 2025.0` place HEAD **directement sur le commit c10**, sans passer par une branche. Vos fichiers redeviennent ceux de la publication 2025 : on peut lire, exécuter, régénérer."
+    commande: "git switch --detach 2025.0"
+    commits: [c10, c11, R, c24]
+    refs: {main: c24}
+    tags: {"2025.0": c10, "2026.0": c24}
+    head: c10
+    surligne: [c10]
+  - texte: "Tom commite une note d'erratum sans créer de branche. Le commit **X** existe, et HEAD avance dessus. Mais aucune branche ne le désigne : seul HEAD le retient."
+    commande: "git commit -am \"Ajoute une note d'erratum\""
+    commits: [c10, c11, R, c24, X]
+    refs: {main: c24}
+    tags: {"2025.0": c10, "2026.0": c24}
+    head: X
+    surligne: [X]
+  - texte: "Il revient sur `main`. Git l'avertit (*you are leaving 1 commit behind*) : **X** n'est plus désigné par rien. Il n'est pas effacé, mais il est devenu invisible dans `git log --all`."
+    commande: "git switch main"
+    commits: [c10, c11, R, c24, X]
+    refs: {main: c24}
+    tags: {"2025.0": c10, "2026.0": c24}
+    head: main
+    estompes: [X]
+  - texte: "Sauvetage : une branche posée sur le hash de **X** (lu dans l'avertissement ou dans `git reflog`) le rend de nouveau visible et durable."
+    commande: "git branch sauvetage <hash-de-X>"
+    commits: [c10, c11, R, c24, X]
+    refs: {main: c24, sauvetage: X}
+    tags: {"2025.0": c10, "2026.0": c24}
+    head: main
+    surligne: [X]
