@@ -1,0 +1,81 @@
+# Approfondissement a-forks : contribuer au paquet interne methodes/nomenclatures
+# depuis un fork. Panneau distant = le fork de Karim (origin). Le projet d'origine
+# (upstream) n'est visible qu'à travers la branche distante upstream/main.
+titre: "Un fork, deux remotes : origin et upstream"
+nom_distant: "Fork karim/nomenclatures (origin)"
+couleurs:
+  "42-passage-naf-filiere": travail
+commits:
+  A: {x: 0, y: 0, msg: "Publie la version 1.4.0 du paquet"}
+  B: {x: 1, y: 0, parents: [A], msg: "Met à jour la table des PCS (pôle méthodes)"}
+  K: {x: 2, y: 1, parents: [B], couleur: travail, msg: "Ajoute la table de passage NAF vers sous-filières (#42)"}
+  S: {x: 3, y: 0, parents: [B], msg: "Ajoute la table de passage NAF vers sous-filières (#42) · squash de la MR"}
+etapes:
+  - texte: "Karim a créé son fork sur GitLab, puis l'a cloné. Son `origin` est **le fork**, pas le projet du pôle méthodes."
+    commande: "git clone https://gitlab.example.org/karim/nomenclatures.git"
+    local:
+      commits: [A]
+      refs: {main: A, origin/main: A}
+      head: main
+    distant:
+      commits: [A]
+      refs: {main: A}
+  - texte: "Il ajoute le projet d'origine sous le nom `upstream` et le lit. Le pôle méthodes a avancé (**B**) : `upstream/main` le montre ; le fork, lui, est resté sur **A**."
+    commande: "git remote add upstream https://gitlab.example.org/methodes/nomenclatures.git && git fetch upstream"
+    local:
+      commits: [A, B]
+      refs: {main: A, origin/main: A, upstream/main: B}
+      head: main
+    distant:
+      commits: [A]
+      refs: {main: A}
+    surligne: [B]
+  - texte: "La branche de travail part de `upstream/main`, l'état le plus récent du projet d'origine. Karim y commite **K**."
+    commande: "git switch -c 42-passage-naf-filiere upstream/main"
+    local:
+      commits: [A, B, K]
+      refs: {main: A, origin/main: A, upstream/main: B, 42-passage-naf-filiere: K}
+      head: 42-passage-naf-filiere
+    distant:
+      commits: [A]
+      refs: {main: A}
+    surligne: [K]
+  - texte: "Il pousse sa branche **sur son fork**, le seul dépôt où il a le droit d'écrire. Le fork reçoit **B** et **K**. La MR part de là, vers `methodes/nomenclatures`."
+    commande: "git push -u origin 42-passage-naf-filiere"
+    local:
+      commits: [A, B, K]
+      refs: {main: A, origin/main: A, upstream/main: B, 42-passage-naf-filiere: K, origin/42-passage-naf-filiere: K}
+      head: 42-passage-naf-filiere
+    distant:
+      commits: [A, B, K]
+      refs: {main: A, 42-passage-naf-filiere: K}
+    surligne: [K]
+  - texte: "Un mainteneur du pôle méthodes fusionne la MR avec squash : le projet d'origine contient **S**, un nouveau commit. Karim le voit au prochain `fetch`."
+    commande: "git fetch upstream"
+    local:
+      commits: [A, B, K, S]
+      refs: {main: A, origin/main: A, upstream/main: S, 42-passage-naf-filiere: K, origin/42-passage-naf-filiere: K}
+      head: 42-passage-naf-filiere
+    distant:
+      commits: [A, B, K]
+      refs: {main: A, 42-passage-naf-filiere: K}
+    surligne: [S]
+  - texte: "Mettre à jour le fork : `main` local avance en **fast-forward** sur `upstream/main`, puis on le pousse sur `origin`. Rien ne se synchronise tout seul."
+    commande: "git switch main && git merge --ff-only upstream/main && git push origin main"
+    local:
+      commits: [A, B, K, S]
+      refs: {main: S, origin/main: S, upstream/main: S, 42-passage-naf-filiere: K, origin/42-passage-naf-filiere: K}
+      head: main
+    distant:
+      commits: [A, B, K, S]
+      refs: {main: S, 42-passage-naf-filiere: K}
+    surligne: [S]
+  - texte: "Ménage : la branche est supprimée localement et sur le fork. **K** n'est plus référencé ; son contenu vit dans **S**."
+    commande: "git branch -d 42-passage-naf-filiere && git push origin --delete 42-passage-naf-filiere"
+    local:
+      commits: [A, B, S]
+      refs: {main: S, origin/main: S, upstream/main: S}
+      head: main
+    distant:
+      commits: [A, B, S]
+      refs: {main: S}
