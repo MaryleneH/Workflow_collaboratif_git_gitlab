@@ -1,0 +1,541 @@
+---
+title: "Un historique, des étiquettes, un curseur"
+etape: e1
+description: "Commit comme instantané, graphe des parents, branche comme référence mobile, HEAD : le modèle mental de Git, appris en retrouvant pourquoi la part des 55 ans et plus a changé depuis le panorama 2025."
+---
+
+::: situation
+Un chargé d'études réutilise le code de l'Observatoire pour une note interne. Sur les données 2025, il obtient une part des 55 ans et plus inférieure d'**environ un point et demi** à celle publiée dans le panorama 2025 (tag `2025.0`). Mêmes données, même indicateur, écart inexpliqué.
+
+Inès doit répondre : lequel des deux chiffres est juste, et pourquoi ont-ils divergé ? Le code a changé depuis la publication. Mais quand, par qui, pour quelle raison ?
+:::
+
+::: {.recit persona="karim"}
+« J'ai touché au calcul de l'âge l'an dernier… ou alors aux tranches d'âge. Je ne sais plus. Ce qui est sûr, c'est que c'est dans Git. »
+:::
+
+Karim a raison : la réponse est dans l'historique. Encore faut-il savoir ce que Git enregistre, pour savoir quoi lui demander. Cette étape construit ce modèle mental, puis vous envoie le vérifier sur le dépôt de l'Observatoire.
+
+## Ce qui se passe réellement
+
+### Un commit est un instantané complet
+
+Un [commit]{.t} n'enregistre pas « ce qui a changé ». Il enregistre **l'état complet** de tous les fichiers suivis, au moment du commit : un instantané, ou *snapshot*.
+
+Concrètement, Git range trois sortes d'objets dans le dossier `.git` :
+
+- le **contenu** de chaque fichier (un *blob*) ;
+- chaque **dossier** (un *tree*), qui associe des noms de fichiers à des contenus et à des sous-dossiers ;
+- chaque **commit**, qui désigne le *tree* racine du projet, son ou ses parents, un auteur, une date et un message.
+
+Un fichier inchangé d'un commit à l'autre n'est pas stocké deux fois : les deux instantanés désignent le même objet. C'est ce qui rend les instantanés bon marché.
+
+::: idee-fausse
+::: fausse
+Un commit est un diff : il contient les lignes ajoutées et supprimées.
+:::
+::: juste
+Un commit désigne l'arbre **complet** du projet. Le [diff]{.t} que vous lisez dans `git show` ou dans VS Code est **calculé à la demande**, en comparant cet instantané à celui de son parent. Git compresse aussi ses fichiers internes par différences, mais c'est un détail de stockage : dans le modèle, chaque commit est une photo entière.
+:::
+:::
+
+### Chaque commit connaît son passé, jamais son futur
+
+Chaque commit porte un identifiant, son [hash]{.t} : 40 caractères hexadécimaux, que l'on abrège en 7 (`4e1b7a2`). Ce hash est calculé à partir de **tout** le contenu du commit : l'instantané, l'auteur, la date, le message, et le hash de son [parent]{.t}.
+
+Deux conséquences, que vous retrouverez tout au long du parcours :
+
+- **On ne peut pas modifier un commit.** Changer un seul caractère du message, ou changer de parent, produit un autre hash, donc un autre commit. Git ne « corrige » jamais un commit : il en crée un nouveau.
+- **Les liens vont vers le passé.** Un commit désigne son parent, qui désigne le sien, et ainsi de suite jusqu'au premier commit du projet. Un commit ne sait rien de ceux qui viendront après lui.
+
+L'historique est donc un [graphe de commits]{.t} orienté vers le passé et sans boucle : les informaticiens disent un *DAG*. Un commit ordinaire a un parent. Le tout premier n'en a aucun. Un commit de fusion en a deux : vous le verrez à l'étape 3.
+
+### Une branche est une étiquette mobile
+
+Si les commits ne connaissent que leur passé, comment Git sait-il où est « le bout » de l'historique ? Par des **noms** posés sur certains commits.
+
+Une [branche]{.t} est un nom qui désigne un commit. Dans le dépôt, c'est un simple fichier : `.git/refs/heads/main` contient les 40 caractères du hash du commit désigné, suivis d'un retour à la ligne. Quarante et un octets.
+
+```{.bash risque="sur"}
+cat .git/refs/heads/main
+git rev-parse main
+```
+
+```{.text .sortie}
+a3c52e9d1f0b7c4e8a6d2b9f5e1c7a3d8b4f6e20
+a3c52e9d1f0b7c4e8a6d2b9f5e1c7a3d8b4f6e20
+```
+
+La première commande lit le fichier ; la seconde demande à Git ce que désigne le nom `main`. Préférez la seconde : Git range parfois ses références dans un fichier commun, `.git/packed-refs`, et le fichier individuel n'existe alors pas. Les hash de cette page sont illustratifs : les vôtres seront différents.
+
+::: idee-fausse
+::: fausse
+Une branche est une copie du projet.
+:::
+::: juste
+Une branche est une étiquette posée sur un commit. `git branch essai-seuil` écrit un fichier de 41 octets et ne copie **aucun** fichier du projet. Elle est **mobile** : quand vous commitez sur elle, Git la déplace sur le nouveau commit.
+:::
+:::
+
+Un [tag]{.t}, lui, est une étiquette **fixe** : `2025.0` désignera toujours le commit de la publication 2025, quoi qu'il arrive à `main`. Vous en créerez à l'étape 8.
+
+### HEAD : le curseur
+
+Reste à savoir où **vous** êtes. C'est le rôle de [HEAD]{.t}, un autre petit fichier :
+
+```{.bash risque="sur"}
+cat .git/HEAD
+```
+
+```{.text .sortie}
+ref: refs/heads/main
+```
+
+En temps normal, HEAD ne désigne pas un commit, mais **une branche**, qui désigne un commit. Tout le mécanisme du commit tient alors en deux temps :
+
+1. Git crée un nouveau commit dont le parent est le commit désigné par la branche courante ;
+2. Git **déplace cette branche** sur le nouveau commit. HEAD, qui désigne la branche, suit.
+
+Quand vous changez de branche avec `git switch`, Git déplace HEAD, puis met votre [copie de travail]{.t} et votre [index]{.t} en conformité avec l'instantané désigné. Déroulez le schéma : il rejoue ces mécanismes sur l'historique de l'Observatoire.
+
+::: {.git-graph scenario="e1-historique"}
+:::
+
+`git branch essai-seuil` crée l'étiquette sans vous y placer ; `git switch -c essai-seuil` fait les deux d'un coup. Vous l'utiliserez à l'étape 3. Vous croiserez aussi `git checkout` dans d'anciens tutoriels : c'est l'ancienne commande, qui mélangeait deux métiers (changer de branche et restaurer des fichiers). Git les a séparés en `git switch` et `git restore`.
+
+::: formateur
+**Graphe `e1-historique` (10 min).** Le dérouler au vidéoprojecteur en faisant prédire chaque étape **avant** de cliquer : « Après `git branch essai-seuil`, combien de fichiers ont été copiés ? Où est HEAD ? Après le commit, où est `main` ? »
+
+La troisième étape est la plus instructive : après `git switch essai-seuil`, rien ne change dans les fichiers. Beaucoup s'attendent à « ouvrir une copie ».
+:::
+
+## À vous : l'archéologie d'un indicateur
+
+Vous disposez maintenant du modèle. Place à l'enquête : retrouver le changement qui explique l'écart d'un point et demi, avec son auteur, sa date et sa raison.
+
+::: {.mission #m-e1-1 titre="Archéologie d'un indicateur" duree="25 min" mode="en binôme" depart="etape-1-debut"}
+::: objectif
+Retrouver le commit qui explique l'écart entre la part des 55 ans et plus publiée en 2025 et celle que donne le code actuel, puis expliquer le mécanisme en trois phrases.
+:::
+
+Cette mission est en **lecture seule** : aucune commande ne modifie le dépôt. Le formateur a placé la branche `main` du dépôt de formation sur `etape-1-debut`. En autonomie, suivez la procédure du [dépôt compagnon](../../fil-rouge/depot-compagnon.qmd).
+
+::: consignes
+1. Clonez le dépôt compagnon s'il n'est pas déjà sur votre poste, ouvrez son dossier dans VS Code (**File › Open Folder**), puis ouvrez le terminal intégré. Vérifiez le point de départ : `git log -1 --format=%s` doit afficher « Teste le schéma et la cohérence des données générées ».
+
+   ```{.bash risque="sur"}
+   git clone https://gitlab.example.org/oei/observatoire-industrie.git
+   cd observatoire-industrie
+   git log -1 --format=%s
+   ```
+
+2. Regardez la forme de l'historique. Repérez le tag `2025.0` et comptez les commits entre lui et `main`.
+
+   ```{.bash risque="sur"}
+   git log --oneline --graph --all
+   ```
+
+3. Listez les commits qui sont dans `main` mais pas dans la publication 2025, et qui touchent au code R :
+
+   ```{.bash risque="sur"}
+   git log --oneline 2025.0..main -- R/
+   ```
+
+4. Cherchez les commits qui ont changé la date de référence du calcul de l'âge. L'option `-S` (la « pioche ») retient les commits qui modifient le **nombre d'occurrences** d'une chaîne dans le fichier :
+
+   ```{.bash risque="sur"}
+   git log -S "31" -- R/age.R
+   ```
+
+5. Vérifiez par l'autre bout : quelle ligne de `R/age.R` fixe la date à laquelle l'âge est calculé, et quel commit l'a modifiée en dernier ?
+
+   ```{.bash risque="sur"}
+   git blame R/age.R
+   ```
+
+6. Lisez le commit suspect en entier : message, fichiers, diff.
+
+   ```{.bash risque="sur"}
+   git show <hash>
+   ```
+
+7. Écartez les autres suspects. `part_seniors()` est définie dans `R/indicateurs.R` et appelée par `scripts/03_indicateurs.R`. Qu'ont changé les commits qui touchent ces fichiers ? Leurs messages vous aident-ils ?
+
+   ```{.bash risque="sur"}
+   git log --oneline -- R/indicateurs.R scripts/03_indicateurs.R
+   ```
+
+8. Rédigez votre réponse à Inès en trois phrases : **quel** commit (hash, auteur, date), **quel** changement de méthode, et **pourquoi** il fait baisser la part des 55 ans et plus.
+:::
+
+::: reussite
+Vous citez le hash du commit en cause, son auteur et sa date, et `git show --stat <hash>` confirme qu'il modifie `R/age.R` et `tests/testthat/test-age.R`. Votre explication dit pourquoi l'ancien calcul surestimait la part des 55 ans et plus, et à peu près quelle proportion des salariés était concernée.
+:::
+
+::: indice
+`2025.0..main` se lit : « les commits que l'on atteint depuis `main` en remontant les parents, mais pas depuis `2025.0` ». C'est une question sur le graphe : ce qui s'est passé **depuis** la publication.
+:::
+
+::: {.indice titre="Indice 2 : que lire dans git blame ?"}
+Chaque ligne est préfixée par le hash abrégé du dernier commit qui l'a modifiée, son auteur et sa date. Cherchez la ligne qui construit la date de référence (`as.Date(…)`). Si son commit est **postérieur** à juin 2025, il n'était pas dans la publication.
+:::
+
+::: {.indice titre="Indice 3 : le mécanisme"}
+Le commit cherché modifie `R/age.R` et les tests de l'âge ; son message se termine par `Closes #7`. Pour comprendre l'écart, demandez-vous : à quelle date les données sont-elles extraites, et quels salariés ont un an de plus à cette date qu'au 31 décembre ?
+:::
+
+::: corrige
+**Chemin attendu.**
+
+- L'étape 3 fait apparaître deux commits : c11 (« Corrige le calcul de l'âge : âge au 31 décembre de l'année de référence ») et c14 (« Ajoute la répartition par PCS… »). c14 est hors sujet ; c11 est le suspect.
+- `git log -S "31" -- R/age.R` isole c11 : c'est lui qui introduit le 31 décembre.
+- `git blame R/age.R` attribue à c11 (Karim, 2025-09-15) la ligne de la date de référence ; le reste du fichier vient de c03 (2025-02-03).
+- `git show <c11>` : le corps du message explique le bug et se termine par `Closes #7`. Le diff montre le passage de la date d'extraction (30 juin N+1) au 31 décembre N. La forme exacte de la ligne dépend du dépôt compagnon ; par exemple :
+
+  ```diff
+  -  date_reference <- as.Date(paste0(millesime + 1, "-06-30"))
+  +  date_reference <- as.Date(paste0(millesime, "-12-31"))
+  ```
+
+**Explication attendue.** Jusqu'à c11, l'âge était calculé à la date d'extraction des données, le 30 juin de l'année suivante. Tous les salariés nés entre le 1^er^ janvier et le 30 juin avaient donc déjà « pris un an » : environ la moitié de l'effectif. Ceux qui avaient 54 ans au 31 décembre basculaient à 55 ans, ce qui gonflait la part des 55 ans et plus d'environ un point et demi. Le chiffre du code actuel est le bon ; celui du panorama 2025 publié était surestimé. (Cet erratum sera traité à l'étape 8.)
+
+**Étape 7 de la mission.** Elle fait sortir `maj` (c04) et `modifs` (c06) : pour les écarter, il faut les ouvrir avec `git show` et relire leur diff. C'est le moment d'introduire R01.
+
+**Pièges observés.**
+
+- `--all` affiche aussi les branches d'exercice et les tags de reprise des étapes suivantes : dire aux stagiaires de ne suivre que la ligne qui porte `main` et `2025.0`.
+- Des binômes lisent `2025.0..main` comme « de 2025.0 à main inclus » : faire remarquer que c10 n'apparaît pas.
+- Si le dépôt a été cloné avant la remise à zéro, `main` peut être plus loin que c15 : `git log -1 --format=%s main` le révèle. Voir la page formateur de remise à zéro.
+:::
+:::
+
+Retenez le coût de la septième consigne. Pour savoir si « maj » ou « modifs » avaient changé la méthode, il a fallu ouvrir chaque commit et relire son code. Un an après, même leur auteur ne s'en souvient plus. Le commit de la correction, lui, explique son choix et cite l'issue #7 : il a suffi de le lire.
+
+::: {.regle ref="R01"}
+:::
+
+### Regarder sous le capot
+
+L'archéologie vous a montré ce que Git sait de l'historique. Vérifiez maintenant, sur le vrai dépôt, ce que vous avez appris sur la nature d'un commit.
+
+::: {.mission #m-e1-2 titre="Regarder sous le capot" duree="10 min" mode="seul" depart="etape-1-debut"}
+::: objectif
+Prouver, commandes à l'appui, qu'un commit désigne un instantané complet et un parent, et qu'une branche n'est qu'un nom qui désigne un hash.
+:::
+
+::: consignes
+1. Demandez à Git la nature de l'objet désigné par HEAD, puis affichez son contenu brut :
+
+   ```{.bash risque="sur"}
+   git cat-file -t HEAD
+   git cat-file -p HEAD
+   ```
+
+   Repérez les lignes `tree`, `parent`, `author` et `committer`, puis le message.
+
+2. Affichez l'arbre racine de ce commit. Les guillemets protègent les accolades de certains terminaux :
+
+   ```{.bash risque="sur"}
+   git cat-file -p "HEAD^{tree}"
+   ```
+
+   Le dernier commit n'a modifié que des tests Python. L'arbre liste-t-il seulement `tests/`, ou tout le projet ?
+
+3. Comparez l'arbre de HEAD et celui de son parent (`HEAD~1`) :
+
+   ```{.bash risque="sur"}
+   git cat-file -p "HEAD~1^{tree}"
+   ```
+
+   Quelles lignes ont le même hash dans les deux arbres ? Laquelle diffère ?
+
+4. Vérifiez qu'une branche et HEAD ne sont que des noms :
+
+   ```{.bash risque="sur"}
+   cat .git/HEAD
+   git rev-parse HEAD main
+   ```
+
+5. Faites de même avec le tag de la publication 2025 :
+
+   ```{.bash risque="sur"}
+   git cat-file -t 2025.0
+   git rev-parse "2025.0^{commit}"
+   ```
+:::
+
+::: reussite
+Vous pouvez montrer, dans votre terminal : que `git cat-file -p "HEAD^{tree}"` liste **tous** les dossiers du projet (`R`, `data`, `python`, `reports`, `scripts`, `tests`…) ; que la ligne `R` porte le **même** hash dans l'arbre de `HEAD` et dans celui de `HEAD~1`, alors que la ligne `tests` diffère ; et que `git rev-parse HEAD main` affiche deux fois le même hash.
+:::
+
+::: indice
+Deux lignes identiques dans deux arbres, même hash : Git n'a stocké ce dossier qu'une fois, et les deux instantanés le désignent. C'est pour cela qu'un instantané complet ne coûte presque rien.
+:::
+
+::: {.indice titre="Indice 2 : pourquoi le tag donne-t-il un autre hash ?"}
+`git cat-file -t 2025.0` répond `tag`, pas `commit`. Un tag annoté est un objet à part entière (auteur, date, message), qui désigne à son tour le commit publié. `"2025.0^{commit}"` demande à Git de suivre ce lien jusqu'au commit.
+:::
+
+::: corrige
+Sortie attendue de `git cat-file -p HEAD` (hash et horodatage illustratifs) :
+
+```{.text .sortie}
+tree 7d2f41c09a8e5b3d6f1c2e4a9b8d7c6e5f4a3b21
+parent 9b04e6f2c1d8a7e3b5f9c2d4e6a8b1c3d5e7f902
+author Léa <lea@example.org> 1768208400 +0100
+committer Léa <lea@example.org> 1768208400 +0100
+
+Teste le schéma et la cohérence des données générées
+```
+
+- La date est écrite en secondes depuis le 1^er^ janvier 1970, suivie du fuseau.
+- L'arbre racine liste `.gitignore`, `R`, `README.md`, `_quarto.yml`, `data`, `python`, `reports`, `requirements.txt`, `scripts`, `tests` : des lignes `100644 blob …` pour les fichiers, `040000 tree …` pour les dossiers.
+- Entre `HEAD~1` et `HEAD`, seule la ligne `tests` change de hash (c15 ajoute `tests/python/`).
+- `git rev-parse 2025.0` renvoie le hash de l'**objet tag**, différent de celui du commit c10 : bonne occasion d'anticiper E8 (tag annoté).
+:::
+:::
+
+## HEAD détachée : visiter la publication 2025
+
+Pour refaire le chiffre publié, il faudrait retrouver les fichiers **exactement** tels qu'ils étaient au tag `2025.0`. Git le permet : on peut faire désigner à HEAD un commit plutôt qu'une branche.
+
+```{.bash risque="reversible"}
+git switch --detach 2025.0
+```
+
+```{.text .sortie}
+HEAD is now at 4e1b7a2 Finalise le panorama 2025 pour publication
+```
+
+Votre copie de travail contient maintenant le code de la publication 2025, `R/age.R` compris. `git status` le confirme dès sa première ligne : `HEAD detached at 2025.0`. C'est la [detached HEAD]{.t}, ou HEAD détachée. Ce n'est ni une erreur ni une panne : c'est un état, utile pour **regarder** le passé. Vous vous en servirez à l'étape 8 pour régénérer les chiffres 2025.
+
+Sans l'option `--detach`, `git switch` refuse, précisément pour que vous sachiez ce que vous faites :
+
+```{.text .sortie}
+fatal: a branch is expected, got tag '2025.0'
+hint: If you want to detach HEAD at the commit, try again with the --detach option.
+```
+
+Le risque apparaît si vous **commitez** dans cet état. Le commit est créé, HEAD avance avec lui, mais aucune branche ne le désigne. Dès que vous revenez sur `main`, plus aucun nom n'y mène.
+
+::: {.git-graph scenario="e1-head-detachee"}
+:::
+
+Pour revenir, `git switch main`, ou `git switch -`, qui ramène à la branche où vous étiez juste avant.
+
+## Quand ça coince
+
+::: {.incident #inc-e1-1 titre="« You are in 'detached HEAD' state »"}
+Tom veut relancer le calcul de 2025. Il suit un ancien tutoriel et tape `git checkout 2025.0`. Git lui répond :
+
+::: symptome
+```{.text .sortie}
+Note: switching to '2025.0'.
+
+You are in 'detached HEAD' state. You can look around, make experimental
+changes and commit them, and you can discard any commits you make in this
+state without impacting any branches by switching back to a branch.
+
+If you want to create a new branch to retain commits you create, you may
+do so (now or later) by using -c with the switch command. Example:
+
+  git switch -c <new-branch-name>
+
+Or undo this operation with:
+
+  git switch -
+
+Turn off this advice by setting config variable advice.detachedHead to false
+
+HEAD is now at 4e1b7a2 Finalise le panorama 2025 pour publication
+```
+:::
+
+::: hypotheses
+- Tom a cassé le dépôt, et il faut le recloner.
+- Le tag `2025.0` a été déplacé, et `main` est perdue.
+- HEAD désigne maintenant directement le commit du tag, et non plus une branche.
+- Tom n'a pas les droits sur le tag, et Git l'a bloqué en lecture seule.
+:::
+
+::: diagnostic
+C'est la troisième hypothèse. Utilisée avec un nom de tag ou un hash, l'ancienne commande `git checkout` détache HEAD **sans demander** ; `git switch`, lui, exige `--detach`. Git affiche ce long avertissement parce que Tom ne l'a pas demandé explicitement.
+
+Trois commandes le prouvent :
+
+```{.bash risque="sur"}
+git status
+cat .git/HEAD
+git log --oneline --graph --all
+```
+
+- `git status` commence par `HEAD detached at 2025.0` ;
+- `.git/HEAD` contient un hash de 40 caractères, et non plus `ref: refs/heads/main` ;
+- `main` et le tag `2025.0` n'ont pas bougé : rien n'est perdu, rien n'est cassé.
+:::
+
+::: correction
+Revenir sur la branche :
+
+```{.bash risque="reversible"}
+git switch main
+```
+
+```{.text .sortie}
+Previous HEAD position was 4e1b7a2 Finalise le panorama 2025 pour publication
+Switched to branch 'main'
+```
+
+`git switch -` fait la même chose ici, puisque Tom était sur `main` juste avant. Attention : si l'on venait d'un autre commit détaché, `git switch -` refuserait (`fatal: a branch is expected, got commit '…'`) ; `git switch main` marche toujours.
+
+Si Tom avait commité en HEAD détachée, Git l'aurait prévenu au retour sur `main` :
+
+```{.text .sortie}
+Warning: you are leaving 1 commit behind, not connected to
+any of your branches:
+
+  8c2d0f1 essai sur l'âge
+
+If you want to keep it by creating a new branch, this may be a good time
+to do so with:
+
+ git branch <new-branch-name> 8c2d0f1
+```
+
+Pour garder ce travail, il suffit de lui donner un nom, comme Git le propose : `git branch essai-age 8c2d0f1`.
+:::
+
+::: prevention
+- Lisez la **première ligne** de `git status` avant toute action : `On branch main` ou `HEAD detached at …`.
+- Pour visiter une version, dites-le explicitement : `git switch --detach 2025.0`.
+- Pour **travailler** à partir d'une version publiée, créez une branche dès le départ ; ce sera le point de départ d'un erratum, à l'étape 8.
+:::
+:::
+
+::: formateur
+**HEAD détachée et incident (7 min).** Faire taper `git switch --detach 2025.0`, puis `git status`, puis `git switch -`. Montrer ensuite le message de l'incident au vidéoprojecteur (`git checkout 2025.0` sur votre poste) : la différence entre les deux sorties fait comprendre que `--detach` est un **consentement explicite**.
+
+Ne pas s'attarder sur le commit en HEAD détachée ni sur `reflog` : E7 et E8 y reviennent. L'objectif ici est seulement de ne plus avoir peur du message.
+:::
+
+## Dans VS Code
+
+::: {.vscode titre="Voir l'historique, la chronologie d'un fichier et l'auteur d'une ligne"}
+Chacune de ces vues exécute pour vous les commandes que vous venez de taper. Leur disposition varie selon la version de VS Code et les extensions installées sur votre poste.
+
+- **Le graphe.** Dans les versions récentes, la vue **Source Control** (<kbd>Ctrl</kbd>+<kbd>Maj</kbd>+<kbd>G</kbd>) comporte une section **Graph** qui dessine l'historique, avec les branches et les tags : l'équivalent de `git log --oneline --graph`. Des extensions comme *Git Graph* ou *GitLens* en offrent des variantes, si votre DSI les propose.
+- **La chronologie d'un fichier.** Ouvrez `R/age.R`, puis la section **Timeline** (*Chronologie*) en bas de l'explorateur : elle liste les commits qui ont modifié ce fichier, comme `git log -- R/age.R`. Un clic ouvre le diff de ce commit.
+- **L'auteur d'une ligne.** Les versions récentes affichent, pour la ligne où se trouve le curseur, le dernier commit qui l'a modifiée (dans la barre d'état ou en fin de ligne, selon les réglages) : c'est `git blame`, ligne par ligne.
+- **La position de HEAD.** En bas à gauche, la barre d'état affiche la branche courante. En HEAD détachée, elle affiche un hash ou un nom de tag à la place : un réflexe à prendre.
+:::
+
+## Ce que disent les développeurs
+
+::: decodeur
+« Fais un [blame]{.t} sur `age.R` et récupère le [hash]{.t} du [commit]{.t} : il est après le [tag]{.t} `2025.0`. Pour refaire le chiffre publié, passe en [detached HEAD]{.t} sur le tag. »
+
+::: traduction
+Regarde, ligne par ligne, quel commit a modifié en dernier le calcul de l'âge, et note son identifiant : ce commit n'était pas encore dans la version publiée. Pour retrouver les fichiers de la publication, place-toi directement sur le commit marqué par le tag, sans branche.
+:::
+:::
+
+Votre enquête a été rapide parce qu'un commit expliquait son choix. Les développeurs ont codifié cette exigence ; un statisticien l'applique pour les mêmes raisons, avec un autre contenu.
+
+::: {.rosette principe="tracabilite"}
+::: principe
+Chaque changement dit pourquoi il existe, et cette raison se retrouve des années plus tard, sans interroger son auteur.
+:::
+::: dev
+Messages normalisés selon les [Conventional Commits]{.t} (`fix: calcule l'âge au 31 décembre`), qui permettent de générer automatiquement la liste des changements d'une version. Chaque commit cite son ticket : sur GitLab, `Closes #7` dans un message crée un lien vers l'issue et la ferme quand le commit arrive sur la branche par défaut. Git, lui, ne sait rien des issues.
+:::
+::: stat
+Le message explique le **choix méthodologique** et son effet attendu sur les chiffres, puis cite l'issue. C'est exactement ce que fait le commit de Karim :
+
+```{.text .sortie}
+Corrige le calcul de l'âge : âge au 31 décembre de l'année de référence
+
+L'âge était calculé à la date d'extraction des données (30 juin N+1).
+Les salariés nés au premier semestre comptaient un an de trop, ce qui
+surestimait la part des 55 ans et plus.
+
+Closes #7
+```
+:::
+:::
+
+## En pratique statistique
+
+Retrouver pourquoi un chiffre a changé entre deux éditions est une question que tout producteur de statistiques se pose. Avec des messages explicites, l'historique y répond presque seul :
+
+- `git log --oneline 2025.0..main -- R/ scripts/` donne la liste des changements de méthode depuis la dernière publication. C'est la matière première de l'encadré « Changements par rapport à l'édition précédente » du panorama 2026.
+- `git diff 2025.0 main -- R/age.R` montre ce qui a changé dans un calcul, d'une publication au code actuel.
+- Quand on ignore **quel fichier** a pu changer un chiffre, `git bisect` fait la recherche à votre place, par dichotomie sur l'historique. C'est l'objet d'un [approfondissement](../approfondissements/bisect.qmd).
+
+Une limite, dès maintenant : Git retrouve le **code** de 2025. Pour refaire le **chiffre** publié, il faut aussi les mêmes données et le même environnement logiciel. C'est ce que garantira une publication bien faite, à l'étape 8.
+
+::: formateur
+**Timing indicatif (60 min).**
+
+| Temps | Séquence |
+|---|---|
+| 0–5 min | Situation, question d'Inès, hypothèses du groupe |
+| 5–20 min | Instantané, parents, branche, HEAD : graphe `e1-historique`, idées reçues |
+| 20–40 min | Mission m-e1-1 (binômes), mise en commun, règle R01 |
+| 40–48 min | Mission m-e1-2 |
+| 48–55 min | HEAD détachée, incident inc-e1-1 |
+| 55–60 min | VS Code, rosette, checkpoint |
+
+Si le groupe est en retard, m-e1-2 peut se faire en démonstration au vidéoprojecteur. Ne pas sacrifier l'archéologie : elle donne son sens à R01 et prépare l'erratum de E8.
+:::
+
+::: retenir
+- Un commit est un instantané complet, identifié par un hash et relié à son ou ses parents : l'historique est un graphe tourné vers le passé.
+- Une branche est une étiquette mobile, un nom qui désigne un hash et avance à chaque commit ; un tag est une étiquette fixe.
+- HEAD dit où vous êtes : sur une branche (qui avancera au prochain commit) ou, détachée, directement sur un commit.
+:::
+
+::: {.checkpoint titre="Avant de passer à la suite"}
+::: question
+Que contient réellement un commit ?
+
+::: reponse
+La référence d'un arbre complet (l'instantané de tous les fichiers suivis), le hash de son ou ses parents, un auteur, un committer, des dates et un message. Le diff n'y est pas : Git le calcule à la demande en comparant deux instantanés.
+:::
+:::
+
+::: question
+Vous tapez `git branch essai-seuil`. Qu'est-ce que Git a écrit sur le disque ?
+
+::: reponse
+Un nom qui désigne le hash du commit courant (un fichier de 41 octets sous `.git/refs/heads/`, ou une ligne dans `.git/packed-refs`). Aucun fichier du projet n'est copié, et HEAD reste sur votre branche actuelle tant que vous ne faites pas `git switch essai-seuil`.
+:::
+:::
+
+::: question
+Pourquoi `git log --oneline 2025.0..main` n'affiche-t-il jamais le commit de la publication 2025 ?
+
+::: reponse
+Parce que `A..B` désigne les commits atteignables depuis `B` en remontant les parents, **moins** ceux atteignables depuis `A`. Le commit du tag `2025.0` et tous ses ancêtres sont atteignables depuis `2025.0` : ils sont exclus. Il reste ce qui a été fait depuis la publication.
+:::
+:::
+
+::: question
+`cat .git/HEAD` affiche un hash de 40 caractères au lieu de `ref: refs/heads/main`. Où êtes-vous, et que faut-il faire avant de commiter ?
+
+::: reponse
+En HEAD détachée : HEAD désigne un commit, pas une branche. Si vous ne faites que regarder, revenez avec `git switch main`. Si vous voulez travailler à partir de ce commit, créez d'abord une branche (`git switch -c <nom>`) pour qu'un nom retienne vos commits.
+:::
+:::
+
+::: {.question rappel="e0"}
+Qui fournit chacun de ces éléments : Git, GitLab ou VS Code ? Un commit ; la vue Source Control ; une issue comme #7 ; un tag.
+
+::: reponse
+Le commit et le tag appartiennent à Git : ils existent sur votre machine, sans serveur. L'issue #7 est fournie par GitLab : Git n'en sait rien, même si un message de commit peut la citer. La vue Source Control est une interface de VS Code, qui exécute des commandes Git.
+:::
+:::
+:::
+
+::: pont
+Vous savez lire un historique et dire où vous êtes. Jusqu'ici, tout se passait dans **votre** dépôt. Mais l'historique de l'Observatoire existe aussi sur GitLab, et vos collègues y poussent leurs commits : l'étape 2 commence par un push refusé.
+:::
