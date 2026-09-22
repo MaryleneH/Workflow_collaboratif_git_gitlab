@@ -167,7 +167,7 @@ Un réglage oublié ne se voit qu'après coup. Les réglages du projet font part
 
 ## 6. Formaliser : le `CONTRIBUTING.md`
 
-Le document qui suit est ce que l'équipe fusionne par la MR !6 (commit c25). Il est volontairement **complet** : c'est la référence qu'un nouvel arrivant lit le premier jour, et que l'on cite dans une review (« voir CONTRIBUTING, section Données »). La version maintenue vit dans le mémo [Notre workflow](../../memos/notre-workflow.qmd).
+Le document qui suit est la version complète que l'équipe rédige en E10. Le `CONTRIBUTING.md` entré dans `main` par la MR !6 (commit c25 du dépôt compagnon) en est la version courte : même cycle, mêmes réglages GitLab, même carnet de règles. Celui-ci est volontairement **complet** : c'est la référence qu'un nouvel arrivant lit le premier jour, et que l'on cite dans une review (« voir CONTRIBUTING, section Données »). La version maintenue vit dans le mémo [Notre workflow](../../memos/notre-workflow.qmd).
 
 ````markdown
 # Contribuer au Panorama de l'emploi dans la filière industrielle stratégique
