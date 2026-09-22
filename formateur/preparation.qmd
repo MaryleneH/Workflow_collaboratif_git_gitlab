@@ -1,0 +1,424 @@
+---
+title: "Préparer l'infrastructure"
+surtitre: "Espace formateur"
+chapeau: "L'instance GitLab et son édition, les groupes, projets et rôles, l'import du dépôt compagnon, les issues, la protection de main, les runners, les services VS Code sur Onyxia, le réseau, les vérifications à J-7 et J-1, et le plan de secours."
+description: "Préparation technique de la formation Git/GitLab niveau 2 : GitLab, projets, runners, Onyxia, vérifications et plan de secours."
+---
+
+## Ce qu'il faut, et quand
+
+La formation repose sur quatre briques. Chacune a son responsable et son
+échéance. Si l'une d'elles manque le matin du jour 1, c'est une étape entière
+qui tombe.
+
+| Brique | Sert à partir de | Qui la fournit | Prête à |
+|---|---|---|---|
+| Instance GitLab, groupe de session, comptes des stagiaires | E0 | administrateur GitLab + formateur | J-7 |
+| Projets importés depuis le dépôt compagnon, issues créées | E1 | formateur | J-1 |
+| Runners capables de tirer les trois images | E6 | équipe plateforme (le « Jules » réel) | J-7, puis réchauffés à J-1 |
+| Services VS Code (Onyxia ou postes) avec Git ≥ 2.40, R 4.4, Python 3.12 | E0 | équipe plateforme | J-7 |
+
+Les tâches datées sont regroupées plus bas en deux listes :
+[J-7](#j-7) et [J-1](#j-1).
+
+## Instance GitLab : Free ou Premium ? {#edition}
+
+Tout le parcours fonctionne sur **GitLab Free** (auto-géré ou non), en version
+16 ou 17. Une seule notion change vraiment de nature selon l'édition :
+l'[approval]{.t} obligatoire.
+
+| Ce que le parcours utilise | Étape | Free | Premium ou Ultimate |
+|---|---|---|---|
+| [Branche protégée]{.t ref="branche-protegee"} (*Allowed to merge*, *Allowed to push and merge*, *Allowed to force push*) | E4 | oui | oui |
+| Merge Request, Draft, commentaires, suggestions, squash au merge | E4, E7 | oui | oui |
+| Bouton *Approve* | E4 | oui, mais **l'approbation reste facultative** | oui |
+| Nombre d'approbations **obligatoire**, règles d'approbation | E4, E10 | **non** | oui |
+| Approbation des *Code Owners* | E10 (évoquée) | non | oui |
+| *Pipelines must succeed*, *All threads must be resolved* | E6, E10 | oui | oui |
+| Pipelines, runners, artefacts, GitLab Pages | E6 | oui (Pages si activé sur l'instance) | oui |
+| Tags, tags protégés, [GitLab Release]{.t} | E8 | oui | oui |
+
+Sur une instance Free, dites-le clairement en E4 : on peut **approuver**, mais
+GitLab n'**exige** pas d'approbation avant le merge. La règle R06 (« aucune
+modification n'entre sans MR relue ») s'appuie alors sur trois éléments : la
+branche protégée, qui interdit le push direct ; *All threads must be resolved* ;
+et une convention d'équipe écrite dans `CONTRIBUTING.md` en E10. C'est un bon
+exemple de la frontière entre ce que l'outil impose et ce que l'équipe décide.
+
+::: {.formateur titre="Les libellés bougent d'une version à l'autre"}
+Les menus cités dans le parcours sont ceux de GitLab 16 et 17 :
+Settings › Repository › Protected branches ; Settings › Merge requests (*Merge
+method*, *Squash commits when merging*, *Merge checks*). Certains libellés ont
+changé entre versions : *Allowed to push* est devenu *Allowed to push and
+merge*, et le menu des jetons personnels s'est déplacé dans les préférences
+utilisateur. Parcourez les menus de **votre** instance à J-7 et notez les
+écarts avant de les projeter.
+:::
+
+## Groupe, projets et rôles {#projets}
+
+**Un groupe par session**, par exemple `oei-2026-09`. Il contient :
+
+| Projet | Nombre | Historique importé | Usage |
+|---|---|---|---|
+| `observatoire-reference` | 1 | complet | vos démonstrations projetées, la répétition J-7, le pipeline de référence |
+| `observatoire-binome-01`, `-02`… | un par binôme | complet, **sans le corrigé de E8** (voir [l'import](#import)) | E0 à E10 |
+| `observatoire-equipe-a`, `-b`… | un par équipe de 3 ou 4 | complet | E11 |
+
+::: {.formateur titre="Pourquoi un projet par binôme, et non par équipe"}
+Un projet par équipe de quatre semble plus réaliste, mais il multiplie les
+collisions **non pédagogiques**. Deux binômes voudraient ouvrir la même MR !1
+depuis la même branche, ce que GitLab refuse. Deux rebase concurrents de
+`21-regrouper-pcs-e7` s'écraseraient en E7. Et chaque réalignement de `main`
+obligerait quatre personnes à s'arrêter. Avec un projet par binôme, le push
+refusé de E2 arrive quand même : le binôme et le collègue simulé suffisent.
+La dimension « équipe » est réservée à E10 et E11, où elle a du sens.
+:::
+
+**Rôles.**
+
+- Vous : *Owner* du groupe, donc *Maintainer* de tous les projets. Tous les
+  imports, tous les réglages et tous les réalignements se font avec votre
+  compte.
+- Chaque stagiaire : *Reporter* sur le groupe, ce qui lui permet de voir les
+  projets des autres et de comparer ; *Developer* sur le projet de son binôme
+  et sur celui de son équipe.
+- En E10, si vous choisissez de faire configurer les projets par les
+  stagiaires, promouvez **un** stagiaire *Maintainer* de son projet pour la
+  durée de l'étape, puis rétrogradez-le.
+
+Un *Developer* peut pousser sur une branche non protégée, ouvrir et fusionner
+une MR si la protection de `main` l'autorise, et pousser un tag non protégé. Il
+ne peut ni modifier les réglages du projet, ni protéger une branche : c'est
+exactement la situation d'un statisticien dans une équipe réelle.
+
+**Protection par défaut de la branche principale.** Selon sa configuration,
+GitLab protège automatiquement la branche par défaut d'un nouveau projet.
+Souvent, seuls les *Maintainers* peuvent alors y pousser. Or les stagiaires
+doivent pouvoir pousser sur `main` en E2 et E3. Réglez la protection initiale
+au niveau du groupe (Settings › Repository, section *Default branch*, option de
+protection initiale : **non protégée**), ou déprotégez `main` projet par projet
+après l'import. Voir [le calendrier de protection](#protection).
+
+## Importer le dépôt compagnon {#import}
+
+Le dépôt compagnon n'est pas un dépôt que l'on clone : c'est un **historique
+construit** par un script, identique à chaque exécution (mêmes dates, auteurs,
+messages, fichiers). On le construit une fois, on le vérifie, puis on le pousse
+tel quel dans chaque projet.
+
+**1. Construire et vérifier** (sur votre poste ou dans un service VS Code) :
+
+```{.bash risque="sur"}
+python depot-compagnon/outils/construire_historique.py --sortie ../construit/observatoire-industrie
+python depot-compagnon/outils/verifier_historique.py --sortie ../construit/observatoire-industrie
+```
+
+Le vérificateur contrôle notamment les tags de reprise `etape-N-debut`, les
+branches d'exercice et l'écart de la part des 55 ans et plus entre `2025.0` et
+`main`. L'option `--jusqua` limite la construction à une étape donnée : elle
+est utile pour reconstruire un point de reprise précis. Consultez `--help` pour
+les options exactes.
+
+**2. Préparer un miroir nu.** `git clone --mirror` copie **toutes** les
+références (branches et tags), sans copie de travail et sans les références
+`origin/*` qu'un clone ordinaire ajouterait :
+
+```{.bash risque="sur"}
+git clone --mirror ../construit/observatoire-industrie observatoire-miroir.git
+git -C observatoire-miroir.git for-each-ref --format='%(refname)'
+```
+
+Vérifiez la liste : `main`, `18-taux-recrutement`, `21-regrouper-pcs`,
+`21-regrouper-pcs-e7`, `maintenance/2025`, `hotfix/25-erratum-age`, les tags
+`2025.0`, `2025.1`, `2026.0` et les tags `etape-1-debut` à `etape-11-debut`.
+
+**3. Retirer le corrigé de E8 pour les projets de binôme.** Les tags `2026.0`
+et `2025.1` et les branches `maintenance/2025` et `hotfix/25-erratum-age` sont
+ce que les stagiaires **produisent** en E8. S'ils existent déjà, le
+`git tag -a 2026.0` de E8 échoue et la solution est visible dans GitLab.
+Préparez donc un second miroir, sans ces quatre références :
+
+```{.bash risque="reversible"}
+git clone --mirror ../construit/observatoire-industrie observatoire-miroir-binomes.git
+git -C observatoire-miroir-binomes.git tag -d 2026.0 2025.1
+git -C observatoire-miroir-binomes.git branch -D maintenance/2025 hotfix/25-erratum-age
+```
+
+Les projets d'équipe (E11) et le projet de référence reçoivent le miroir
+**complet** : l'incident « erratum urgent `2026.1` » de E11 suppose que `2026.0`
+existe.
+
+**4. Pousser dans chaque projet vide.** Créez le projet dans GitLab **sans**
+cocher *Initialize repository with a README* : il doit être vide. Puis :
+
+```{.bash risque="dangereux"}
+for n in 01 02 03 04 05 06; do
+  git -C observatoire-miroir-binomes.git push --mirror -o ci.skip \
+    "https://gitlab.example.org/oei-2026-09/observatoire-binome-$n.git"
+done
+```
+
+- `--mirror` rend le dépôt distant **identique** au miroir local : il crée,
+  force et **supprime** des références. Sur un projet vide, c'est exactement ce
+  que l'on veut. Sur un projet où des stagiaires ont travaillé, cette commande
+  efface leurs branches. Ne la relancez jamais sur un projet en cours
+  d'utilisation.
+- `-o ci.skip` demande à GitLab de ne créer **aucun** pipeline pour ce push.
+  Sans cette option, chaque branche et chaque tag qui contient
+  `.gitlab-ci.yml` (à partir de c21) déclencherait un pipeline. Sur les tags,
+  le job `publication` créerait même des GitLab Releases.
+
+**5. Contrôler dans GitLab.** Vérifiez que la branche par défaut est bien
+`main` (Settings › Repository, section *Branch defaults* ou *Default branch*
+selon la version) et que les tags apparaissent (Code › Tags).
+
+## Créer les issues {#issues}
+
+Les pages citent des numéros précis : #7, #12, #13, #18, #19, #20, #21, #25,
+#27 et #30 à #34. GitLab numérote les issues **par projet**, dans l'ordre de
+création, et **ne réutilise jamais un numéro**, même après suppression.
+L'outil `creer_issues.py` crée donc les issues dans l'ordre et comble les trous
+par des issues de service, fermées aussitôt. Ainsi, « Ajouter le taux de
+recrutement par métier » reçoit bien le numéro #18.
+
+```{.bash risque="sur"}
+read -rs GITLAB_TOKEN        # collez le jeton : il n'apparaît pas à l'écran ni dans l'historique
+python depot-compagnon/outils/creer_issues.py --projet oei-2026-09/observatoire-binome-01 \
+  --token "$GITLAB_TOKEN" --dry-run
+```
+
+```{.bash risque="reversible"}
+for n in 01 02 03 04 05 06; do
+  python depot-compagnon/outils/creer_issues.py --projet "oei-2026-09/observatoire-binome-$n" \
+    --token "$GITLAB_TOKEN"
+done
+```
+
+- `--dry-run` affiche ce qui serait créé sans rien créer : lancez-le toujours
+  d'abord.
+- Le jeton est un jeton personnel **de votre compte**, avec la portée `api`.
+  Donnez-lui une date d'expiration proche : après la session, il ne sert plus.
+- L'outil suppose un projet **sans aucune issue**. Si le projet en contient
+  déjà, les numéros seront décalés, et le seul remède fiable est de recréer le
+  projet.
+
+**La MR !1.** Les Merge Requests ont leur propre compteur, lui aussi par
+projet. Pour que la MR piégée de Tom soit bien la !1, **n'ouvrez aucune MR**
+dans un projet de binôme avant E4. Ouvrez-la ensuite, selon ce que prévoit la
+page E4 : soit vous, avant l'étape (Merge requests › New merge request, source
+`18-taux-recrutement`, cible `main`, marquée *Draft*), soit un stagiaire, en
+direct. Les numéros des MR suivantes (!2, !3…) dépendent de ce que fait chaque
+binôme et ne suivent pas forcément la bible : seuls les numéros d'issues sont
+garantis.
+
+## Protéger main au bon moment {#protection}
+
+La protection de `main` fait partie du **scénario**. En E2, le push direct sur
+`main` doit être possible pour que l'incident « push refusé » soit un incident
+Git, et non un refus de GitLab. En E4, c'est l'inverse : le refus de GitLab
+**est** la leçon.
+
+| Moment | État de `main` dans les projets de binôme | Où |
+|---|---|---|
+| Import → fin de E3 | **non protégée** : les *Developers* poussent directement | Settings › Repository › Protected branches › *Unprotect* |
+| E4, en direct et projeté | protégée : *Allowed to merge* = Developers + Maintainers ; *Allowed to push and merge* = No one ; *Allowed to force push* = désactivé | idem, *Protect a branch* |
+| Réalignements (avant E6, E7, E8) | *Allowed to force push* activé **le temps de l'opération**, puis désactivé | idem |
+| E8 | vous protégez aussi `maintenance/2025` (vous jouez Inès) | idem |
+| E10 | réglages de MR choisis par l'équipe | Settings › Merge requests |
+
+Pour E4, préparez un onglet ouvert sur la page de protection du projet d'un
+binôme volontaire : la démonstration prend deux minutes.
+
+## Runners et images {#runners}
+
+Le `.gitlab-ci.yml` du dépôt (apparu en c21) utilise trois [images]{.t ref="image"} :
+
+| Image | Jobs | Remarque |
+|---|---|---|
+| `python:3.12-slim` | `lint-python`, `tests-python`, `donnees` | légère ; installe `requirements.txt` à chaque job |
+| `rocker/r-ver:4.4.1` | `lint-r`, `tests-r`, `indicateurs` | installe dplyr, testthat, lintr depuis le dépôt de paquets configuré dans l'image |
+| `rocker/verse:4.4.1` | `rapport` | contient Quarto et TeX : **plusieurs gigaoctets**, c'est elle qui coûte le plus au premier tirage |
+
+**Ce que vous devez obtenir de l'équipe plateforme :**
+
+- des [runners]{.t ref="runner"} d'instance ou de groupe, avec un exécuteur
+  Docker ou Kubernetes, **disponibles pour le groupe de session** ;
+- l'acceptation des jobs **sans tag** (*Run untagged jobs*). Sinon, aucun job
+  du dépôt ne démarre et le pipeline reste en attente (*pending*) ;
+- l'accès aux trois images, soit directement sur Docker Hub, soit par un miroir
+  de registre, soit par le *Dependency Proxy* de GitLab. Docker Hub limite les
+  téléchargements anonymes : une quinzaine de pipelines lancés en même temps
+  peut suffire à atteindre la limite ;
+- une concurrence suffisante. En E6, avec six binômes qui poussent à la même
+  minute, les stages `verifier` et `tester` lancent jusqu'à **douze jobs
+  simultanés**. Un peu d'attente est acceptable ; au-delà de cinq minutes de
+  file, l'étape s'enlise.
+
+**Temps de pipeline.** Mesurez-les à J-7 sur le projet de référence et
+reportez-les ici. Ordres de grandeur habituels, à confirmer sur votre instance :
+
+| Pipeline | Durée typique |
+|---|---|
+| Premier pipeline complet, images à tirer | 10 à 20 min |
+| Pipeline complet, images en cache | 4 à 8 min |
+| `verifier` + `tester` seuls (branche en échec de E6) | 2 à 4 min |
+
+La veille, lancez un pipeline sur le projet de référence : c'est ce qui
+« réchauffe » les runners, car les images restent en cache sur les machines qui
+les ont tirées. Avec un exécuteur Kubernetes, le cache dépend du nœud sur
+lequel tombe chaque job ; le gain est alors moins prévisible.
+
+**Les deux jobs de publication.**
+
+- `pages` (sur `main`) ne déploie un site que si GitLab Pages est activé sur
+  l'instance. Sinon, ce n'est pas bloquant pour le parcours : signalez-le en E6.
+- `publication` (sur tag) crée la GitLab Release en E8. Il utilise l'outil de
+  release de GitLab (image `release-cli` ou `glab`, selon la version du dépôt
+  compagnon), qui doit pouvoir être tiré par le runner. Testez-le à J-7 en
+  poussant un tag de test sur le projet de référence. Supprimez ensuite la
+  Release (Deploy › Releases), puis le tag.
+
+## Services VS Code sur Onyxia {#onyxia}
+
+Si l'équipe travaille sur Onyxia, chaque stagiaire lance un **service VS Code**
+qui contient R et Python (dans le catalogue, un service de type
+« vscode-r-python » ; le nom exact dépend de votre instance). Le service doit
+fournir Git ≥ 2.40, R 4.4 avec dplyr et testthat, et Python 3.12.
+
+**Identité et jeton Git.**
+
+- Dans Onyxia, *Mon compte*, onglet Git (ou *Services externes*, selon la
+  version) : chaque stagiaire renseigne son nom, son adresse et son jeton
+  GitLab. Ces valeurs sont injectées dans les services **au lancement** : un
+  service lancé avant la saisie ne les a pas, il faut le relancer.
+- Le jeton est un jeton personnel GitLab (menu *Access tokens* des préférences
+  utilisateur) avec les portées `read_repository` et `write_repository`, et une
+  date d'expiration postérieure au jour 2. Faites-le créer en E0, pas avant :
+  c'est déjà un premier contact avec l'interface GitLab.
+- Si le service ne transmet pas le jeton à Git, `git clone` demande un
+  identifiant et un mot de passe : le nom d'utilisateur GitLab, puis le jeton
+  comme mot de passe.
+- N'acceptez jamais de jeton écrit **dans l'URL** du remote
+  (`https://nom:jeton@…`). Il finit en clair dans `.git/config` et dans la
+  sortie de `git remote -v` : c'est la règle R09 appliquée à soi-même.
+
+**Configuration Git à contrôler** dans un service neuf :
+
+```{.bash risque="sur"}
+git --version                                  # 2.40 ou plus
+git config --show-origin --get-regexp '^user\.'
+git config --show-origin --get-regexp '^pull\.' || echo "Aucun réglage pull : parfait pour E2."
+```
+
+Aucun réglage `pull.*` ne doit exister au départ. Sinon, l'incident « divergent
+branches » de E2 ne se produit pas, et R07 (`pull.ff only`) perd son sens en
+E4.
+
+**Éphémérité.** Un service Onyxia peut être supprimé, par son utilisateur, par
+une politique de nettoyage ou par une panne, et son volume de travail disparaît
+avec lui. C'est l'origine de la règle R03. Demandez aux stagiaires de **ne pas
+supprimer** leur service entre les deux jours, mais de tout pousser quand même
+le soir du jour 1. Le parcours ne dépend pas de la survie du service : un
+nouveau clone suffit le lendemain.
+
+**Sans Onyxia.** Sur des postes locaux, il faut VS Code, Git ≥ 2.40, R 4.4 et
+Python 3.12, avec les mêmes contrôles. Vérifiez les droits d'installation des
+paquets R et Python bien avant J-7.
+
+## Réseau contraint et proxy {#reseau}
+
+- **HTTPS partout.** Le port SSH est souvent fermé en entreprise : toutes les
+  URL du parcours sont en `https://`. N'installez pas de clés SSH.
+- **Proxy côté stagiaire.** Git respecte les variables `https_proxy` et
+  `no_proxy` de l'environnement. Si elles ne sont pas fournies par le service,
+  réglez `git config --global http.proxy http://proxy.example.org:3128`, et
+  seulement si l'instance GitLab n'est pas joignable directement.
+- **Certificat d'entreprise.** Si un proxy intercepte TLS, Git refuse le
+  certificat. La réponse est de déclarer l'autorité de certification
+  (`git config --global http.sslCAInfo /chemin/ca-entreprise.pem`), jamais
+  `http.sslVerify false`.
+- **Proxy côté runners.** Déclarez `HTTP_PROXY`, `HTTPS_PROXY` et `NO_PROXY`
+  en variables CI/CD du groupe (Settings › CI/CD › Variables), ou dans la
+  configuration du runner. `NO_PROXY` doit contenir le nom de l'instance
+  GitLab.
+- **Dépôts de paquets.** Si PyPI, CRAN ou le Posit Package Manager ne sont pas
+  joignables, il faut un miroir interne. Déclarez-le en variables CI/CD
+  (`PIP_INDEX_URL` pour pip, dépôt R dans la configuration de l'image), sans
+  modifier le `.gitlab-ci.yml` du dépôt compagnon : sinon, ses hash ne
+  correspondraient plus à la bible.
+
+## Vérifications à J-7 {#j-7}
+
+- [ ] Version et édition de l'instance GitLab connues ; tableau
+  [Free ou Premium](#edition) relu ; écarts de libellés notés.
+- [ ] Groupe de session créé ; vous en êtes *Owner* ; protection initiale de
+  la branche par défaut réglée.
+- [ ] Comptes GitLab et Onyxia des stagiaires existants (ou procédure de
+  création transmise).
+- [ ] Dépôt compagnon construit **et** vérifié (`verifier_historique.py`
+  sans erreur).
+- [ ] Projet de référence importé (miroir complet, `-o ci.skip`) et issues
+  créées.
+- [ ] Sur le projet de référence : pipeline **vert** sur `main` ; pipeline
+  **rouge** sur `21-regrouper-pcs`, avec exactement `tests-r` et `lint-r` en
+  échec. Durées notées.
+- [ ] Tag de test poussé : la Release est créée ; puis tag et Release
+  supprimés.
+- [ ] Service VS Code neuf : Git ≥ 2.40, aucun `pull.*`, clone et push d'une
+  branche de test réussis, `testthat` et `pytest` lancés avec succès.
+- [ ] Simulateur de collègue essayé en `--dry-run` sur le projet de référence.
+- [ ] Carnet de règles (une carte par règle) et cartes-incident de E11
+  imprimés.
+- [ ] Parcours complet relu dans le profil formateur, corrigés compris.
+
+## Vérifications à J-1 {#j-1}
+
+- [ ] Projets de binôme importés depuis le miroir **sans** le corrigé de E8 ;
+  projets d'équipe depuis le miroir complet.
+- [ ] Issues créées dans chaque projet ; `#18` s'intitule bien « Ajouter le
+  taux de recrutement par métier ».
+- [ ] Aucune MR ouverte dans les projets de binôme.
+- [ ] `main` **non protégée** dans les projets de binôme ; les stagiaires
+  sont *Developers*.
+- [ ] Un pipeline lancé sur le projet de référence dans les dernières
+  24 heures (runners chauds).
+- [ ] Table des binômes : noms, URL des projets, équipe E11.
+- [ ] Site formateur construit en local (`quarto render --profile formateur`),
+  consultable même sans réseau.
+- [ ] Miroirs nus (`observatoire-miroir*.git`) présents sur votre poste : ils
+  servent aux réalignements et à la reconstruction.
+
+## Plan de secours {#secours}
+
+| Panne | Ce qui est touché | Repli |
+|---|---|---|
+| GitLab inaccessible | E2 à E4, E6 à E11 | E1 se fait sur un clone local. Pour E2 et E3, un dépôt nu **local** joue le rôle du serveur (voir ci-dessous). E4, E6 et E10 deviennent des démonstrations sur une autre instance si vous en avez une, sinon des lectures commentées des pages. |
+| Runners en panne ou saturés | E6, et la Release de E8 | Montrer les pipelines déjà exécutés du projet de référence (ils restent consultables), et lancer les tests à la main dans le terminal : c'est littéralement ce que fait le job. |
+| Onyxia indisponible | tout | VS Code local si les postes le permettent ; sinon, binômes regroupés sur les services qui fonctionnent. |
+| Jeton refusé | un stagiaire | Nouveau jeton, avec les bonnes portées et la bonne date d'expiration ; vérifier qu'il n'est pas écrit dans l'URL du remote. |
+| Réseau coupé | tout | Site formateur local ; miroir nu sur votre poste ; exercices locaux. |
+
+**Le serveur de secours local.** Git n'a pas besoin de GitLab pour avoir un
+[remote]{.t}. Un dépôt nu dans le même service suffit pour vivre le push
+refusé, le fetch et la divergence de E2, et le mettre en place prend deux
+minutes :
+
+```{.bash risque="reversible"}
+git clone --bare observatoire-miroir-binomes.git ~/serveur/observatoire.git
+git clone ~/serveur/observatoire.git ~/alice/observatoire-industrie
+git clone ~/serveur/observatoire.git ~/bob/observatoire-industrie
+```
+
+Chaque membre du binôme travaille dans son dossier, `origin` pointe vers
+`~/serveur/observatoire.git`, et tout ce qui relève de Git fonctionne à
+l'identique. C'est d'ailleurs une excellente démonstration du fait
+qu'`origin` n'est pas GitLab. Ce qui manque, c'est tout ce que **GitLab**
+fournit : MR, review, branche protégée, pipeline, Release. Dites-le.
+
+Pour les tests à la main, en cas de runners indisponibles :
+
+```{.bash risque="sur"}
+Rscript -e 'testthat::test_dir("tests/testthat")'
+python -m pytest tests/python
+```
