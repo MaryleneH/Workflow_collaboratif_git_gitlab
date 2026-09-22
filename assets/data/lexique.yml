@@ -502,3 +502,193 @@ termes:
     niveau: reconnaitre
     etape: e9
     def: "Copie d'un projet, faite sur la plateforme, dans votre propre espace : on y pousse ses branches puis on propose une MR vers le projet d'origine, sans droit d'écriture sur celui-ci."
+
+  # --- Ajouts après rédaction (termes signalés par les pages) -----------------
+  - id: jeton-acces
+    terme: "jeton d'accès personnel"
+    proprio: gitlab
+    niveau: pratiquer
+    etape: e0
+    en: "personal access token"
+    def: "Mot de passe dédié, créé dans GitLab (**Preferences › Access tokens**), limité à des droits précis (`read_repository`, `write_repository`) et à une date d'expiration. Il sert à s'authentifier en HTTPS. C'est un secret : il ne va jamais dans Git."
+  - id: onyxia
+    terme: "Onyxia"
+    proprio: outil
+    niveau: reconnaitre
+    etape: e0
+    def: "Plateforme de services de data science sur Kubernetes (VS Code, RStudio, Jupyter…). Un service est **éphémère** : à sa suppression, ce qui n'a pas été poussé sur GitLab est perdu."
+  - id: gitignore
+    terme: ".gitignore"
+    proprio: git
+    niveau: pratiquer
+    etape: e1
+    revise: true
+    def: "Fichier versionné qui liste les chemins que Git doit ignorer (`data/brut/`, `resultats/`, `.Rhistory`…). Il empêche d'ajouter un fichier par mégarde ; il ne retire pas un fichier déjà suivi (`git rm --cached` pour cela)."
+  - id: reference
+    terme: "référence"
+    proprio: git
+    niveau: comprendre
+    etape: e1
+    en: "ref"
+    def: "Nom qui pointe vers un commit : branches (`refs/heads/…`), branches distantes (`refs/remotes/…`), tags (`refs/tags/…`). HEAD est une référence vers une référence."
+  - id: objet-git
+    terme: "objet Git"
+    proprio: git
+    niveau: reconnaitre
+    etape: e1
+    def: "Git stocke trois sortes d'objets, identifiés par leur hash : le *blob* (contenu d'un fichier), le *tree* (un répertoire : noms → blobs et trees) et le *commit* (un tree racine + parents + auteur + message)."
+  - id: bisect
+    terme: "bisect"
+    proprio: git
+    niveau: reconnaitre
+    etape: e1
+    def: "`git bisect` trouve par dichotomie le commit qui a changé un comportement (un chiffre, un test) entre un état « ancien » et un état « nouveau » ; `git bisect run` automatise la recherche avec un script."
+  - id: ancetre-commun
+    terme: "ancêtre commun"
+    proprio: git
+    niveau: comprendre
+    etape: e3
+    en: "merge base"
+    def: "Dernier commit partagé par deux branches (`git merge-base a b`). C'est la « base » de la fusion à trois voies : Git compare chaque côté à cet instantané."
+  - id: marqueurs-conflit
+    terme: "marqueurs de conflit"
+    proprio: git
+    niveau: pratiquer
+    etape: e3
+    en: "conflict markers"
+    def: "Lignes `<<<<<<<`, `=======` et `>>>>>>>` que Git écrit dans un fichier en conflit pour montrer les deux versions. Tant qu'il en reste, le fichier n'est pas résolu : `git diff --check` les repère."
+  - id: thread
+    terme: "thread"
+    proprio: gitlab
+    niveau: pratiquer
+    etape: e4
+    en: "fil de discussion"
+    def: "Fil de commentaires attaché à une ligne ou à la MR. On le marque résolu quand la remarque est traitée ; le réglage *All threads must be resolved* bloque la fusion tant qu'il en reste."
+  - id: roles-gitlab
+    terme: "Maintainer"
+    proprio: gitlab
+    niveau: comprendre
+    etape: e4
+    def: "Rôle GitLab qui peut régler le projet (branches protégées, méthode de merge) et fusionner. Le rôle *Developer* peut pousser des branches et ouvrir des MR ; ce que chacun peut faire sur `main` dépend de la protection."
+  - id: conventional-comments
+    terme: "Conventional Comments"
+    proprio: pratique
+    niveau: reconnaitre
+    etape: e4
+    def: "Convention d'étiquettes pour les commentaires de review (*question*, *suggestion*, *bloquant*, *détail*…) qui dit clairement ce qui est attendu de l'auteur."
+  - id: pre-receive
+    terme: "pre-receive hook"
+    proprio: git
+    niveau: reconnaitre
+    etape: e4
+    def: "Script exécuté par le serveur avant d'accepter un push. GitLab s'en sert pour appliquer ses protections : d'où le message « pre-receive hook declined »."
+  - id: variable-ci
+    terme: "variable CI/CD"
+    proprio: gitlab
+    niveau: comprendre
+    etape: e6
+    def: "Valeur fournie aux jobs par GitLab (**Settings › CI/CD › Variables**). *Masked* : cachée dans les journaux ; *Protected* : réservée aux branches et tags protégés. C'est là que vivent les jetons, jamais dans le dépôt."
+  - id: needs
+    terme: "needs"
+    proprio: gitlab
+    niveau: reconnaitre
+    etape: e6
+    def: "Mot-clé de `.gitlab-ci.yml` qui déclare de quels jobs un job dépend : il démarre dès qu'ils ont réussi et récupère leurs artefacts, sans attendre la fin du stage précédent."
+  - id: rules
+    terme: "rules"
+    proprio: gitlab
+    niveau: reconnaitre
+    etape: e6
+    def: "Conditions qui décident si un job (ou tout le pipeline, avec `workflow:rules`) est créé : sur une MR, sur la branche par défaut, sur un tag…"
+  - id: gitlab-pages
+    terme: "GitLab Pages"
+    proprio: gitlab
+    niveau: reconnaitre
+    etape: e6
+    def: "Hébergement de sites statiques par GitLab : un job nommé `pages` publie son artefact `public/`. L'Observatoire y publie le rapport de travail construit sur `main`."
+  - id: code-sortie
+    terme: "code de sortie"
+    proprio: outil
+    niveau: comprendre
+    etape: e6
+    en: "exit code"
+    def: "Nombre renvoyé par un programme à la fin : 0 si tout va bien, autre chose en cas d'échec. Un job GitLab échoue dès qu'une commande de son script renvoie un code non nul."
+  - id: orig-head
+    terme: "ORIG_HEAD"
+    proprio: git
+    niveau: reconnaitre
+    etape: e7
+    def: "Référence que Git pose avant une opération risquée (rebase, reset, merge) sur l'ancienne position : `git reset --hard ORIG_HEAD` annule la dernière opération tant qu'aucune autre ne l'a remplacée."
+  - id: revert
+    terme: "revert"
+    proprio: git
+    niveau: comprendre
+    etape: e7
+    def: "`git revert <commit>` crée un **nouveau** commit qui annule les modifications d'un commit existant. Sans réécrire l'historique : c'est la bonne façon d'annuler ce qui est déjà partagé."
+  - id: branche-maintenance
+    terme: "branche de maintenance"
+    proprio: pratique
+    niveau: comprendre
+    etape: e8
+    def: "Branche durable créée depuis le tag d'une version publiée (`maintenance/2025`) pour y préparer des corrections sans embarquer le travail en cours. Brique de GitLab Flow."
+  - id: tag-protege
+    terme: "tag protégé"
+    proprio: gitlab
+    niveau: comprendre
+    etape: e8
+    def: "Réglage GitLab (**Settings › Repository › Protected tags**) qui réserve la création et la suppression de certains tags (`20*`) à certains rôles : une publication ne se déplace pas."
+  - id: manifest
+    terme: "empreinte des données"
+    proprio: pratique
+    niveau: comprendre
+    etape: e8
+    def: "Somme de contrôle (SHA-256) du contenu des données d'entrée, notée avec le millésime dans un `MANIFEST.json` versionné : la référence précise des données d'une publication."
+  - id: renv
+    terme: "renv"
+    proprio: outil
+    niveau: reconnaitre
+    etape: e8
+    def: "Paquet R qui fige les versions des paquets d'un projet dans `renv.lock` (`renv::snapshot()`) et les réinstalle à l'identique (`renv::restore()`)."
+  - id: git-lfs
+    terme: "Git LFS"
+    proprio: outil
+    niveau: reconnaitre
+    etape: e8
+    def: "Extension de Git qui stocke les gros fichiers hors du dépôt et n'y garde qu'un pointeur. Utile pour de gros binaires non sensibles, jamais pour des données confidentielles."
+  - id: dvc
+    terme: "DVC"
+    proprio: outil
+    niveau: reconnaitre
+    etape: e8
+    def: "*Data Version Control* : outil qui versionne des références vers des données stockées ailleurs (S3…) et décrit les étapes d'un pipeline de données, à côté de Git."
+  - id: upstream-first
+    terme: "upstream first"
+    proprio: pratique
+    niveau: reconnaitre
+    etape: e9
+    def: "Règle de GitLab Flow : une correction se fait d'abord dans la branche principale, puis se reporte (cherry-pick) vers les branches de version. On évite ainsi qu'un correctif ne se perde."
+  - id: branche-environnement
+    terme: "branche d'environnement"
+    proprio: pratique
+    niveau: reconnaitre
+    etape: e9
+    def: "Dans GitLab Flow, branche qui représente ce qui est déployé dans un environnement (`pre-production`, `production`) ; on y fusionne ce qui est validé en amont."
+  - id: methode-merge
+    terme: "méthode de merge"
+    proprio: gitlab
+    niveau: comprendre
+    etape: e10
+    en: "merge method"
+    def: "Réglage du projet (**Settings › Merge requests**) : *Merge commit*, *Merge commit with semi-linear history* ou *Fast-forward merge*. Avec le squash et *Fast-forward merge*, chaque MR devient un seul commit dans `main`."
+  - id: merge-checks
+    terme: "merge checks"
+    proprio: gitlab
+    niveau: comprendre
+    etape: e10
+    def: "Conditions qu'une MR doit remplir pour être fusionnable : *Pipelines must succeed*, *All threads must be resolved*, approbations requises (selon l'édition)."
+  - id: contributing
+    terme: "CONTRIBUTING.md"
+    proprio: pratique
+    niveau: pratiquer
+    etape: e10
+    def: "Fichier à la racine du dépôt qui décrit comment contribuer : conventions, cycle issue → MR → merge, règles et procédures. C'est le workflow de l'équipe, écrit et versionné."
