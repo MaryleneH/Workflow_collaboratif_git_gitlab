@@ -1,0 +1,43 @@
+titre: "Deux fusions : fast-forward, puis trois voies"
+couleurs:
+  "12-seuil-seniors": travail
+  "13-exclure-apprentis": travail2
+commits:
+  A: {x: 0, y: 0, msg: "Teste le schéma et la cohérence des données générées"}
+  B: {x: 1, y: 0, parents: [A], msg: "Documente le champ et les sources du panel"}
+  D: {x: 2, y: 1, parents: [B], msg: "Paramètre le seuil de la part des seniors (#12)"}
+  E: {x: 3, y: 2, parents: [B], couleur: travail2, msg: "Exclut les apprentis du calcul de la part des seniors (#13)"}
+  M: {x: 4, y: 0, parents: [D, E], msg: "Merge branch '13-exclure-apprentis'"}
+etapes:
+  - texte: "Deux sujets terminés, deux branches parties du même commit **B**. Vous êtes sur `main`."
+    commits: [A, B, D, E]
+    refs: {main: B, "12-seuil-seniors": D, "13-exclure-apprentis": E}
+    head: main
+  - texte: "`main` (**B**) est un ancêtre de **D** : Git fait un **fast-forward**. L'étiquette `main` avance jusqu'à **D**, aucun commit n'est créé. Sortie : `Updating … Fast-forward`."
+    commande: "git merge 12-seuil-seniors"
+    commits: [A, B, D, E]
+    refs: {main: D, "12-seuil-seniors": D, "13-exclure-apprentis": E}
+    head: main
+    surligne: [D]
+  - texte: "La branche est fusionnée : on supprime l'**étiquette**. Le commit **D** reste dans l'historique de `main`."
+    commande: "git branch -d 12-seuil-seniors"
+    commits: [A, B, D, E]
+    refs: {main: D, "13-exclure-apprentis": E}
+    head: main
+  - texte: "Cette fois, `main` (**D**) n'est pas un ancêtre de **E** : fusion à **trois voies**. Git compare l'ancêtre commun **B** à **D**, puis **B** à **E**. Les deux côtés ont modifié la même ligne `summarise` : **conflit**. Aucun commit n'est encore créé."
+    commande: "git merge 13-exclure-apprentis"
+    commits: [A, B, D, E]
+    refs: {main: D, "13-exclure-apprentis": E}
+    head: main
+    surligne: [B, D, E]
+  - texte: "Vous résolvez en gardant les deux intentions, puis vous validez. **M** est un commit de fusion à **deux parents** : **D** (la branche où vous étiez) et **E**."
+    commande: "git add R/indicateurs.R && git commit"
+    commits: [A, B, D, E, M]
+    refs: {main: M, "13-exclure-apprentis": E}
+    head: main
+    surligne: [M]
+  - texte: "On supprime l'étiquette `13-exclure-apprentis`. **E** reste accessible par le second parent de **M** : supprimer une branche fusionnée ne supprime aucun commit."
+    commande: "git branch -d 13-exclure-apprentis"
+    commits: [A, B, D, E, M]
+    refs: {main: M}
+    head: main
