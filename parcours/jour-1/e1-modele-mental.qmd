@@ -209,7 +209,7 @@ Le commit cherché modifie `R/age.R`, les tests de l'âge et le script qui appel
 
   Le nouveau test de `tests/testthat/test-age.R` fixe la règle : une personne née le 15 mars 1971 a 54 ans au 31 décembre 2025, mais 55 ans au 30 juin 2026.
 
-**Explication attendue.** Jusqu'à c11, l'âge était calculé à la date d'extraction des données, le 30 juin de l'année suivante. Tous les salariés nés entre le 1^er^ janvier et le 30 juin avaient donc déjà « pris un an » : environ la moitié de l'effectif. Ceux qui avaient 54 ans au 31 décembre basculaient à 55 ans, ce qui gonflait la part des 55 ans et plus d'environ un point et demi. Le chiffre du code actuel est le bon ; celui du panorama 2025 publié était surestimé. (Cet erratum sera traité à l'étape 8.)
+**Explication attendue.** Jusqu'à c11, l'âge était calculé à la date d'extraction des données, le 30 juin de l'année suivante. Tous les salariés nés entre le 1^er^ janvier et le 30 juin avaient donc déjà « pris un an » : environ la moitié de l'effectif. Ceux qui avaient 54 ans au 31 décembre basculaient à 55 ans, ce qui gonflait la part des 55 ans et plus d'environ un point et demi (sur les données 2025 du dépôt compagnon : 24,16 % publié, 22,60 % recalculé, soit 1,56 point). Le chiffre du code actuel est le bon ; celui du panorama 2025 publié était surestimé. (Cet erratum sera traité à l'étape 8.)
 
 **Étape 7 de la mission.** La commande liste quatre commits :
 
