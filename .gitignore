@@ -3,7 +3,7 @@
 /_site-formateur/
 /.quarto/
 *_files/
-*.quarto_ipynb
+**/*.quarto_ipynb
 
 # Outils de test du site
 /tests/node_modules/
@@ -21,4 +21,5 @@ __pycache__/
 .DS_Store
 Thumbs.db
 
-**/*.quarto_ipynb
+# Copies de travail des agents (git worktree)
+.claude/
