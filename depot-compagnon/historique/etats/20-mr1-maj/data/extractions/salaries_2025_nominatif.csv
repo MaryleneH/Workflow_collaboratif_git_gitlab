@@ -1,0 +1,41 @@
+id_salarie,nom,prenom,date_naissance,sexe,pcs,metier,id_etab
+SAL-0000001,MARTIN,Julie,1971-04-12,F,62,soudeur·se,ETB-00017
+SAL-0000002,BERNARD,Karim,1988-11-03,M,47,technicien·ne méthodes,ETB-00017
+SAL-0000003,PETIT,Claire,1965-02-28,F,37,ingénieur·e systèmes,ETB-00342
+SAL-0000004,MICHEL,Julien,2003-08-11,M,47,technicien·ne méthodes,ETB-00561
+SAL-0000005,LEFEBVRE,Julien,1991-05-15,M,37,ingénieur·e systèmes,ETB-00108
+SAL-0000006,LAURENT,Nadia,1994-11-25,F,67,opérateur·rice de production,ETB-00342
+SAL-0000007,SIMON,Antoine,1984-10-17,M,62,chaudronnier·ère,ETB-00342
+SAL-0000008,MICHEL,Lucas,1961-06-13,M,62,usineur·se,ETB-00108
+SAL-0000009,DUPONT,Thomas,1999-12-10,M,62,usineur·se,ETB-00108
+SAL-0000010,ROUSSEAU,Nicolas,1970-08-22,M,47,électronicien·ne,ETB-00342
+SAL-0000011,GIRARD,Thomas,1969-07-17,M,47,contrôleur·se qualité,ETB-00342
+SAL-0000012,GIRARD,Thomas,1982-11-18,M,47,électronicien·ne,ETB-00561
+SAL-0000013,MICHEL,Thomas,1970-08-03,M,54,fonctions support,ETB-00108
+SAL-0000014,BONNET,Karim,1998-09-22,M,47,contrôleur·se qualité,ETB-00342
+SAL-0000015,BERTRAND,Sarah,1986-07-06,F,54,fonctions support,ETB-00342
+SAL-0000016,MOREL,Hugo,2004-12-12,M,47,contrôleur·se qualité,ETB-00108
+SAL-0000017,MARTIN,Lucas,1988-12-18,M,37,ingénieur·e systèmes,ETB-00342
+SAL-0000018,DUPONT,Antoine,1961-09-18,M,47,contrôleur·se qualité,ETB-00017
+SAL-0000019,GIRARD,Léa,1988-12-13,F,62,usineur·se,ETB-00561
+SAL-0000020,LAURENT,Hugo,1975-03-28,M,37,ingénieur·e systèmes,ETB-00108
+SAL-0000021,DUPONT,Nicolas,1966-06-25,M,62,soudeur·se,ETB-00342
+SAL-0000022,LAMBERT,Julien,1965-03-27,M,62,usineur·se,ETB-00342
+SAL-0000023,DAVID,Hugo,1998-06-03,M,47,technicien·ne méthodes,ETB-00017
+SAL-0000024,MOREAU,Lucas,1971-07-23,M,67,opérateur·rice de production,ETB-00017
+SAL-0000025,BERTRAND,Mehdi,1963-10-09,M,47,contrôleur·se qualité,ETB-00017
+SAL-0000026,MULLER,Antoine,1971-06-05,M,62,usineur·se,ETB-00017
+SAL-0000027,DUPONT,Inès,2004-05-25,F,67,opérateur·rice de production,ETB-00017
+SAL-0000028,FAURE,Thomas,1990-06-06,M,47,technicien·ne méthodes,ETB-00342
+SAL-0000029,BONNET,Lucas,2001-08-17,M,47,électronicien·ne,ETB-00561
+SAL-0000030,SIMON,Julien,1962-09-21,M,54,fonctions support,ETB-00017
+SAL-0000031,PETIT,Julie,2003-06-23,F,47,contrôleur·se qualité,ETB-00108
+SAL-0000032,ROUSSEAU,Hugo,1995-03-23,M,62,chaudronnier·ère,ETB-00017
+SAL-0000033,BONNET,Lucas,1989-05-01,M,62,chaudronnier·ère,ETB-00342
+SAL-0000034,MICHEL,Mehdi,1969-08-20,M,47,contrôleur·se qualité,ETB-00561
+SAL-0000035,DAVID,Léa,1999-12-26,F,47,électronicien·ne,ETB-00017
+SAL-0000036,MARTIN,Julien,1979-12-20,M,62,usineur·se,ETB-00342
+SAL-0000037,MOREAU,Claire,1980-04-07,F,37,ingénieur·e systèmes,ETB-00342
+SAL-0000038,FOURNIER,Claire,1995-11-08,F,54,fonctions support,ETB-00561
+SAL-0000039,ROUSSEAU,Mehdi,1973-08-11,M,62,chaudronnier·ère,ETB-00561
+SAL-0000040,ROUSSEAU,Hugo,1973-07-27,M,37,ingénieur·e systèmes,ETB-00108

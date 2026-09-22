@@ -1,0 +1,3 @@
+# Versions épinglées : le même code doit produire les mêmes données partout.
+pyarrow==25.0.1
+duckdb==1.5.5

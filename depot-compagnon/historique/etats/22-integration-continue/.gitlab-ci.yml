@@ -1,0 +1,167 @@
+# ---------------------------------------------------------------------------
+# Pipeline de l'Observatoire (issue #20, MR !2).
+# Ce fichier est versionné par Git ; c'est GitLab qui le lit et l'exécute.
+# ---------------------------------------------------------------------------
+
+# workflow:rules : QUAND GitLab crée-t-il un pipeline ?
+# Les règles sont lues dans l'ordre ; la première qui correspond l'emporte.
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"  # push sur une branche qui a une MR ouverte
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH       # nouveau commit sur main
+    - if: $CI_COMMIT_TAG =~ /^\d{4}\.\d+$/              # tag de publication (2026.0, 2025.1…)
+    # Aucune règle ne correspond (branche sans MR, tag etape-N-debut) : pas de
+    # pipeline. On évite ainsi deux pipelines identiques (branche + MR).
+
+# stages : l'ordre des étapes. Un stage ne commence que lorsque tous les jobs
+# du stage précédent ont réussi (sauf pour un job qui déclare ses needs).
+stages:
+  - verifier
+  - tester
+  - produire
+  - publier
+
+variables:
+  MILLESIME: "2026"                          # millésime du panel synthétique
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+
+default:
+  interruptible: true          # un nouveau push annule le pipeline devenu inutile
+
+# Modèle commun aux jobs Python (une clé qui commence par un point n'est pas
+# un job : on la réutilise avec extends).
+.python:
+  image: python:3.12-slim      # image : environnement figé où tourne le job
+  cache:                       # les paquets téléchargés sont gardés d'un pipeline à l'autre
+    key:
+      files:
+        - requirements.txt     # nouvelle clé (donc cache neuf) si les versions changent
+    paths:
+      - .cache/pip
+  before_script:
+    - pip install --quiet -r requirements.txt   # versions épinglées
+
+# Les images rocker/r-ver installent les paquets depuis un dépôt CRAN daté
+# (instantané Posit Package Manager fixé dans l'image) : install.packages()
+# donne toujours les mêmes versions pour une même image.
+
+# --- verifier : relire le code sans l'exécuter (lint) ------------------------
+
+lint-python:
+  extends: .python
+  stage: verifier
+  script:
+    - ruff check python/ scripts/ tests/python/
+
+lint-r:
+  stage: verifier
+  image: rocker/r-ver:4.4.1
+  script:
+    - apt-get update -qq && apt-get install -y -qq --no-install-recommends libxml2 > /dev/null
+    - Rscript -e 'install.packages("lintr")'
+    # lint_dir() AFFICHE les problèmes mais se termine avec le code 0 :
+    # sans le quit(status = 1), le job resterait vert.
+    - Rscript -e 'lints <- lintr::lint_dir("."); print(lints); if (length(lints) > 0) quit(status = 1)'
+
+# --- tester : exécuter les assertions (tests automatiques) -------------------
+
+tests-python:
+  extends: .python
+  stage: tester
+  needs: []                    # démarre tout de suite, sans attendre verifier
+  script:
+    - pytest tests/python      # panel réduit, généré par les tests eux-mêmes
+
+tests-r:
+  stage: tester
+  image: rocker/r-ver:4.4.1
+  needs: []
+  script:
+    - Rscript -e 'install.packages(c("dplyr", "testthat"))'
+    - Rscript -e 'testthat::test_dir("tests/testthat", stop_on_failure = TRUE)'
+
+# --- produire : refaire toute la chaîne, du panel au rapport -----------------
+
+donnees:
+  extends: .python
+  stage: produire              # pas de needs : attend que verifier ET tester soient verts
+  script:
+    - python scripts/01_generer_donnees.py --millesime "$MILLESIME"
+    - python scripts/02_preparer.py --millesime "$MILLESIME"
+  artifacts:                   # fichiers conservés par GitLab et transmis aux jobs suivants.
+    paths:                     # Données SYNTHÉTIQUES : jamais de données réelles ici.
+      - data/brut/$MILLESIME/MANIFEST.json
+      - data/prepare/
+    expire_in: 1 week
+
+indicateurs:
+  stage: produire
+  image: rocker/r-ver:4.4.1
+  needs: [donnees]             # démarre dès que donnees a réussi, et reçoit ses artefacts
+  script:
+    - Rscript -e 'install.packages("dplyr")'
+    - Rscript scripts/03_indicateurs.R "$MILLESIME"
+  artifacts:
+    paths:
+      - resultats/
+    expire_in: 1 week
+
+figures:
+  extends: .python
+  stage: produire
+  needs: [donnees, indicateurs]  # la pyramide des âges vient des résultats R
+  script:
+    - python scripts/04_figures.py --millesime "$MILLESIME"
+  artifacts:
+    paths:
+      - resultats/figures/
+    expire_in: 1 week
+
+rapport:
+  stage: produire
+  image: rocker/verse:4.4.1    # R + knitr + Quarto, versions figées
+  needs: [indicateurs, figures]
+  script:
+    - quarto render reports/panorama.qmd -P millesime:$MILLESIME
+  artifacts:
+    paths:
+      - _output/               # le panorama rendu, téléchargeable depuis la MR
+    expire_in: 1 month
+
+# --- publier : ce qui ne tourne que dans certains contextes ------------------
+
+pages:                         # nom réservé : GitLab Pages publie l'artefact public/
+  stage: publier
+  image: alpine:3.20
+  needs: [rapport]
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH   # seulement sur main
+  script:
+    - mkdir -p public
+    - cp _output/reports/panorama.html public/index.html
+  artifacts:
+    paths:
+      - public
+
+publication:                   # crée la GitLab Release d'un tag de publication (E8)
+  stage: publier
+  image: registry.gitlab.com/gitlab-org/release-cli:v0.18.0
+  needs: [donnees, rapport]
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^\d{4}\.\d+$/
+  script:
+    - echo "Publication du panorama $CI_COMMIT_TAG (millésime $MILLESIME)"
+  release:
+    tag_name: $CI_COMMIT_TAG
+    name: "Panorama $CI_COMMIT_TAG"
+    description: >-
+      Panorama de l'emploi dans la filière industrielle stratégique, version
+      $CI_COMMIT_TAG. Code : ce tag. Données : MANIFEST.json (empreintes SHA-256
+      du contenu de chaque table). Environnement : requirements.txt et images
+      python:3.12-slim, rocker/r-ver:4.4.1, rocker/verse:4.4.1.
+    assets:
+      links:
+        - name: "Rapport HTML"
+          url: "$CI_PROJECT_URL/-/jobs/artifacts/$CI_COMMIT_TAG/raw/_output/reports/panorama.html?job=rapport"
+        - name: "MANIFEST.json des données"
+          url: "$CI_PROJECT_URL/-/jobs/artifacts/$CI_COMMIT_TAG/raw/data/brut/$MILLESIME/MANIFEST.json?job=donnees"

@@ -1,0 +1,103 @@
+---
+title: "Panorama de l'emploi dans la filière industrielle stratégique"
+author: "Observatoire des entreprises industrielles"
+lang: fr
+engine: knitr
+params:
+  millesime: 2025
+execute:
+  echo: false
+format:
+  html:
+    embed-resources: true
+    toc: true
+---
+
+```{r}
+#| label: donnees
+millesime <- as.integer(params$millesime)
+fichier <- sprintf("../resultats/indicateurs_%d.csv", millesime)
+indicateurs <- utils::read.csv(fichier, encoding = "UTF-8")
+valeur <- function(indicateur, modalite = "ensemble") {
+  indicateurs$valeur[indicateurs$indicateur == indicateur & indicateurs$modalite == modalite]
+}
+pct <- function(x) paste0(format(round(100 * x, 1), nsmall = 1, decimal.mark = ","), " %")
+nombre <- function(x) format(x, big.mark = " ")
+seniors <- indicateurs[indicateurs$indicateur == "part_55_plus" &
+                         indicateurs$dimension == "sous_filiere", ]
+plus_agee <- seniors[which.max(seniors$valeur), ]
+```
+
+**Édition `r millesime`**
+
+## Synthèse
+
+En `r millesime`, le panel de l'Observatoire compte `r nombre(valeur("salaries"))`
+salariés dans `r nombre(valeur("etablissements"))` établissements industriels.
+La main-d'œuvre de la filière est âgée : `r pct(valeur("part_55_plus"))` des
+salariés ont 55 ans ou plus, et les départs à la retraite des prochaines années
+rendront les recrutements décisifs.
+
+## Chiffres clés
+
+- Salariés du champ : `r nombre(valeur("salaries"))`.
+- Établissements : `r nombre(valeur("etablissements"))`.
+- Part des 55 ans et plus : `r pct(valeur("part_55_plus"))`.
+- Sous-filière la plus âgée : `r plus_agee$modalite` (`r pct(plus_agee$valeur)` de 55 ans et plus).
+- Répartition par grande catégorie de PCS : les ouvriers sont majoritaires dans `r pct(valeur("part_etab_ouvriers"))` des établissements.
+
+## Âges
+
+![Pyramide des âges des salariés au 31 décembre `r millesime`](../resultats/figures/pyramide_`r millesime`.png)
+
+```{r}
+#| label: tbl-seniors
+#| tbl-cap: "Part des 55 ans et plus par sous-filière"
+tableau <- data.frame(
+  `Sous-filière` = seniors$modalite,
+  `Part des 55 ans et plus` = pct(seniors$valeur),
+  check.names = FALSE
+)
+knitr::kable(tableau[order(-seniors$valeur), ], row.names = FALSE)
+```
+
+## Métiers
+
+![Répartition des salariés par métier en `r millesime`](../resultats/figures/metiers_`r millesime`.png)
+
+## Recrutements
+
+```{r}
+#| label: tbl-recrutements
+#| tbl-cap: "Taux de recrutement par métier"
+taux <- indicateurs[indicateurs$indicateur == "taux_recrutement" &
+                      indicateurs$dimension == "metier", ]
+reponse <- indicateurs[indicateurs$indicateur == "taux_reponse" &
+                         indicateurs$dimension == "metier", ]
+tableau <- data.frame(
+  `Métier` = taux$modalite,
+  `Taux de recrutement` = pct(taux$valeur),
+  `Taux de réponse` = pct(reponse$valeur[match(taux$modalite, reponse$modalite)]),
+  check.names = FALSE
+)
+knitr::kable(tableau[order(-taux$valeur), ], row.names = FALSE)
+```
+
+Le taux de recrutement de la filière est de `r pct(valeur("taux_recrutement"))`.
+Il est calculé sur les établissements qui ont répondu à l'enquête, qui
+emploient `r pct(valeur("taux_reponse"))` des salariés du champ.
+
+## Méthode
+
+- **Champ** : salariés présents au 31 décembre `r millesime` dans les
+  établissements du panel, hors intérimaires.
+- **Données** : panel synthétique de l'Observatoire ; les entreprises, les
+  établissements et les chiffres sont fictifs. La référence exacte des données
+  est le fichier `MANIFEST.json` du millésime (empreinte SHA-256 de chaque
+  table).
+- **Âge** : âge en années révolues au 31 décembre de l'année de référence.
+- **Recrutements** : rapport des sommes (recrutements de l'année / effectif au
+  31 décembre) sur les établissements répondants ; les non-réponses sont
+  exclues, et le taux de réponse est publié avec le taux.
+- **Reproduire ce rapport** : voir le `README.md` du dépôt. Le millésime est un
+  paramètre : `quarto render reports/panorama.qmd -P millesime:2026`.

@@ -1,0 +1,6 @@
+# Paquets R utilisés par le projet (installés depuis le dépôt CRAN de l'image).
+# Sur Onyxia, renv::snapshot() fige les versions exactes dans renv.lock.
+dplyr
+knitr
+lintr
+rmarkdown
