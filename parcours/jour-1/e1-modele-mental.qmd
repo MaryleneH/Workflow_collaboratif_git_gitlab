@@ -41,7 +41,7 @@ Un commit désigne l'arbre **complet** du projet. Le [diff]{.t} que vous lisez d
 
 ### Chaque commit connaît son passé, jamais son futur
 
-Chaque commit porte un identifiant, son [hash]{.t} : 40 caractères hexadécimaux, que l'on abrège en 7 (`4e1b7a2`). Ce hash est calculé à partir de **tout** le contenu du commit : l'instantané, l'auteur, la date, le message, et le hash de son [parent]{.t}.
+Chaque commit porte un identifiant, son [hash]{.t} : 40 caractères hexadécimaux, que l'on abrège en 7 (`42931da`). Ce hash est calculé à partir de **tout** le contenu du commit : l'instantané, l'auteur, la date, le message, et le hash de son [parent]{.t}.
 
 Deux conséquences, que vous retrouverez tout au long du parcours :
 
@@ -62,11 +62,11 @@ git rev-parse main
 ```
 
 ```{.text .sortie}
-a3c52e9d1f0b7c4e8a6d2b9f5e1c7a3d8b4f6e20
-a3c52e9d1f0b7c4e8a6d2b9f5e1c7a3d8b4f6e20
+42c49f5681b529a6bcd9b4aa02f72950bb51e164
+42c49f5681b529a6bcd9b4aa02f72950bb51e164
 ```
 
-La première commande lit le fichier ; la seconde demande à Git ce que désigne le nom `main`. Préférez la seconde : Git range parfois ses références dans un fichier commun, `.git/packed-refs`, et le fichier individuel n'existe alors pas. Les hash de cette page sont illustratifs : les vôtres seront différents.
+La première commande lit le fichier ; la seconde demande à Git ce que désigne le nom `main`. Préférez la seconde : Git range parfois ses références dans un fichier commun, `.git/packed-refs`, et le fichier individuel n'existe alors pas. Les hash de cette page sont ceux du dépôt compagnon à `etape-1-debut` : il est reconstruit à l'identique, vous devriez donc lire les mêmes. Sur un autre dépôt, ils seraient différents.
 
 ::: idee-fausse
 ::: fausse
@@ -169,7 +169,7 @@ Cette mission est en **lecture seule** : aucune commande ne modifie le dépôt. 
 :::
 
 ::: reussite
-Vous citez le hash du commit en cause, son auteur et sa date, et `git show --stat <hash>` confirme qu'il modifie `R/age.R` et `tests/testthat/test-age.R`. Votre explication dit pourquoi l'ancien calcul surestimait la part des 55 ans et plus, et à peu près quelle proportion des salariés était concernée.
+Vous citez le hash du commit en cause, son auteur et sa date, et `git show --stat <hash>` confirme qu'il modifie `R/age.R`, `tests/testthat/test-age.R` et `scripts/03_indicateurs.R`. Votre explication dit pourquoi l'ancien calcul surestimait la part des 55 ans et plus, et à peu près quelle proportion des salariés était concernée.
 :::
 
 ::: indice
@@ -181,7 +181,7 @@ Chaque ligne est préfixée par le hash abrégé du dernier commit qui l'a modif
 :::
 
 ::: {.indice titre="Indice 3 : le mécanisme"}
-Le commit cherché modifie `R/age.R` et les tests de l'âge ; son message se termine par `Closes #7`. Pour comprendre l'écart, demandez-vous : à quelle date les données sont-elles extraites, et quels salariés ont un an de plus à cette date qu'au 31 décembre ?
+Le commit cherché modifie `R/age.R`, les tests de l'âge et le script qui appelle la fonction ; son message se termine par `Closes #7`. Pour comprendre l'écart, demandez-vous : à quelle date les données sont-elles extraites, et quels salariés ont un an de plus à cette date qu'au 31 décembre ?
 :::
 
 ::: corrige
@@ -189,17 +189,38 @@ Le commit cherché modifie `R/age.R` et les tests de l'âge ; son message se ter
 
 - L'étape 3 fait apparaître deux commits : c11 (« Corrige le calcul de l'âge : âge au 31 décembre de l'année de référence ») et c14 (« Ajoute la répartition par PCS… »). c14 est hors sujet ; c11 est le suspect.
 - `git log -S "31" -- R/age.R` isole c11 : c'est lui qui introduit le 31 décembre.
-- `git blame R/age.R` attribue à c11 (Karim, 2025-09-15) la ligne de la date de référence ; le reste du fichier vient de c03 (2025-02-03).
-- `git show <c11>` : le corps du message explique le bug et se termine par `Closes #7`. Le diff montre le passage de la date d'extraction (30 juin N+1) au 31 décembre N. La forme exacte de la ligne dépend du dépôt compagnon ; par exemple :
+- `git blame R/age.R` attribue à c11 (`42931da6`, Karim Haddad, 2025-09-15) trois lignes : le commentaire de documentation (ligne 17), le nom de la fonction (ligne 22) et la date de référence (ligne 23). Le reste du fichier vient de c03 (`0ecdd8c4`, 2025-02-03).
+- `git show 42931da` : le corps du message explique le bug et se termine par `Closes #7`. `git show --stat` indique `3 files changed, 10 insertions(+), 4 deletions(-)` : c11 renomme aussi la fonction, de `age_fin_annee()` en `age_au_31_decembre()`, d'où la modification de son appel dans `scripts/03_indicateurs.R`. Le cœur du diff, dans `R/age.R` :
 
   ```diff
-  -  date_reference <- as.Date(paste0(millesime + 1, "-06-30"))
-  +  date_reference <- as.Date(paste0(millesime, "-12-31"))
+  -#' Âge des salariés en fin d'année
+  +#' Âge des salariés au 31 décembre de l'année de référence
+   #'
+   #' @param date_naissance vecteur de dates de naissance.
+   #' @param annee millésime des données (année de référence).
+   #' @return un vecteur d'entiers.
+  -age_fin_annee <- function(date_naissance, annee) {
+  -  date_reference <- as.Date(paste0(annee + 1, "-06-30")) # date d'extraction des fichiers
+  +age_au_31_decembre <- function(date_naissance, annee) {
+  +  date_reference <- as.Date(paste0(annee, "-12-31")) # et non la date d'extraction (#7)
+     age_revolu(date_naissance, date_reference)
+   }
   ```
+
+  Le nouveau test de `tests/testthat/test-age.R` fixe la règle : une personne née le 15 mars 1971 a 54 ans au 31 décembre 2025, mais 55 ans au 30 juin 2026.
 
 **Explication attendue.** Jusqu'à c11, l'âge était calculé à la date d'extraction des données, le 30 juin de l'année suivante. Tous les salariés nés entre le 1^er^ janvier et le 30 juin avaient donc déjà « pris un an » : environ la moitié de l'effectif. Ceux qui avaient 54 ans au 31 décembre basculaient à 55 ans, ce qui gonflait la part des 55 ans et plus d'environ un point et demi. Le chiffre du code actuel est le bon ; celui du panorama 2025 publié était surestimé. (Cet erratum sera traité à l'étape 8.)
 
-**Étape 7 de la mission.** Elle fait sortir `maj` (c04) et `modifs` (c06) : pour les écarter, il faut les ouvrir avec `git show` et relire leur diff. C'est le moment d'introduire R01.
+**Étape 7 de la mission.** La commande liste quatre commits :
+
+```{.text .sortie}
+39497ec Ajoute la répartition par PCS et ses tests de cohérence
+42931da Corrige le calcul de l'âge : âge au 31 décembre de l'année de référence
+78f47ba modifs
+5d2ac01 maj
+```
+
+c11 y figure parce qu'il modifie l'appel de la fonction renommée dans `scripts/03_indicateurs.R` ; c14 ajoute `repartition_pcs()` sans toucher à `part_seniors()`. Restent `maj` (c04) et `modifs` (c06) : pour les écarter, il faut les ouvrir avec `git show` et relire leur diff. C'est le moment d'introduire R01.
 
 **Pièges observés.**
 
@@ -239,7 +260,7 @@ Prouver, commandes à l'appui, qu'un commit désigne un instantané complet et u
    git cat-file -p "HEAD^{tree}"
    ```
 
-   Le dernier commit n'a modifié que des tests Python. L'arbre liste-t-il seulement `tests/`, ou tout le projet ?
+   Le dernier commit a ajouté les tests Python (et leur configuration). L'arbre liste-t-il seulement `tests/`, ou tout le projet ?
 
 3. Comparez l'arbre de HEAD et celui de son parent (`HEAD~1`) :
 
@@ -247,7 +268,7 @@ Prouver, commandes à l'appui, qu'un commit désigne un instantané complet et u
    git cat-file -p "HEAD~1^{tree}"
    ```
 
-   Quelles lignes ont le même hash dans les deux arbres ? Laquelle diffère ?
+   Quelles lignes ont le même hash dans les deux arbres ? Lesquelles diffèrent ?
 
 4. Vérifiez qu'une branche et HEAD ne sont que des noms :
 
@@ -277,21 +298,21 @@ Deux lignes identiques dans deux arbres, même hash : Git n'a stocké ce dossier
 :::
 
 ::: corrige
-Sortie attendue de `git cat-file -p HEAD` (hash et horodatage illustratifs) :
+Sortie de `git cat-file -p HEAD` à `etape-1-debut` :
 
 ```{.text .sortie}
-tree 7d2f41c09a8e5b3d6f1c2e4a9b8d7c6e5f4a3b21
-parent 9b04e6f2c1d8a7e3b5f9c2d4e6a8b1c3d5e7f902
-author Léa <lea@example.org> 1768208400 +0100
-committer Léa <lea@example.org> 1768208400 +0100
+tree 8c1d80fa0fa37855a7f7457d7f2e954bcb683679
+parent 39497ec5a3d2d53c59bc78cd7fadb80a94c974b3
+author Léa Fontaine <lea.fontaine@oei.example.org> 1768222800 +0100
+committer Léa Fontaine <lea.fontaine@oei.example.org> 1768222800 +0100
 
 Teste le schéma et la cohérence des données générées
 ```
 
 - La date est écrite en secondes depuis le 1^er^ janvier 1970, suivie du fuseau.
-- L'arbre racine liste `.gitignore`, `R`, `README.md`, `_quarto.yml`, `data`, `python`, `reports`, `requirements.txt`, `scripts`, `tests` : des lignes `100644 blob …` pour les fichiers, `040000 tree …` pour les dossiers.
-- Entre `HEAD~1` et `HEAD`, seule la ligne `tests` change de hash (c15 ajoute `tests/python/`).
-- `git rev-parse 2025.0` renvoie le hash de l'**objet tag**, différent de celui du commit c10 : bonne occasion d'anticiper E8 (tag annoté).
+- L'arbre racine liste `.gitignore`, `.lintr`, `R`, `README.md`, `_quarto.yml`, `data`, `dependances-r.txt`, `pyproject.toml`, `python`, `reports`, `requirements.txt`, `scripts`, `tests` : des lignes `100644 blob …` pour les fichiers, `040000 tree …` pour les dossiers.
+- Entre `HEAD~1` et `HEAD`, trois lignes changent de hash : `tests` (c15 ajoute `tests/python/`), `pyproject.toml` (configuration de pytest) et `requirements.txt` (pytest et ruff épinglés). Les dossiers `R`, `data`, `python`, `reports` et `scripts` gardent le même hash.
+- `git rev-parse 2025.0` renvoie `55f5e98…`, le hash de l'**objet tag**, différent de celui du commit c10 (`2990990…`) : bonne occasion d'anticiper E8 (tag annoté).
 :::
 :::
 
@@ -304,7 +325,7 @@ git switch --detach 2025.0
 ```
 
 ```{.text .sortie}
-HEAD is now at 4e1b7a2 Finalise le panorama 2025 pour publication
+HEAD is now at 2990990 Finalise le panorama 2025 pour publication
 ```
 
 Votre copie de travail contient maintenant le code de la publication 2025, `R/age.R` compris. `git status` le confirme dès sa première ligne : `HEAD detached at 2025.0`. C'est la [detached HEAD]{.t}, ou HEAD détachée. Ce n'est ni une erreur ni une panne : c'est un état, utile pour **regarder** le passé. Vous vous en servirez à l'étape 8 pour régénérer les chiffres 2025.
@@ -347,7 +368,7 @@ Or undo this operation with:
 
 Turn off this advice by setting config variable advice.detachedHead to false
 
-HEAD is now at 4e1b7a2 Finalise le panorama 2025 pour publication
+HEAD is now at 2990990 Finalise le panorama 2025 pour publication
 ```
 :::
 
@@ -382,7 +403,7 @@ git switch main
 ```
 
 ```{.text .sortie}
-Previous HEAD position was 4e1b7a2 Finalise le panorama 2025 pour publication
+Previous HEAD position was 2990990 Finalise le panorama 2025 pour publication
 Switched to branch 'main'
 ```
 
