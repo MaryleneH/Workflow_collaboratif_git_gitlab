@@ -1,0 +1,7 @@
+title: Formation Git à plusieurs
+author: Observatoire (fictif) · formation Git/GitLab niveau 2
+version: 1.0.0
+quarto-required: ">=1.4.0"
+contributes:
+  filters:
+    - formation.lua
