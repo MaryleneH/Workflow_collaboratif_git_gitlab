@@ -1,0 +1,377 @@
+---
+title: "J'ai cassé quelque chose"
+surtitre: "Mémo"
+chapeau: "Douze pannes réelles, du commit sur main au secret poussé. Pour chacune : ce que vous voyez, ce qui s'est passé, la réparation la moins risquée, et l'habitude qui évite d'y revenir."
+description: "Dépannage Git et GitLab : commit sur main, mauvais message, fichier ou secret poussé, conflit, rebase raté, push refusé, HEAD détachée, branches divergentes, suppression de branche, revert, commit perdu."
+---
+
+## Avant toute réparation
+
+Trois gestes, dans cet ordre, **avant** de taper une commande trouvée sur un forum :
+
+```{.bash risque="sur"}
+git status
+git log --oneline --graph --all -15
+git fetch
+```
+
+1. `git status` dit où vous êtes (branche, HEAD détachée, fusion ou rebase en cours) et ce qui n'est pas commité. **Ce qui n'est pas commité est la seule chose que vous pouvez réellement perdre.** En cas de doute, commitez-le sur une branche de secours.
+2. Le graphe montre où sont vos branches par rapport à `origin/…`.
+3. Le fetch met à jour cette vision, sans rien toucher.
+
+Un commit, même « perdu », se retrouve presque toujours par `git reflog`. Ne paniquez pas, et ne supprimez pas votre dossier pour recloner : vous jetteriez justement le reflog.
+
+| Ce que vous voyez | Section |
+|---|---|
+| J'ai commité sur `main` ; `Your branch is ahead of 'origin/main'` | [Commit sur main](#commit-sur-main) |
+| Le message de mon commit est faux, ou vaut « maj » | [Mauvais message](#mauvais-message) |
+| `git status` montre un fichier qui ne doit pas partir | [Fichier ajouté par erreur](#fichier-ajoute) |
+| Un jeton, un mot de passe, une clé est dans un commit poussé | [Secret poussé](#secret-pousse) |
+| `CONFLICT (content)`, `You have unmerged paths` | [Conflit en cours](#conflit-en-cours) |
+| Après un rebase, mes commits ou mes lignes ont disparu | [Rebase raté](#rebase-rate) |
+| `! [rejected]`, `! [remote rejected]` | [Push refusé](#push-refuse) |
+| `HEAD detached at …` | [HEAD détachée](#head-detachee) |
+| `fatal: Need to specify how to reconcile divergent branches.` | [Branches divergentes](#branches-divergentes) |
+| Trop de branches, ou `not fully merged` | [Supprimer une branche](#supprimer-branche) |
+| Un commit déjà dans `main` doit être annulé | [Annuler un commit poussé](#annuler-pousse) |
+| Un commit a disparu de toutes les branches | [Commit perdu](#commit-perdu) |
+
+## 1. J'ai commité sur main par erreur {#commit-sur-main}
+
+**Symptôme.** Vous étiez sur `main` sans le savoir. `git status` affiche `Your branch is ahead of 'origin/main' by 2 commits.` ; ou le push est refusé parce que `main` est protégée ; ou le prochain `git pull` échoue.
+
+**Diagnostic.** Les commits sont bons, c'est leur **étiquette** qui est mauvaise : ils devraient être sur une branche de travail. Tant qu'ils ne sont pas poussés, rien n'est grave.
+
+**Correction.** Créez la branche là où vous êtes, puis ramenez `main` sur `origin/main` :
+
+```{.bash risque="reversible"}
+git switch -c 30-difficulte-recrutement
+git branch -f main origin/main
+git log --oneline --graph --all -10
+```
+
+`git switch -c` pose un nouveau nom sur vos commits et vous y place ; `git branch -f main origin/main` déplace l'étiquette `main` sans toucher à vos fichiers (impossible si vous êtes encore sur `main`, d'où l'ordre). Poussez ensuite la branche et ouvrez une MR.
+
+**Si c'était déjà poussé** sur une `main` non protégée : ne réécrivez pas `main`. Voir [Annuler un commit poussé](#annuler-pousse), et protégez la branche.
+
+**Prévention.** Créez la branche **avant** d'écrire la première ligne ; `main` protégée côté GitLab (règle R06) ; `pull.ff only` (règle R07) ; le réglage `git.branchProtection` de VS Code vous avertit avant un commit sur `main`.
+
+## 2. Le message de mon commit est faux {#mauvais-message}
+
+**Symptôme.** Le message dit « maj », cite la mauvaise issue, ou décrit autre chose que ce que fait le commit.
+
+**Correction, selon le cas.**
+
+- **Dernier commit, pas encore poussé :**
+
+  ```{.bash risque="reecrit"}
+  git commit --amend
+  ```
+
+  VS Code s'ouvre avec l'ancien message ; corrigez, enregistrez, fermez l'onglet. Git crée un **nouveau** commit qui remplace l'ancien.
+
+- **Déjà poussé, sur votre branche de travail :** si la MR sera fusionnée en squash, laissez-le. Au moment du merge, GitLab propose de modifier le message du commit unique : c'est **ce** message qui restera dans `main`. Sinon, `git commit --amend` puis `git push --force-with-lease`, sur votre branche seulement.
+
+- **Commit plus ancien :** `git rebase -i` le permet sur une branche non partagée (voir l'approfondissement [rebase interactif](../parcours/approfondissements/rebase-interactif.qmd)).
+
+- **Déjà dans `main` :** on ne réécrit pas `main`. Le message reste ; la MR et l'issue portent l'explication.
+
+**Prévention.** Écrire le pourquoi et le numéro d'issue dès le premier commit (règle R01) ; `core.editor "code --wait"` pour rédiger confortablement.
+
+## 3. J'ai ajouté un fichier par erreur {#fichier-ajoute}
+
+**Symptôme.**
+
+```{.text .sortie}
+Changes to be committed:
+  (use "git restore --staged <file>..." to unstage)
+        new file:   data/extractions/salaries_2025_nominatif.csv
+        modified:   R/indicateurs.R
+```
+
+**Correction, selon le cas.**
+
+- **Dans l'index, pas commité :** Git vous donne la commande lui-même.
+
+  ```{.bash risque="reversible"}
+  git restore --staged data/extractions/salaries_2025_nominatif.csv
+  ```
+
+- **Commité, pas poussé :** retirez-le du suivi sans le supprimer du disque, puis réécrivez le commit.
+
+  ```{.bash risque="reecrit"}
+  git rm --cached data/extractions/salaries_2025_nominatif.csv
+  git commit --amend
+  ```
+
+  Si le fichier date d'un commit plus ancien de la branche, il reste dans ce commit : un `git rebase -i` est nécessaire, ou l'aide d'un collègue.
+
+- **Poussé :** le fichier est dans l'historique **et** chez tous ceux qui ont fait un fetch. Un nouveau commit qui le supprime ne l'efface pas du passé. S'il s'agit de données individuelles, **prévenez la personne responsable** (Inès, à l'Observatoire) avant toute autre action : la purge de l'historique d'une branche est possible tant que rien n'est fusionné, mais c'est une décision d'équipe, et les copies existantes doivent être traitées.
+
+**Prévention.** `git status` avant chaque commit ; `git add fichier` ou `git add -p` plutôt que `git add .` ; `data/brut/`, `data/prepare/`, `resultats/` dans `.gitignore` ; ni données individuelles ni secrets dans Git (règle R09).
+
+## 4. J'ai poussé un secret {#secret-pousse}
+
+**Symptôme.** Un jeton d'API, un mot de passe ou une clé apparaît dans le diff d'une MR, par exemple `API_TOKEN = "oei-9f3b2c71e4d84a0b-fictif"` dans `scripts/telecharger_recrutements.py`.
+
+**Diagnostic.** Dès qu'il a été poussé, le secret est **compromis** : il est sur le serveur, dans les clones, peut-être dans les journaux de CI. Supprimer la ligne, ou même réécrire l'historique, ne le rend pas secret à nouveau.
+
+**Correction, dans cet ordre.**
+
+1. **Révoquer** le secret immédiatement, là où il a été émis (le service qui fournit l'API, ou *Access tokens* dans les préférences GitLab pour un jeton GitLab), et en générer un nouveau.
+2. **Retirer** le secret du code et le lire depuis l'environnement :
+
+   ```python
+   import os
+
+   API_TOKEN = os.environ["OEI_API_TOKEN"]
+   ```
+
+   En CI, le nouveau secret devient une variable du projet (**Settings › CI/CD › Variables**), masquée et, si possible, protégée.
+3. **Commiter** cette correction dans la MR.
+4. **Prévenir** la personne responsable : c'est elle qui décide s'il faut en plus purger l'historique (outil `git filter-repo`, push forcé, nettoyage côté GitLab). Cette purge est une opération lourde et coordonnée ; elle ne remplace **jamais** la révocation.
+
+**Prévention.** Aucun secret dans un fichier suivi : variables d'environnement, fichier `.env` listé dans `.gitignore`, variables CI masquées (règle R09).
+
+## 5. Un conflit est en cours et je veux revenir en arrière {#conflit-en-cours}
+
+**Symptôme.**
+
+```{.text .sortie}
+Auto-merging R/indicateurs.R
+CONFLICT (content): Merge conflict in R/indicateurs.R
+Automatic merge failed; fix conflicts and then commit the result.
+```
+
+et `git status` affiche `You have unmerged paths.`
+
+**Diagnostic.** Rien n'est cassé : Git a fusionné tout ce qu'il pouvait et vous laisse la décision sur les zones modifiées des deux côtés. Deux options : résoudre, ou tout annuler et réfléchir.
+
+**Correction.** Pour résoudre : éditez le fichier (ou le Merge Editor), relancez les tests, puis `git add` et `git commit` (ou `git rebase --continue`). Pour abandonner et revenir exactement à l'état d'avant :
+
+```{.bash risque="reversible"}
+git merge --abort
+git rebase --abort
+git cherry-pick --abort
+```
+
+Tapez celle qui correspond à l'opération en cours : `git status` la nomme.
+
+**Prévention.** Commitez avant de fusionner ou de rebaser : `git merge --abort` ne sait pas toujours reconstituer des modifications non commitées présentes au départ. Et comprenez les deux intentions avant de choisir (règle R05).
+
+## 6. Mon rebase a mal tourné {#rebase-rate}
+
+**Symptôme.** Le rebase est terminé, mais un test échoue, une correction a disparu, ou la branche ne ressemble plus à rien.
+
+**Diagnostic.** Le rebase a créé de **nouveaux** commits ; les anciens n'ont pas été détruits, ils ne sont simplement plus référencés par la branche. Le reflog de la branche garde sa position d'avant :
+
+```{.bash risque="sur"}
+git reflog show 21-regrouper-pcs
+```
+
+```{.text .sortie}
+a41c9e2 21-regrouper-pcs@{0}: rebase (finish): refs/heads/21-regrouper-pcs onto 5d2e8f0
+9b7c3a1 21-regrouper-pcs@{1}: commit: encore
+e0f4d26 21-regrouper-pcs@{2}: commit: corrige le lint
+```
+
+La ligne `@{1}` est la tête de la branche **avant** le rebase.
+
+**Correction.** Vérifiez que `git status` est propre, puis ramenez la branche :
+
+```{.bash risque="dangereux"}
+git reset --hard 21-regrouper-pcs@{1}
+```
+
+Juste après le rebase, `git reset --hard ORIG_HEAD` fait la même chose. Si la mauvaise version était déjà poussée, repoussez la bonne avec `git push --force-with-lease`. Si le rebase est **en cours**, c'est plus simple : `git rebase --abort`.
+
+**Prévention.** Avant un rebase délicat, posez une étiquette de secours : `git branch sauvegarde/21-avant-rebase`. Relancez les tests après chaque rebase. Ne rebasez que votre propre branche (règle R13).
+
+## 7. Mon push est refusé {#push-refuse}
+
+Trois messages, trois causes différentes.
+
+**Le serveur a des commits que vous n'avez pas.**
+
+```{.text .sortie}
+ ! [rejected]        main -> main (fetch first)
+error: failed to push some refs to 'https://gitlab.example.org/oei/observatoire-industrie.git'
+hint: Updates were rejected because the remote contains work that you do not
+hint: have locally. ...
+```
+
+ou `(non-fast-forward)` avec `hint: Updates were rejected because the tip of your current branch is behind its remote counterpart.` Quelqu'un a poussé sur cette branche depuis votre dernier fetch. Accepter votre push ferait disparaître ses commits : Git refuse.
+
+```{.bash risque="sur"}
+git fetch
+git log --oneline --graph --all -15
+```
+
+Puis intégrez (`git rebase origin/<branche>` si vos commits ne sont pas encore partagés, sinon `git merge origin/<branche>`) et repoussez. Si la branche est `main`, vous n'auriez pas dû commiter dessus : voir la [section 1](#commit-sur-main).
+
+**Vous venez de rebaser votre branche.** Le refus `non-fast-forward` est normal : l'historique distant contient les anciens commits. Vérifiez que vous êtes seul sur la branche, puis :
+
+```{.bash risque="reecrit"}
+git push --force-with-lease
+```
+
+S'il répond `! [rejected] … (stale info)`, quelqu'un a poussé entre-temps : faites un fetch et regardez avant d'aller plus loin.
+
+**Le serveur refuse par principe.**
+
+```{.text .sortie}
+remote: GitLab: You are not allowed to push code to protected branches on this project.
+To https://gitlab.example.org/oei/observatoire-industrie.git
+ ! [remote rejected] main -> main (pre-receive hook declined)
+```
+
+Ce n'est pas Git, c'est GitLab : `main` est protégée, et c'est voulu. Passez par une branche et une MR.
+
+**Prévention.** `git fetch` et un regard sur `origin/main` avant d'intégrer (règle R02) ; jamais de travail direct sur `main` (règles R06, R07).
+
+## 8. Je suis en HEAD détachée {#head-detachee}
+
+**Symptôme.** `git status` affiche `HEAD detached at 2025.0` ; la barre d'état de VS Code montre un tag ou un hash au lieu d'un nom de branche. En quittant cet état après avoir commité, Git prévient :
+
+```{.text .sortie}
+Warning: you are leaving 1 commit behind, not connected to
+any of your branches:
+
+  3c4d5e6 Régénère les données 2025 pour l'erratum
+```
+
+**Diagnostic.** HEAD pointe directement sur un commit, pas sur une branche. C'est l'état normal après `git switch --detach 2025.0` : parfait pour explorer une version publiée. Mais un commit fait ici n'est retenu par aucune branche.
+
+**Correction.**
+
+- Vous n'avez rien commité : revenez simplement.
+
+  ```{.bash risque="reversible"}
+  git switch main
+  ```
+
+- Vous avez commité et vous êtes encore en HEAD détachée : créez une branche **ici**.
+
+  ```{.bash risque="reversible"}
+  git switch -c hotfix/25-erratum-age
+  ```
+
+- Vous êtes déjà reparti : le hash est dans le message d'avertissement, ou dans `git reflog`.
+
+  ```{.bash risque="reversible"}
+  git branch hotfix/25-erratum-age 3c4d5e6
+  ```
+
+**Prévention.** Pour travailler à partir d'une version, créez la branche d'emblée : `git switch -c maintenance/2025 2025.0`. Notez aussi que `git switch 2025.0`, sans `--detach`, refuse avec `fatal: a branch is expected, got tag '2025.0'` : c'est une protection, pas une erreur.
+
+## 9. « Need to specify how to reconcile divergent branches » {#branches-divergentes}
+
+**Symptôme.** Avec Git 2.33 ou plus récent, sans configuration de `pull` :
+
+```{.text .sortie}
+hint: You have divergent branches and need to specify how to reconcile them.
+hint: You can do so by running one of the following commands sometime before
+hint: your next pull:
+hint:
+hint:   git config pull.rebase false  # merge
+hint:   git config pull.rebase true   # rebase
+hint:   git config pull.ff only       # fast-forward only
+...
+fatal: Need to specify how to reconcile divergent branches.
+```
+
+Avec `pull.ff only` configuré, le même cas donne `fatal: Not possible to fast-forward, aborting.`
+
+**Diagnostic.** Votre branche et sa copie distante ont chacune des commits que l'autre n'a pas : elles ont **divergé**. Git refuse de choisir à votre place entre fusion et rebase. Regardez qui a fait quoi :
+
+```{.bash risque="sur"}
+git fetch
+git log --oneline --graph HEAD origin/main -15
+```
+
+(remplacez `origin/main` par la branche amont concernée.)
+
+**Correction.**
+
+- Sur `main` : vous avez commité sur `main`. Voir la [section 1](#commit-sur-main).
+- Sur votre branche de travail, vos commits locaux ne sont pas encore poussés : rejouez-les au-dessus de la version distante.
+
+  ```{.bash risque="reecrit"}
+  git pull --rebase
+  ```
+
+- Sur une branche partagée, ou si vous préférez garder la trace : fusionnez.
+
+  ```{.bash risque="reversible"}
+  git pull --no-rebase
+  ```
+
+**Prévention.** `git config --global pull.ff only` : le pull ne fait plus jamais rien de surprenant, et les divergences se traitent consciemment (règle R07).
+
+## 10. Je veux supprimer une branche {#supprimer-branche}
+
+**Correction.** Supprimez la branche locale une fois la MR fusionnée, et nettoyez les branches distantes disparues :
+
+```{.bash risque="reversible"}
+git switch main
+git pull
+git branch -d 18-taux-recrutement
+git fetch --prune
+```
+
+Git refuse de supprimer la branche où vous êtes (`error: cannot delete branch …`) : changez de branche d'abord.
+
+**Si Git répond** `error: the branch '18-taux-recrutement' is not fully merged` (la formulation varie légèrement selon la version) : c'est **normal après un squash**. Le commit unique créé par GitLab n'a pas les mêmes hash que vos commits de travail ; Git ne peut pas prouver qu'ils sont intégrés. Vérifiez dans GitLab que la MR est bien **Merged**, puis forcez :
+
+```{.bash risque="dangereux"}
+git branch -D 18-taux-recrutement
+```
+
+La branche **distante** est normalement supprimée par GitLab (option *Delete source branch* de la MR). Sinon :
+
+```{.bash risque="reversible"}
+git push origin --delete 18-taux-recrutement
+```
+
+**Prévention.** Cocher *Delete source branch* dans chaque MR, ou l'activer par défaut dans le projet ; `fetch.prune true` (règle R10).
+
+## 11. Je dois annuler un commit déjà poussé {#annuler-pousse}
+
+**Symptôme.** Le regroupement des PCS fusionné hier dans `main` fausse le tableau de synthèse : il faut l'annuler, vite.
+
+**Diagnostic.** Le commit est **partagé** : d'autres l'ont récupéré, des branches en sont parties, le pipeline de `main` l'a construit. Le supprimer de l'historique (`git reset` puis push forcé) réécrirait l'histoire de tout le monde, et GitLab le refuse de toute façon sur une branche protégée : `remote: GitLab: You are not allowed to force push code to a protected branch on this project.`
+
+**Correction.** On **ajoute** un commit qui défait le premier, et on le fait passer par une MR comme tout changement :
+
+```{.bash risque="reversible"}
+git fetch
+git switch -c 35-annule-regroupement-pcs origin/main
+git revert 7c1e0b4
+git push -u origin 35-annule-regroupement-pcs
+```
+
+`git revert` crée un nouveau commit, dont le message commence par `Revert "…"` et cite le hash annulé : l'annulation est tracée. Pour un commit de fusion, ajoutez `-m 1`. GitLab propose aussi un bouton **Revert** sur une MR fusionnée, qui prépare la même chose dans une nouvelle branche.
+
+**Prévention.** Pipeline obligatoire et review de la méthode avant le merge (règles R08, R11) ; une règle méthodologique importante devient un test (règle R12).
+
+## 12. J'ai perdu un commit {#commit-perdu}
+
+**Symptôme.** Un commit n'apparaît plus dans `git log --all` : branche supprimée trop vite, `reset --hard` malheureux, rebase, commit en HEAD détachée.
+
+**Diagnostic.** Le commit existe encore dans votre dépôt local ; il n'est plus référencé par aucune branche. Le reflog de HEAD a noté chaque position :
+
+```{.bash risque="sur"}
+git reflog
+git log -g --oneline --grep="PCS"
+git show 9b7c3a1
+```
+
+**Correction.** Une fois le bon hash identifié, reposez-y un nom :
+
+```{.bash risque="reversible"}
+git branch recup/regroupement-pcs 9b7c3a1
+```
+
+**Limites.** Le reflog est **local** : un service Onyxia supprimé l'emporte avec lui. Ses entrées sont conservées 90 jours par défaut, et 30 jours pour les commits qui ne sont plus accessibles depuis aucune branche ; au-delà, un nettoyage automatique (`git gc`) peut les effacer. Si le commit a été poussé dans une MR, GitLab le conserve souvent dans la MR même après suppression de la branche source.
+
+**Prévention.** Pousser au moins à chaque fin de session (règle R03) ; ne pas supprimer une branche non fusionnée sans vérifier ; `git branch sauvegarde/…` avant une opération délicate.
