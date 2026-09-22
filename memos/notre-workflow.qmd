@@ -66,7 +66,7 @@ Dès le premier push, ouvrez la MR vers `main`, marquée [Draft]{.t} (titre pré
 
 ### 6. Obtenir un pipeline vert
 
-Le pipeline vérifie le style (`lint-r`, `lint-python`), les tests (`tests-r`, `tests-python`) et la production (données, indicateurs, rapport). Une règle méthodologique introduite par la MR devient un test : les parts somment à 1, les taux sont entre 0 et 1.
+Le pipeline vérifie le style (`lint-r`, `lint-python`), les tests (`tests-r`, `tests-python`) et la production (données, indicateurs, figures, rapport). Une règle méthodologique introduite par la MR devient un test : les parts somment à 1, les taux sont entre 0 et 1.
 
 *Règles R11, R12.*
 
@@ -157,7 +157,7 @@ Un lecteur signale une erreur dans le panorama **2025**, alors que `main` contie
    git switch --detach 2025.0
    ```
 
-2. **Créer la branche de maintenance** depuis le tag, une seule fois par millésime. C'est Inès, Maintainer du projet, qui la crée ; elle est protégée comme `main` :
+2. **Créer la branche de maintenance** depuis le tag, une seule fois par millésime. C'est Inès, Maintainer du projet, qui la crée ; elle est protégée comme `main`, mais seuls les Maintainers y fusionnent :
 
    ```{.bash risque="reversible"}
    git switch -c maintenance/2025 2025.0
@@ -168,13 +168,13 @@ Un lecteur signale une erreur dans le panorama **2025**, alors que `main` contie
 
    ```{.bash risque="reversible"}
    git switch -c hotfix/25-erratum-age maintenance/2025
-   git cherry-pick -x 7c1e0b4
+   git cherry-pick -x 42931da                 # c11, la correction de l'âge dans main
    git push -u origin hotfix/25-erratum-age
    ```
 
    Ajoutez une note d'erratum dans `reports/panorama.qmd`.
 
-4. **MR vers `maintenance/2025`**, pas vers `main` : même review, même pipeline, squash, suppression de la branche.
+4. **MR vers `maintenance/2025`**, pas vers `main` : même review, suppression de la branche, mais fusion **sans squash**, pour garder la mention *cherry picked from* (avec la méthode *Fast-forward merge*, la branche avance simplement). Le pipeline tourne si la branche contient un `.gitlab-ci.yml` : ce n'est pas le cas de `maintenance/2025`, antérieure à la CI (c21), où l'on lance les tests en local.
 
 5. **Taguer l'erratum** sur `maintenance/2025` après le merge :
 
