@@ -1,0 +1,132 @@
+---
+title: "Relire une Merge Request statistique"
+surtitre: "Mémo"
+chapeau: "Relire une MR, c'est vérifier le code, mais aussi la méthode, les données et la possibilité de refaire le calcul. Voici la liste de contrôle de l'équipe, des exemples de commentaires utiles et la posture qui fait qu'une review aide au lieu de blesser."
+description: "Checklist de relecture d'une Merge Request dans un projet statistique : code, méthode, reproductibilité, données, secrets, chemins, tests, clarté, historique. Exemples de commentaires et posture du relecteur."
+---
+
+Dans un projet statistique, un code impeccable peut produire un chiffre faux : une moyenne de taux présentée comme un taux moyen, des non-répondants comptés comme des zéros. C'est pourquoi la [review]{.t} porte sur le code **et** sur la méthode (règle R08). Elle complète le [pipeline]{.t}, sans le remplacer : la machine vérifie ce qu'on lui a appris à vérifier, l'humain vérifie le sens.
+
+Le parcours d'une MR et une première review guidée sont vécus à l'[étape 4](../parcours/jour-1/e4-merge-request.qmd).
+
+## Avant de lire le diff
+
+- [ ] **Lire l'issue** liée (`Closes #30` dans la description) : que devait faire cette MR ? Une MR qui fait autre chose, ou plus, se discute avant le détail.
+- [ ] **Lire la description** de la MR : ce qui change, comment le vérifier, ce qui reste ouvert.
+- [ ] **Regarder le pipeline** : s'il est rouge, commencez par là ; inutile de relire la forme d'un code qui ne passe pas ses tests (règle R11).
+- [ ] **Estimer la taille** : au-delà de quelques centaines de lignes, demandez un découpage plutôt que de survoler.
+- [ ] Si besoin, **exécuter** la branche chez vous :
+
+```{.bash risque="reversible"}
+git fetch
+git switch 30-difficulte-recrutement
+```
+
+puis lancer les scripts et les tests. Le bouton **Code** de la MR, dans GitLab, rappelle ces commandes (*Check out branch*).
+
+## La liste de contrôle
+
+### Code
+
+- [ ] Le code fait ce que dit la MR, et seulement cela : pas de modification opportuniste d'un autre indicateur.
+- [ ] Les fonctions existantes sont réutilisées (`age_au_31_decembre()`, `classe_age()`, la charte graphique) plutôt que recopiées.
+- [ ] Pas de code mort, de `print()` de débogage ni de bloc commenté « au cas où ».
+- [ ] Le style suit les linters de l'équipe (`lintr`, `ruff`) ; si le pipeline les passe, on ne discute pas la forme.
+
+### Méthode statistique
+
+- [ ] **Le bon estimateur** : un taux par métier est un rapport des sommes, `sum(recrutements) / sum(effectif)`, pas la moyenne des taux par établissement.
+- [ ] **Le champ** est explicite : quels établissements, quel millésime, quels contrats (apprentis inclus ou non) ? Tout filtre (`effectif >= 10`) est justifié et documenté.
+- [ ] **Les valeurs manquantes** sont traitées consciemment : un `NA` de non-réponse n'est pas un zéro. Le taux de réponse est calculé et affiché.
+- [ ] **Les dates de référence** sont les bonnes : âge au 31 décembre de l'année de référence, pas à la date d'extraction.
+- [ ] **Les ordres de grandeur** sont plausibles : comparez avec le millésime précédent ; un écart de plusieurs points s'explique.
+- [ ] **La pondération**, s'il y en a une, est appliquée partout, y compris dans les totaux.
+
+### Reproductibilité
+
+- [ ] Tout tirage aléatoire (bootstrap, échantillonnage) fixe sa graine : `set.seed()` en R, un générateur initialisé en Python.
+- [ ] Une nouvelle dépendance est déclarée (`requirements.txt`, `dependances-r.txt`) avec sa version.
+- [ ] Le résultat ne dépend pas de l'ordre d'exécution manuel des scripts : la chaîne `scripts/01…04` suffit.
+- [ ] Le rapport se reconstruit (`quarto render`) : le job de rendu du pipeline le prouve.
+
+### Données
+
+- [ ] **Aucune donnée individuelle** n'est ajoutée au dépôt : pas de CSV de salariés, pas d'extraction, même « temporaire » (règle R09).
+- [ ] Seules les petites nomenclatures publiques vont dans `data/reference/`.
+- [ ] Les données d'entrée sont référencées précisément (millésime, empreinte du `MANIFEST.json`), pas désignées par « le fichier de Karim ».
+
+### Secrets
+
+- [ ] Aucun jeton, mot de passe, clé ou URL avec identifiants dans le diff, **y compris dans les fichiers de configuration et les notebooks**.
+- [ ] Les secrets sont lus depuis l'environnement (`Sys.getenv()`, `os.environ`) ou des variables CI masquées.
+- [ ] Si un secret apparaît : commentaire **bloquant**, et l'auteur le révoque immédiatement. Il est compromis dès le push, même si la MR n'est jamais fusionnée.
+
+### Chemins
+
+- [ ] Aucun chemin absolu vers un poste (`/home/tom/Documents/…`, `C:/Users/…`) : chemins relatifs à la racine du projet, ou paramètres.
+- [ ] Aucun `setwd()` dans les scripts.
+- [ ] Les sorties vont dans les dossiers prévus (`resultats/`, `_output/`), ignorés par Git.
+
+### Assertions et tests
+
+- [ ] Toute règle méthodologique importante introduite par la MR est **testée** : parts qui somment à 1 par établissement, effectifs positifs, âges bornés (règle R12).
+- [ ] Un bug corrigé s'accompagne d'un test qui l'aurait détecté.
+- [ ] Les tests vérifient des valeurs attendues, pas seulement « que ça tourne ».
+
+### Clarté et documentation
+
+- [ ] Les noms de fonctions et de variables disent ce qu'ils mesurent (`taux_recrutement_metier`, pas `calc2`).
+- [ ] Les choix méthodologiques sont commentés **dans le code**, là où le lecteur de 2027 les cherchera.
+- [ ] Le rapport (`reports/panorama.qmd`) et `data/README.md` sont mis à jour si le champ ou la définition d'un indicateur change.
+
+### Historique
+
+- [ ] Le titre de la MR sera le message du commit de squash dans `main` : il dit **pourquoi**, et cite l'issue (règles R01, R14).
+- [ ] La branche est à jour avec `main` ; sinon, l'auteur la rebase avant la fin de la review.
+- [ ] La branche ne mélange pas deux sujets (règle R04).
+- [ ] *Delete source branch* est coché (règle R10).
+
+## Écrire des commentaires utiles
+
+Un bon commentaire dit **ce qui pose problème**, **pourquoi**, et **à quel point c'est bloquant**. Une convention répandue chez les développeurs, les *Conventional Comments*, préfixe chaque commentaire par une étiquette (`question:`, `suggestion:`, `issue:`, `nitpick:`, `praise:`…) et, si besoin, une précision `(blocking)` ou `(non-blocking)`. L'équipe en retient cinq, traduites :
+
+| Étiquette | Sens | Bloque le merge ? |
+|---|---|---|
+| `question:` | Je ne comprends pas ; ce n'est peut-être pas un problème. | Non, mais attend une réponse. |
+| `suggestion:` | Voici une amélioration possible, avec la raison. | Non, sauf mention `(bloquant)`. |
+| `problème (bloquant):` | Le résultat est faux, non reproductible, ou dangereux. | Oui. |
+| `détail:` | Préférence mineure ; l'auteur décide. | Non. |
+| `bravo:` | Ce qui est bien fait, pour que ce soit refait. | Non. |
+
+Exemples, sur la MR du taux de recrutement :
+
+> **problème (bloquant):** ligne 14, `mean(recrutements / effectif)` calcule la moyenne des taux par établissement : un établissement de 12 salariés pèse autant qu'un de 2 000. Le taux du métier est `sum(recrutements) / sum(effectif)`. Peux-tu corriger et ajouter un test sur un petit cas où les deux diffèrent ?
+
+> **question:** les `NA` de `recrutements` sont remplacés par 0 ligne 9. Ce sont des non-répondants, ou des établissements sans recrutement ? Si ce sont des non-répondants, il faudrait les exclure et afficher le taux de réponse.
+
+> **suggestion:** le filtre `effectif >= 10` exclut les petits établissements. Si c'est voulu, un commentaire et une phrase dans le champ du rapport suffisent ; sinon, on peut le retirer.
+
+> **bravo:** le test sur les parts par établissement est exactement ce qu'il fallait : il aurait détecté le bug #21.
+
+Dans GitLab :
+
+- **Un commentaire sur une ligne** ouvre un fil de discussion (*thread*) ; l'auteur le marque résolu une fois traité. Le réglage *All threads must be resolved* empêche le merge tant qu'un fil reste ouvert.
+- **Une suggestion** propose directement le code corrigé, que l'auteur applique en un clic ; GitLab crée le commit :
+
+  ````markdown
+  ```suggestion:-0+0
+  taux <- sum(rec$recrutements, na.rm = TRUE) / sum(rec$effectif[!is.na(rec$recrutements)])
+  ```
+  ````
+
+- **Start a review** (Commencer une revue) regroupe vos commentaires en brouillon et les publie d'un coup avec **Submit review**, au lieu d'envoyer une notification par ligne. Selon la version de GitLab, la soumission permet aussi d'approuver.
+- **Approve** (Approuver) dit « je me porte garant ». N'approuvez pas une MR que vous n'avez pas comprise ; demandez plutôt une explication.
+
+## La posture du relecteur
+
+- **Commentez le code, pas la personne.** « Cette ligne compte les non-répondants comme des zéros », pas « tu as oublié les NA ».
+- **Posez des questions quand vous doutez.** Le relecteur peut se tromper ; une question laisse à l'auteur la place d'expliquer un choix délibéré.
+- **Distinguez l'essentiel du détail.** Trois problèmes bloquants noyés dans vingt remarques de style ne seront pas vus. Laissez le style aux linters.
+- **Soyez rapide.** Une MR qui attend trois jours diverge de `main` et décourage. Une première réponse dans la journée, même partielle.
+- **Relisez ce que vous comprenez, dites ce que vous ne relisez pas.** « J'ai relu la méthode, pas le code Python » est une information utile pour l'équipe.
+- **Côté auteur**, un commentaire bloquant n'est pas un reproche : c'est une erreur qui n'atteindra pas le panorama publié. Répondez à chaque fil, même par « corrigé dans le commit suivant ».
