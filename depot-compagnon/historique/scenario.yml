@@ -1,0 +1,521 @@
+# Scénario du dépôt compagnon « observatoire-industrie »
+#
+# Liste ORDONNÉE des opérations appliquées par outils/construire_historique.py.
+# Référence : docs/bible-fil-rouge.md (§ 4 et § 5). Les identifiants c01…c25
+# sont ceux de la bible.
+#
+# Types d'opérations :
+#   commit            : branche, auteur, date, etat (dossier de historique/etats/), message
+#   branche           : crée une branche « depuis » un identifiant ou une référence Git
+#   fusion            : fusionne une branche « dans » une autre, mode ff ou no-ff ;
+#                       conflits attendus + dossier de résolution
+#   cherry_pick       : git cherry-pick -x sur une branche, avec son commiteur
+#   supprimer_branche : supprime une branche déjà intégrée
+#   tag               : tag annoté (auteur = tagger, date, message)
+#
+# Syntaxe : sous-ensemble de YAML lu sans bibliothèque externe (voir le
+# constructeur) ; les messages sont des blocs littéraux « | ».
+
+depot: observatoire-industrie
+branche_initiale: main
+
+personnes:
+  ines:
+    nom: Inès Moreau
+    email: ines.moreau@oei.example.org
+  karim:
+    nom: Karim Haddad
+    email: karim.haddad@oei.example.org
+  lea:
+    nom: Léa Fontaine
+    email: lea.fontaine@oei.example.org
+  tom:
+    nom: Tom Mercier
+    email: tom.mercier@oei.example.org
+  jules:
+    nom: Jules Perrin
+    email: jules.perrin@oei.example.org
+  formation:
+    nom: Formation Git à plusieurs
+    email: formation@oei.example.org
+
+operations:
+  - commit: c01
+    branche: main
+    auteur: ines
+    date: 2025-01-13T09:30:00+01:00
+    etat: 01-initialise-projet
+    message: |
+      Initialise le projet de l'Observatoire
+
+  - commit: c02
+    branche: main
+    auteur: ines
+    date: 2025-01-20T14:10:00+01:00
+    etat: 02-generateur-donnees
+    message: |
+      Ajoute le générateur de données synthétiques du panel
+
+      Le générateur est déterministe : la graine dérive du millésime et le
+      MANIFEST.json contient l'empreinte SHA-256 du contenu de chaque table.
+
+  - commit: c03
+    branche: main
+    auteur: karim
+    date: 2025-02-03T10:05:00+01:00
+    etat: 03-calcul-age
+    message: |
+      Ajoute le calcul de l'âge et des classes d'âge
+
+  - commit: c04
+    branche: main
+    auteur: karim
+    date: 2025-02-10T16:42:00+01:00
+    etat: 04-maj
+    message: |
+      maj
+
+  - commit: c05
+    branche: main
+    auteur: ines
+    date: 2025-02-24T11:20:00+01:00
+    etat: 05-preparation-duckdb
+    message: |
+      Prépare les données avec DuckDB
+
+      DuckDB interroge les Parquet bruts sans les charger en mémoire et écrit
+      les tables d'analyse compactes (CSV) lues par R.
+
+  - commit: c06
+    branche: main
+    auteur: karim
+    date: 2025-03-10T17:55:00+01:00
+    etat: 06-modifs
+    message: |
+      modifs
+
+  - commit: c07
+    branche: main
+    auteur: ines
+    date: 2025-03-24T15:00:00+01:00
+    etat: 07-synthese-panorama
+    message: |
+      Rédige la synthèse et les chiffres clés du panorama 2025
+
+  - commit: c08
+    branche: main
+    auteur: karim
+    date: 2025-04-07T09:45:00+02:00
+    etat: 08-tests-classes-age
+    message: |
+      Ajoute les tests des classes d'âge
+
+  - commit: c09
+    branche: main
+    auteur: ines
+    date: 2025-05-12T14:30:00+02:00
+    etat: 09-figures
+    message: |
+      Ajoute la pyramide des âges et la répartition des métiers
+
+  - commit: c10
+    branche: main
+    auteur: ines
+    date: 2025-06-16T11:00:00+02:00
+    etat: 10-finalise-2025
+    message: |
+      Finalise le panorama 2025 pour publication
+
+  - tag: "2025.0"
+    cible: c10
+    auteur: ines
+    date: 2025-06-16T11:15:00+02:00
+    message: |
+      Panorama 2025 : publication
+
+      Données : millésime 2025, régénéré par
+      python scripts/01_generer_donnees.py --millesime 2025
+      (générateur 1.0.0). Empreintes SHA-256 du contenu (MANIFEST.json) :
+      etablissements f99a041f620390836c78264ec93b7d574c90a71af154161e34ee6203de8c3f82
+      salaries       e19fc21a67cc7f22259feebb787586154c094c3cf1c93a640cb92de8221c74aa
+      recrutements   79aebd88b18d077637b5425122d3002b74ba17684d2fb788df1114e95d6b485f
+      Environnement : requirements.txt de ce tag, R 4.4.
+
+  - commit: c11
+    branche: main
+    auteur: karim
+    date: 2025-09-15T10:12:40+02:00
+    etat: 11-corrige-age
+    message: |
+      Corrige le calcul de l'âge : âge au 31 décembre de l'année de référence
+
+      L'âge était calculé à la date d'extraction des données (30 juin N+1).
+      Les salariés nés au premier semestre comptaient un an de trop, ce qui
+      surestimait la part des 55 ans et plus.
+
+      Closes #7
+
+  - commit: c12
+    branche: main
+    auteur: lea
+    date: 2025-10-06T15:35:00+02:00
+    etat: 12-charte
+    message: |
+      Harmonise les figures avec une charte commune
+
+  - commit: c13
+    branche: main
+    auteur: ines
+    date: 2025-11-03T09:50:00+01:00
+    etat: 13-parametre-millesime
+    message: |
+      Paramètre le millésime du panorama
+
+      Le millésime devient un paramètre du rapport (params$millesime) :
+      quarto render reports/panorama.qmd -P millesime:2026.
+
+  - commit: c14
+    branche: main
+    auteur: karim
+    date: 2025-11-17T16:10:00+01:00
+    etat: 14-repartition-pcs
+    message: |
+      Ajoute la répartition par PCS et ses tests de cohérence
+
+  - commit: c15
+    branche: main
+    auteur: lea
+    date: 2026-01-12T14:00:00+01:00
+    etat: 15-tests-python
+    message: |
+      Teste le schéma et la cohérence des données générées
+
+  - tag: etape-1-debut
+    cible: c15
+    auteur: formation
+    date: 2026-03-10T08:00:00+01:00
+    message: |
+      Point de reprise de la formation : début de l'étape 1
+
+  - tag: etape-2-debut
+    cible: c15
+    auteur: formation
+    date: 2026-03-10T08:00:00+01:00
+    message: |
+      Point de reprise de la formation : début de l'étape 2
+
+  - commit: c16
+    branche: main
+    auteur: karim
+    date: 2026-01-19T10:30:00+01:00
+    etat: 16-documente-champ
+    message: |
+      Documente le champ et les sources du panel
+
+  - tag: etape-3-debut
+    cible: c16
+    auteur: formation
+    date: 2026-03-10T08:00:00+01:00
+    message: |
+      Point de reprise de la formation : début de l'étape 3
+
+  # E3 : deux branches sur la même fonction, fusion ff puis fusion à 3 voies.
+  - branche: 12-seuil-seniors
+    depuis: c16
+
+  - commit: c17
+    branche: 12-seuil-seniors
+    auteur: karim
+    date: 2026-01-26T10:15:00+01:00
+    etat: 17-seuil-seniors
+    message: |
+      Paramètre le seuil de la part des seniors (#12)
+
+  - branche: 13-exclure-apprentis
+    depuis: c16
+
+  - commit: c18
+    branche: 13-exclure-apprentis
+    auteur: lea
+    date: 2026-01-26T11:40:00+01:00
+    etat: 18-exclure-apprentis
+    message: |
+      Exclut les apprentis du calcul de la part des seniors (#13)
+
+  - fusion: 12-seuil-seniors
+    dans: main
+    mode: ff
+
+  - fusion: 13-exclure-apprentis
+    id: c19
+    dans: main
+    mode: no-ff
+    auteur: lea
+    date: 2026-01-27T09:20:00+01:00
+    conflits: [R/indicateurs.R]
+    resolution: 19-fusion-exclure-apprentis
+    message: |
+      Merge branch '13-exclure-apprentis'
+
+      Garde le seuil paramétrable (#12) et l'effectif hors apprentis (#13) ;
+      le premier test de test-indicateurs.R vérifie les deux règles ensemble.
+
+  - supprimer_branche: 12-seuil-seniors
+  - supprimer_branche: 13-exclure-apprentis
+
+  # E4 : la MR piégée !1 de Tom (un seul commit « maj »).
+  - branche: 18-taux-recrutement
+    depuis: c19
+
+  - commit: t01
+    branche: 18-taux-recrutement
+    auteur: tom
+    date: 2026-01-29T18:05:00+01:00
+    etat: 20-mr1-maj
+    message: |
+      maj
+
+  - tag: etape-4-debut
+    cible: c19
+    auteur: formation
+    date: 2026-03-10T08:00:00+01:00
+    message: |
+      Point de reprise de la formation : début de l'étape 4
+
+  # c20 : squash de la MR !1 après review.
+  - commit: c20
+    branche: main
+    auteur: tom
+    date: 2026-02-03T15:30:00+01:00
+    etat: 21-taux-recrutement
+    message: |
+      Ajoute le taux de recrutement par métier (#18)
+
+      Taux par métier = somme des recrutements / somme des effectifs, sur les
+      établissements répondants. Les non-réponses sont exclues (et non
+      remplacées par zéro) et le taux de réponse est publié avec le taux.
+
+      Closes #18
+
+  - tag: etape-5-debut
+    cible: c20
+    auteur: formation
+    date: 2026-03-10T08:00:00+01:00
+    message: |
+      Point de reprise de la formation : début de l'étape 5
+
+  - commit: c21
+    branche: main
+    auteur: ines
+    date: 2026-02-09T11:00:00+01:00
+    etat: 22-integration-continue
+    message: |
+      Met en place l'intégration continue (#20)
+
+      Pipeline GitLab en quatre stages : verifier (ruff, lintr), tester
+      (pytest, testthat), produire (données, indicateurs, figures, rapport)
+      et publier (Pages sur main, Release sur un tag de publication).
+
+      Closes #20
+
+  # E6 : la branche de Tom qui fait échouer tests-r et lint-r.
+  - branche: 21-regrouper-pcs
+    depuis: c21
+
+  - commit: r01
+    branche: 21-regrouper-pcs
+    auteur: tom
+    date: 2026-02-10T16:20:00+01:00
+    etat: 23-regroupe-pcs
+    message: |
+      Regroupe les PCS en quatre grandes catégories
+
+  - tag: etape-6-debut
+    cible: c21
+    auteur: formation
+    date: 2026-03-10T08:00:00+01:00
+    message: |
+      Point de reprise de la formation : début de l'étape 6
+
+  # E7 : la même branche après une semaine de travail (7 commits).
+  - branche: 21-regrouper-pcs-e7
+    depuis: r01
+
+  - commit: r02
+    branche: 21-regrouper-pcs-e7
+    auteur: tom
+    date: 2026-02-11T09:10:00+01:00
+    etat: 24-wip
+    message: |
+      wip
+
+  - commit: r03
+    branche: 21-regrouper-pcs-e7
+    auteur: tom
+    date: 2026-02-11T11:45:00+01:00
+    etat: 25-corrige-le-test
+    message: |
+      corrige le test
+
+  - commit: r04
+    branche: 21-regrouper-pcs-e7
+    auteur: tom
+    date: 2026-02-11T11:52:00+01:00
+    etat: 26-oups
+    message: |
+      oups
+
+  - commit: r05
+    branche: 21-regrouper-pcs-e7
+    auteur: tom
+    date: 2026-02-12T17:30:00+01:00
+    etat: 27-wip-2
+    message: |
+      wip 2
+
+  - commit: r06
+    branche: 21-regrouper-pcs-e7
+    auteur: tom
+    date: 2026-02-13T10:05:00+01:00
+    etat: 28-corrige-le-lint
+    message: |
+      corrige le lint
+
+  - commit: r07
+    branche: 21-regrouper-pcs-e7
+    auteur: tom
+    date: 2026-02-13T10:12:00+01:00
+    etat: 29-encore
+    message: |
+      encore
+
+  - commit: c22
+    branche: main
+    auteur: lea
+    date: 2026-02-16T14:25:00+01:00
+    etat: 30-etablissements-region
+    message: |
+      Ajoute la répartition des établissements par région (#19)
+
+      Closes #19
+
+  - tag: etape-7-debut
+    cible: c22
+    auteur: formation
+    date: 2026-03-10T08:00:00+01:00
+    message: |
+      Point de reprise de la formation : début de l'étape 7
+
+  # c23 : squash de la MR !3 (branche rebasée sur main, conflit résolu).
+  - commit: c23
+    branche: main
+    auteur: tom
+    date: 2026-02-18T16:40:00+01:00
+    etat: 31-regroupe-pcs-squash
+    message: |
+      Regroupe les PCS en quatre grandes catégories (#21)
+
+      Les cinq codes PCS de travail sont regroupés en quatre catégories :
+      cadres et ingénieurs (37), techniciens et agents de maîtrise (47),
+      employés (54), ouvriers (62 et 67). repartition_pcs() calcule les
+      parts par établissement ; le test vérifie qu'elles somment à 1.
+
+      Closes #21
+
+  - commit: c24
+    branche: main
+    auteur: ines
+    date: 2026-03-02T10:00:00+01:00
+    etat: 32-finalise-2026
+    message: |
+      Finalise le panorama 2026
+
+  - tag: etape-8-debut
+    cible: c24
+    auteur: formation
+    date: 2026-03-10T08:00:00+01:00
+    message: |
+      Point de reprise de la formation : début de l'étape 8
+
+  # E8 : publication 2026.0, puis erratum 2025.1 depuis le tag 2025.0.
+  - tag: "2026.0"
+    cible: c24
+    auteur: ines
+    date: 2026-03-02T15:30:00+01:00
+    message: |
+      Panorama 2026 : publication
+
+      Données : millésime 2026, régénéré par
+      python scripts/01_generer_donnees.py --millesime 2026
+      (générateur 1.0.0). Empreintes SHA-256 du contenu (MANIFEST.json) :
+      etablissements d010fd1bac4c6d2d8fd7c5da04b606a5d3ce137f463bb9cdb31be4fb2cf5bc47
+      salaries       4b25597872f4e131fdb473d42178d0b34429cc591cb64f9861aa4f8660f543b6
+      recrutements   1f4c949386f24ec4118ed27a6dbd64f2fdf988a6bf77e5bb1228c22031717b6a
+      Environnement : requirements.txt et images de .gitlab-ci.yml de ce tag.
+
+  - branche: maintenance/2025
+    depuis: "2025.0"
+
+  - branche: hotfix/25-erratum-age
+    depuis: maintenance/2025
+
+  - cherry_pick: c11
+    id: h01
+    branche: hotfix/25-erratum-age
+    commiteur: karim
+    date: 2026-03-03T10:30:00+01:00
+
+  - commit: h02
+    branche: hotfix/25-erratum-age
+    auteur: karim
+    date: 2026-03-03T11:15:00+01:00
+    etat: 33-note-erratum
+    message: |
+      Ajoute la note d'erratum du panorama 2025 (#25)
+
+  # MR !5 fusionnée sans squash ; méthode du projet : fast-forward.
+  - fusion: hotfix/25-erratum-age
+    dans: maintenance/2025
+    mode: ff
+
+  - tag: "2025.1"
+    cible: maintenance/2025
+    auteur: ines
+    date: 2026-03-04T09:30:00+01:00
+    message: |
+      Panorama 2025 : erratum sur la part des 55 ans et plus (#25)
+
+  - tag: etape-9-debut
+    cible: c24
+    auteur: formation
+    date: 2026-03-10T08:00:00+01:00
+    message: |
+      Point de reprise de la formation : début de l'étape 9
+
+  - tag: etape-10-debut
+    cible: c24
+    auteur: formation
+    date: 2026-03-10T08:00:00+01:00
+    message: |
+      Point de reprise de la formation : début de l'étape 10
+
+  - commit: c25
+    branche: main
+    auteur: ines
+    date: 2026-03-09T16:00:00+01:00
+    etat: 34-workflow-equipe
+    message: |
+      Documente le workflow de l'équipe (#27)
+
+      CONTRIBUTING.md rassemble les règles du carnet de l'équipe : issue,
+      branche courte, Merge Request relue (code et méthode), pipeline vert,
+      squash au merge, tags de publication et procédure d'erratum.
+
+      Closes #27
+
+  - tag: etape-11-debut
+    cible: c25
+    auteur: formation
+    date: 2026-03-10T08:00:00+01:00
+    message: |
+      Point de reprise de la formation : début de l'étape 11
