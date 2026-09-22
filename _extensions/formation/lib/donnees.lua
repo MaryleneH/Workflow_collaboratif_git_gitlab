@@ -108,6 +108,9 @@ function M.terme(cle)
   if not cle then return nil end
   local index = M.termes()
   if index[cle] then return index[cle] end
+  -- La typographie de Pandoc transforme « -- » en « – » : on le rétablit.
+  cle = cle:gsub('\u{2013}', '--'):gsub('\u{2014}', '---')
+  if index[cle] then return index[cle] end
   local bas = pandoc.text.lower(cle)
   for _, t in pairs(index) do
     if pandoc.text.lower(O.texte(t.terme)) == bas then return t end

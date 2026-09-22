@@ -229,7 +229,7 @@ class Graphe {
     const rangees = new Map(); // ligne -> [[x0, x1], ...] par rang
     const places = [];
     const cibles = [...parGroupe.keys()]
-      .filter((id) => visibles.has(id) && this.commits[id])
+      .filter((id) => visibles.has(id) && this.commits[id] && this.commits[id].y !== undefined)
       .sort((a, b) => this.commits[a].x - this.commits[b].x);
     for (const cible of cibles) {
       const ligne = this.commits[cible].y;

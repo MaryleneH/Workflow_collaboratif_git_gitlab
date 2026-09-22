@@ -91,6 +91,45 @@ function M.graphe(div)
   end
   local sc = D.lire('scenarios/' .. id .. '.yml')
   if not sc.etapes then return {} end
+  -- Validation : toute référence doit désigner un commit déclaré et visible.
+  -- (Piège YAML : un identifiant N, Y, on, off… est lu comme un booléen.)
+  local connus = {}
+  for cid, c in pairs(sc.commits or {}) do
+    connus[O.texte(cid)] = true
+    for _, par in ipairs(c.parents or {}) do
+      if type(par) ~= 'string' or not (sc.commits or {})[par] then
+        O.avertir('scénario ' .. id .. ' : parent inconnu « ' .. tostring(par) .. ' » pour le commit ' .. O.texte(cid))
+      end
+    end
+  end
+  local function verifier(n, m, nom)
+    if not m then return end
+    local vis = {}
+    for _, c in ipairs(m.commits or {}) do
+      if type(c) ~= 'string' or not connus[c] then
+        O.avertir('scénario ' .. id .. ', étape ' .. n .. ' (' .. nom .. ') : commit inconnu « ' .. tostring(c) .. ' »')
+      else vis[c] = true end
+    end
+    for _, champ in ipairs({ 'refs', 'tags' }) do
+      for k, v in pairs(m[champ] or {}) do
+        if type(v) ~= 'string' or not vis[v] then
+          O.avertir('scénario ' .. id .. ', étape ' .. n .. ' (' .. nom .. ') : ' .. O.texte(k) .. ' pointe vers « ' .. tostring(v) .. ' », commit absent ou invisible')
+        end
+      end
+    end
+    if m.head and type(m.head) ~= 'string' then
+      O.avertir('scénario ' .. id .. ', étape ' .. n .. ' : head invalide')
+    elseif m.head and not (m.refs or {})[m.head] and not vis[m.head] then
+      O.avertir('scénario ' .. id .. ', étape ' .. n .. ' (' .. nom .. ') : HEAD pointe vers « ' .. m.head .. ' », ni branche ni commit visible')
+    end
+  end
+  for n, e in ipairs(sc.etapes) do
+    if e['local'] or e.distant then
+      verifier(n, e['local'], 'local'); verifier(n, e.distant, 'distant')
+    else
+      verifier(n, e, 'local')
+    end
+  end
   local titre = attr(div, 'titre') or (sc.titre and O.texte(sc.titre)) or 'Graphe de commits'
   local classes = 'gf-graphe gf-large'
   for _, c in ipairs(div.classes) do

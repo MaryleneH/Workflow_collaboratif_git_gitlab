@@ -168,6 +168,11 @@ function Pandoc(doc)
     if etape then
       ajouter(N.pont(etape, pont))
     elseif appro then
+      if contient_blocs(pont) then
+        ajouter('<section class="gf-pont gf-pont--texte">')
+        ajouter(pont)
+        ajouter('</section>')
+      end
       ajouter(N.pont_approfondissement(appro))
     elseif contient_blocs(pont) then
       ajouter('<section class="gf-pont">')
