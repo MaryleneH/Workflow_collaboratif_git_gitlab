@@ -1,0 +1,805 @@
+---
+title: "Une édition complète"
+etape: e11
+description: "Simulation finale : préparer l'édition 2027 du panorama en équipe, avec le workflow de l'Observatoire, et réagir aux incidents qui arrivent toujours au mauvais moment."
+---
+
+::: situation
+Mars 2026. Le panorama 2026 est publié (tag `2026.0`), l'erratum 2025 aussi (`2025.1`),
+et l'équipe vient d'écrire son `CONTRIBUTING.md`. Inès ouvre cinq issues pour
+l'édition 2027 et vous les confie.
+
+Rien de nouveau à apprendre : tout est dans le carnet. Mais cette fois, tout arrive en
+même temps. Un collègue pousse pendant que vous travaillez, un pipeline rougit, un
+lecteur signale une erreur dans le panorama 2026 déjà publié. C'est pour ces moments-là
+que le workflow existe.
+:::
+
+## Le dispositif
+
+Vous travaillez **en équipe de 3 ou 4**, sur la copie du projet que le formateur attribue
+à votre équipe, à partir du tag `etape-11-debut`. Le projet GitLab est réglé comme en
+E10 : `main` protégée, *Pipelines must succeed*, *All threads must be resolved*, squash
+au merge, suppression de la branche source par défaut.
+
+Les cinq issues de l'édition 2027 :
+
+| Issue | Sujet | Fichiers probablement touchés | Question à se poser en review |
+|---|---|---|---|
+| #30 | Taux de difficulté de recrutement par métier | `R/indicateurs.R`, tests, `reports/panorama.qmd` | Quel est le dénominateur ? Que fait-on des `NA` ? |
+| #31 | Arrondi des parts dans le tableau de synthèse (elles ne somment plus à 100 % à l'affichage) | `reports/panorama.qmd` | À quel endroit de la chaîne arrondit-on ? |
+| #32 | Part des femmes par PCS | `R/indicateurs.R`, tests | Rapport des sommes ou moyenne des parts ? |
+| #33 | Documenter le champ du panel 2027 | `data/README.md`, `reports/panorama.qmd` | Un lecteur comprend-il ce qui est compté, et ce qui ne l'est pas ? |
+| #34 | Carte des établissements par zone d'emploi | `scripts/04_figures.py`, `python/observatoire/charte.py` | Les zones sont fictives : que peut-on vraiment dessiner ? La charte commune est-elle respectée ? |
+
+Chaque équipe prend **deux issues**, attribuées par le formateur.
+
+### Trois rôles, qui tournent
+
+| Rôle | Ce qu'il fait | Ce qu'il ne fait jamais |
+|---|---|---|
+| **Auteur** | Crée la branche depuis l'issue, commite, pousse, ouvre la [Draft]{.t} MR, fait passer la CI, répond aux commentaires. | Fusionner sa propre MR. |
+| **Relecteur** | Relit le code **et** la méthode, commente, propose des [suggestions]{.t ref="suggestion"}, approuve quand il est convaincu. | Approuver « pour débloquer ». |
+| **Mainteneur** | Garde `main` : vérifie les conditions de merge, fusionne par [squash]{.t}, gère l'erratum si Inès en demande un. | Contourner une protection. |
+
+Dans une équipe de 4, deux auteurs travaillent en parallèle sur les deux issues et se
+relisent mutuellement. **À chaque nouvelle issue, les rôles tournent** : l'auteur devient
+relecteur, le relecteur mainteneur, le mainteneur auteur.
+
+Le « mainteneur » est un rôle de jeu. Dans GitLab, fusionner vers `main` est autorisé
+aux rôles Developer et Maintainer (réglage de E4) ; en revanche, créer et protéger une
+branche de maintenance demande le rôle **Maintainer**.
+
+### Le minutage
+
+| Temps | Phase | Ce qui se passe |
+|---|---|---|
+| 0 à 5 min | Lancement | Équipes, issues, rôles ; chacun part de `main` à jour. |
+| 5 à 25 min | Production | Cycles complets, de l'issue au merge. Le formateur distribue les cartes-incident. |
+| 25 à 30 min | Clôture | Dernières MR fusionnées ou laissées en Draft, état de `main` vérifié. |
+| 30 à 40 min | Débrief | Questions, post-test, phrase-boussole. |
+
+### Les règles du jeu
+
+1. **Le `CONTRIBUTING.md` de E10 fait loi.** Rien n'entre dans `main` sans Merge
+   Request relue, pipeline vert et fils résolus.
+2. **Une carte-incident interrompt tout.** L'équipe la traite avant de reprendre, et
+   **nomme à voix haute** la règle du carnet qu'elle mobilise.
+3. **Pas de `git push --force`.** Si une branche doit être réécrite, c'est la vôtre, et
+   c'est `--force-with-lease`.
+4. **On trace au lieu d'effacer.** Un incident traité laisse une trace dans la MR : un
+   commentaire, un message de commit, une décision écrite.
+5. **Le graphe fait foi.** À tout moment, le formateur peut demander
+   `git log --oneline --graph --all` : l'équipe doit savoir l'expliquer.
+
+::: {.parcours-mr}
+:::
+
+## À vous
+
+::: {.mission #m-e11-1 titre="Préparer l'édition 2027" duree="25 min" mode="en équipe de 3 ou 4" depart="etape-11-debut"}
+::: objectif
+Mener vos deux issues de l'ouverture au merge, avec le workflow de l'équipe, en traitant
+correctement chaque carte-incident reçue.
+:::
+
+::: consignes
+1. **Mainteneur** : mettez `main` à jour et vérifiez le point de départ.
+   `git fetch`, `git switch main`, `git pull`, puis `git log --oneline -1` doit montrer
+   « Documente le workflow de l'équipe (#27) ».
+2. **Auteur** : dans l'issue GitLab, utilisez **Create merge request**. GitLab crée la
+   branche (par exemple `30-difficulte-recrutement`) et une MR en Draft qui la relie à
+   l'issue. Dans le terminal : `git fetch`, puis `git switch 30-difficulte-recrutement`.
+3. **Auteur** : commits petits et explicites, qui citent l'issue ; tests lancés en local
+   avant chaque push ; `git push`.
+4. **Auteur** : quand le pipeline est vert, marquez la MR comme prête (*Mark as ready*)
+   et assignez le relecteur.
+5. **Relecteur** : review du code et de la méthode, à l'aide de la question de la
+   colonne « review » du tableau. Approuvez seulement quand vos fils sont résolus.
+6. **Mainteneur** : fusionnez quand GitLab l'autorise, avec *Squash commits* et
+   *Delete source branch* cochés, puis vérifiez que l'issue est fermée.
+7. **Tous** : revenez sur `main` à jour (`git switch main`, `git pull`), faites le
+   ménage (`git fetch --prune`), puis tournez les rôles pour l'issue suivante.
+:::
+
+::: reussite
+- `git log --oneline --first-parent origin/main` montre, au-dessus de c25, **un commit
+  par issue fusionnée**, dont le message cite l'issue, par exemple `(#32)`.
+- Dans GitLab, chaque MR fusionnée affiche un pipeline réussi, une approbation, aucun
+  fil ouvert, et sa branche source est supprimée : après `git fetch --prune`,
+  `git branch -r` ne la montre plus.
+- Chaque carte-incident reçue a laissé une trace écrite dans la MR concernée, avec la
+  règle du carnet mobilisée.
+:::
+
+::: indice
+Après un squash, `git branch -d 30-difficulte-recrutement` peut refuser de supprimer
+votre branche locale (« not fully merged ») : ses commits ne sont pas dans `main`, seul
+leur squash y est. Vérifiez dans GitLab que la MR est bien fusionnée, puis
+`git branch -D 30-difficulte-recrutement`.
+:::
+
+::: {.indice titre="Indice 2 : le cycle en commandes"}
+```{.bash risque="reecrit"}
+git fetch
+git switch 32-part-femmes-pcs
+git add R/indicateurs.R tests/testthat/test-indicateurs.R
+git commit -m "Ajoute la part des femmes par PCS (#32)"
+git push
+git fetch
+git rebase origin/main
+git push --force-with-lease
+```
+Les trois dernières commandes ne servent que si `main` a avancé entre-temps.
+:::
+
+::: corrige
+Un bon déroulé, pour une équipe qui a #31 et #33 :
+
+- #31 : arrondi **à l'affichage** dans `reports/panorama.qmd` (par exemple
+  `round(100 * part)` dans le chunk du tableau), note sous le tableau
+  (« les totaux peuvent différer de 100 % en raison des arrondis »), aucun changement
+  dans `R/indicateurs.R`, tests inchangés et verts. Squash : « Arrondit les parts à
+  l'affichage seulement (#31) ».
+- #33 : paragraphe « Champ » dans `data/README.md` et dans le rapport (panel synthétique,
+  sous-filières, établissements présents au 31 décembre, zones d'emploi fictives).
+  Conflit attendu avec #31 dans `reports/panorama.qmd` : les deux ajouts sont conservés.
+- `git log --oneline --first-parent origin/main` : deux squash au-dessus de c25, et
+  aucun commit de fusion.
+- Points d'observation : la règle nommée à voix haute à chaque carte ; aucun
+  `push --force` ; aucun fil résolu sans réponse ; les branches supprimées.
+:::
+:::
+
+::: formateur
+**Avant la séance.** Préparez une copie du projet par équipe, à `etape-11-debut`, réglée
+comme en E10, avec les issues #30 à #34 ouvertes (vérifiez leurs numéros : ils dépendent
+de la façon dont les copies sont créées). Donnez le rôle Maintainer à au moins une
+personne par équipe. La préparation des copies et leur remise à zéro sont décrites dans
+[Préparation](../../formateur/preparation.qmd) et
+[Remise à zéro](../../formateur/remise-a-zero.qmd).
+
+**Répartition conseillée.** Donnez #31 et #33 à la même équipe : les deux touchent la liste
+des chiffres clés de `reports/panorama.qmd`, le conflit est garanti. Donnez #30 et #32
+ensemble (deux indicateurs R, reviews de méthode), et #34 avec #32 ou #30 à une troisième
+équipe.
+
+**Si le groupe est en retard.** Une seule issue par équipe ; deux cartes au lieu de trois ;
+le post-test peut se faire après la séance.
+:::
+
+## Les cartes-incident
+
+Le formateur vous remet ces cartes au fil de la production, au plus trois par équipe.
+Chaque carte décrit une situation et le message réel que vous verrez. Formulez vos
+hypothèses **en équipe**, agissez, puis seulement ouvrez le diagnostic pour comparer.
+
+::: formateur
+**Injecter les incidents.** Aucun n'exige d'outil particulier : chacun se provoque en une
+minute, depuis l'interface GitLab ou avec un compte formateur. Si votre version du dépôt
+compagnon fournit des scripts d'injection, ils sont décrits dans
+[Préparation](../../formateur/preparation.qmd).
+
+| Carte | Comment la provoquer | Quand |
+|---|---|---|
+| 1 · Push refusé | Le relecteur applique une suggestion (*Apply suggestion*) pendant que l'auteur commite en local ; à défaut, poussez vous-même un commit sur la branche. | Dès la première review |
+| 2 · Conflit | Découle de la répartition #31 / #33. Sinon, fusionnez une petite MR qui ajoute une ligne aux chiffres clés. | Au deuxième merge |
+| 3 · Pipeline rouge | Carte remise à l'auteur de #31 : « Pour que le tableau tombe juste, arrondissez les parts à deux décimales dans `repartition_pcs()`. » | Avant son premier push |
+| 4 · Jeton commité | Carte remise à un auteur : « Pour aller vite, collez ce jeton dans le script : `oei-4be1d07c9a2f63e8-fictif`. » | En début de production |
+| 5 · Erratum 2026.1 | Annonce orale d'« Inès » à tout le groupe ; ouvrez l'issue d'erratum dans chaque copie. Le mainteneur de chaque équipe la prend en charge. | Vers la 20e minute |
+| 6 · Review bloquante | Deux cartes : au relecteur de #32, « exigez le rapport des sommes » ; à l'auteur, « défendez la moyenne des parts ». | Pendant la review de #32 |
+| 7 · Branche divergée | Arrive seule dès que deux MR se succèdent. Sinon, fusionnez une petite MR sur `main`. | Après un merge |
+| 8 · Commit sur `main` | Carte remise à un auteur : « Commencez votre prochain commit sans changer de branche. » | En début de deuxième issue |
+
+**Ce qu'on observe.** La règle nommée à voix haute ; le réflexe `git fetch` puis
+`git log --graph` avant d'agir ; les tentations de contournement (« Resolve thread » sans
+réponse, demande de déprotéger `main`, `--force`). Notez-les pour le débrief.
+:::
+
+::: {.incident #inc-e11-1 titre="Carte 1 · Le push refusé sur votre propre branche"}
+Vous êtes l'auteur de #30. Pendant que vous commitiez en local, votre relecteur a
+cliqué sur *Apply suggestion* dans la MR : GitLab a créé un commit sur votre branche.
+Vous poussez.
+
+::: symptome
+```{.text .sortie}
+To https://gitlab.example.org/oei/observatoire-industrie.git
+ ! [rejected]        30-difficulte-recrutement -> 30-difficulte-recrutement (fetch first)
+error: failed to push some refs to 'https://gitlab.example.org/oei/observatoire-industrie.git'
+hint: Updates were rejected because the remote contains work that you do not
+hint: have locally. ...
+```
+:::
+::: hypotheses
+- La branche est protégée.
+- Mon jeton d'accès a expiré.
+- `origin/30-difficulte-recrutement` contient un commit que je n'ai pas.
+:::
+::: diagnostic
+Ni protection (le message dirait `pre-receive hook declined`), ni authentification. La
+branche distante a reçu le commit de suggestion ; votre commit local a le même parent.
+Les deux historiques ont divergé, ce que montre :
+
+```{.bash risque="sur"}
+git fetch
+git log --oneline --graph 30-difficulte-recrutement origin/30-difficulte-recrutement
+```
+:::
+::: correction
+```{.bash risque="reecrit"}
+git pull --rebase
+```
+
+Git télécharge le commit de suggestion, puis **recrée** votre commit local au-dessus.
+Ce commit n'avait jamais été poussé : le réécrire ne touche l'historique de personne.
+Relancez les tests, puis un simple `git push` suffit, sans forcer.
+
+Avec le réglage `pull.ff only` de E4, un `git pull` sans option échoue ici
+(`fatal: Not possible to fast-forward, aborting.`) : c'est voulu. L'option `--rebase`,
+donnée explicitement, prend le pas sur ce réglage.
+:::
+::: prevention
+Dès qu'un relecteur peut commiter sur votre branche, commencez chaque reprise de travail
+par `git fetch` et regardez `origin/…`
+([R02](../../memos/carnet-de-regles.qmd#R02)).
+:::
+:::
+
+::: {.incident #inc-e11-2 titre="Carte 2 · Le conflit dans panorama.qmd"}
+La MR de #31 vient d'être fusionnée. Celle de #33, qui touche aussi
+`reports/panorama.qmd`, signale un conflit dans GitLab (« Merge blocked: merge conflicts
+must be resolved », selon votre version). L'auteur de #33 remet sa branche à jour.
+
+::: symptome
+```{.text .sortie}
+$ git rebase origin/main
+Auto-merging reports/panorama.qmd
+CONFLICT (content): Merge conflict in reports/panorama.qmd
+error: could not apply 5d1e7b2... Documente le champ du panel 2027 (#33)
+hint: Resolve all conflicts manually, mark them as resolved with
+hint: "git add/rm <conflicted_files>", then run "git rebase --continue".
+hint: You can instead skip this commit: run "git rebase --skip".
+hint: To abort and get back to the state before "git rebase", run "git rebase --abort".
+Could not apply 5d1e7b2... Documente le champ du panel 2027 (#33)
+```
+:::
+::: hypotheses
+- GitLab a abîmé le fichier en fusionnant #31.
+- Deux MR ont modifié les mêmes lignes de `reports/panorama.qmd`.
+- Le rebase a perdu mon commit.
+:::
+::: diagnostic
+Les deux sujets ont ajouté une ligne au même endroit de la liste des chiffres clés.
+Git ne choisit pas entre deux intentions : il vous les montre.
+
+```{.text .sortie}
+<<<<<<< HEAD
+- Les parts sont arrondies à l'unité ; leur total peut différer de 100 %.
+=======
+- Le champ couvre les établissements du panel synthétique présents au 31 décembre.
+>>>>>>> 5d1e7b2 (Documente le champ du panel 2027 (#33))
+```
+
+Piège classique : **pendant un rebase, `HEAD` est le côté de `main`** (ici, la ligne de
+#31), et votre commit est l'autre côté. C'est l'inverse d'une fusion. Rien n'est perdu :
+votre commit est en cours de réapplication.
+:::
+::: correction
+Gardez les deux lignes, supprimez les marqueurs, vérifiez que le rapport se construit,
+puis :
+
+```{.bash risque="reecrit"}
+git add reports/panorama.qmd
+git rebase --continue
+quarto render reports/panorama.qmd
+git push --force-with-lease
+```
+
+Le rebase a créé de nouveaux commits : votre branche distante doit être remplacée, d'où
+`--force-with-lease`, sur **votre** branche uniquement.
+:::
+::: prevention
+Un conflit se résout en comprenant les deux intentions, puis en relançant les contrôles
+([R05](../../memos/carnet-de-regles.qmd#R05)). Des branches courtes en réduisent le
+nombre ([R04](../../memos/carnet-de-regles.qmd#R04)).
+:::
+:::
+
+::: {.incident #inc-e11-3 titre="Carte 3 · Le pipeline rouge sur les parts"}
+Pour que le tableau de synthèse « tombe juste » (#31), l'auteur a arrondi les parts à deux
+décimales directement dans `repartition_pcs()`. Le pipeline de la MR échoue sur le job
+`tests-r`. Extrait du journal du job :
+
+::: symptome
+```{.text .sortie}
+── Failure ('test-indicateurs.R:31:3'): repartition_pcs() : les parts somment à 1 dans chaque établissement ──
+sommes$total not equal to rep(1, nrow(sommes)).
+214/806 mismatches (average diff: 0.01)
+[1] 0.99 - 1 == -0.01
+[2] 1.01 - 1 ==  0.01
+[4] 0.99 - 1 == -0.01
+...
+[ FAIL 1 | WARN 0 | SKIP 0 | PASS 23 ]
+Error: Test failures
+Execution halted
+ERROR: Job failed: exit code 1
+```
+:::
+::: hypotheses
+- Le runner a un problème : il suffit de relancer le job.
+- Le test est trop strict : il faut l'assouplir.
+- L'arrondi dans le calcul a cassé une propriété méthodologique.
+:::
+::: diagnostic
+Le test est une **assertion méthodologique** écrite en E6 : dans chaque établissement,
+les parts par PCS somment à 1. En arrondissant **dans le calcul**, on propage l'erreur
+d'arrondi à tout ce qui utilise ces parts ensuite. Relancer le job ne changera rien : le
+résultat est déterministe. Assouplir le test ferait disparaître le symptôme, pas le
+problème.
+
+La réponse statistique à #31 est ailleurs : on calcule en pleine précision, on arrondit
+**à l'affichage**, et on l'écrit sous le tableau.
+:::
+::: correction
+Retirez l'arrondi de `R/indicateurs.R`, arrondissez dans le chunk du tableau de
+`reports/panorama.qmd`, ajoutez la note « les totaux peuvent différer de 100 % en raison
+des arrondis ». Relancez les tests en local, commitez, poussez : le pipeline repasse au
+vert.
+:::
+::: prevention
+On ne fusionne pas une MR dont le pipeline est rouge
+([R11](../../memos/carnet-de-regles.qmd#R11)) ; la règle des parts est un test parce
+qu'elle est importante ([R12](../../memos/carnet-de-regles.qmd#R12)).
+:::
+:::
+
+::: {.incident #inc-e11-4 titre="Carte 4 · Le jeton commité"}
+Pour #30, l'auteur récupère les difficultés de recrutement auprès d'une API interne
+(fictive). Pour aller vite, il colle son jeton dans le script, commite et pousse. Le
+relecteur ouvre le diff de la MR :
+
+::: symptome
+```diff
++API_TOKEN = "oei-4be1d07c9a2f63e8-fictif"
++reponse = requests.get(URL_API, headers={"Authorization": f"Bearer {API_TOKEN}"})
+```
+:::
+::: hypotheses
+- Ce n'est pas grave : le dépôt est privé.
+- Il suffit de supprimer la ligne dans un nouveau commit.
+- Le jeton est compromis : il faut le révoquer.
+:::
+::: diagnostic
+Dès le push, le jeton est dans l'historique de la branche, dans le dépôt de chaque
+personne qui a fait `git fetch`, et dans les versions successives de la MR que GitLab
+conserve. Un nouveau commit qui supprime la ligne ne l'efface d'aucun de ces endroits.
+Un dépôt privé n'est pas un coffre-fort : tous ses membres, ses sauvegardes et ses
+journaux de CI y ont accès.
+:::
+::: correction
+1. **Révoquez** le jeton auprès du service qui l'a émis, puis générez-en un nouveau.
+   C'est la seule action qui supprime le risque.
+2. **Prévenez** la responsable (Inès) : c'est un incident de sécurité, pas une coquille.
+3. **Remplacez** la ligne par une lecture de variable d'environnement,
+   `os.environ["OEI_API_TOKEN"]`. En CI, déclarez la variable dans
+   **Settings › CI/CD › Variables**, avec l'option *Masked*.
+4. Le squash au merge évitera que le commit fautif entre dans `main`, mais cela ne
+   dispense pas de la révocation.
+:::
+::: prevention
+Ni données individuelles, ni secrets dans Git : un secret commité est un secret
+compromis ([R09](../../memos/carnet-de-regles.qmd#R09)). GitLab propose aussi une
+analyse *Secret Detection* dans la CI ; le blocage dès le push dépend de l'édition de
+GitLab.
+:::
+:::
+
+::: {.incident #inc-e11-5 titre="Carte 5 · L'erratum urgent 2026.1"}
+Inès interrompt tout le monde : « Un lecteur signale que la légende de la pyramide des
+âges du panorama 2026 inverse femmes et hommes. Il faut un erratum aujourd'hui. » Elle
+ouvre une issue d'erratum. Le mainteneur regarde ce que contient `main` depuis la
+publication :
+
+::: symptome
+```{.text .sortie}
+$ git fetch
+$ git log --oneline 2026.0..origin/main
+9c41d2e Ajoute la part des femmes par PCS (#32)
+71ab0f3 Arrondit les parts à l'affichage seulement (#31)
+d2e9a14 Documente le workflow de l'équipe (#27)
+```
+:::
+::: hypotheses
+- Corriger sur `main`, puis poser le tag `2026.1` sur `main`.
+- Déplacer le tag `2026.0` sur un commit corrigé.
+- Partir du tag `2026.0` dans une branche de maintenance.
+:::
+::: diagnostic
+`main` contient déjà du travail de l'édition 2027, relu mais pas destiné à être
+publié : taguer `main` le publierait par accident. Déplacer `2026.0` réécrirait ce qui a
+été publié, et ceux qui ont déjà récupéré le tag garderaient l'ancien. C'est exactement
+la situation de l'erratum 2025, en E8.
+:::
+::: correction
+Le mainteneur (rôle Maintainer dans GitLab) crée la branche de maintenance depuis le tag,
+puis la protège dans **Settings › Repository › Protected branches** :
+
+```{.bash risque="reversible"}
+git fetch --tags
+git switch -c maintenance/2026 2026.0
+git push -u origin maintenance/2026
+```
+
+Le correctif part de cette branche. Le numéro de l'issue dépend de votre projet ;
+ici, #35 :
+
+```{.bash risque="reversible"}
+git switch -c hotfix/35-legende-pyramide maintenance/2026
+```
+
+Corrigez `scripts/04_figures.py`, commitez, poussez, puis ouvrez la MR **vers
+`maintenance/2026`**, pas vers `main`. Après review, pipeline vert et merge :
+
+```{.bash risque="reversible"}
+git switch maintenance/2026
+git pull
+git tag -a 2026.1 -m "Panorama 2026 : erratum 1 (légende de la pyramide des âges)"
+git push origin 2026.1
+```
+
+Enfin, si le défaut existe aussi dans `main`, la correction y est reportée par une MR,
+avec `git cherry-pick -x` du commit de correction sur une branche partie de
+`origin/main`.
+:::
+::: prevention
+Un erratum part du tag publié, sans embarquer le travail en cours, et la correction
+revient dans `main` ([R16](../../memos/carnet-de-regles.qmd#R16)). Le tag `2026.1` est
+annoté et désigne un état reproductible
+([R15](../../memos/carnet-de-regles.qmd#R15)).
+:::
+:::
+
+::: {.incident #inc-e11-6 titre="Carte 6 · La review bloquée sur la méthode"}
+Pour #32, l'auteur calcule la part des femmes de chaque établissement, puis la moyenne
+de ces parts par PCS. Le relecteur ouvre un fil : « C'est une moyenne de parts, pas la
+part des femmes : un établissement de 12 salariés pèse autant qu'un de 2 000. » L'auteur
+n'est pas d'accord. Le mainteneur ne peut pas fusionner.
+
+::: symptome
+```{.text .sortie}
+Merge blocked: all threads must be resolved.
+```
+(libellé du widget de la MR, selon votre version de GitLab)
+:::
+::: hypotheses
+- L'auteur n'a qu'à cliquer sur *Resolve thread*.
+- Le mainteneur peut fusionner quand même : c'est un détail.
+- Il faut trancher la question de méthode, et l'écrire.
+:::
+::: diagnostic
+Le blocage est voulu : c'est le réglage *All threads must be resolved* de
+**Settings › Merge requests**, choisi en E10. Le résoudre sans répondre revient à
+désactiver la review.
+
+Sur le fond, les deux calculs répondent à deux questions différentes. « La part des
+femmes parmi les ouvriers qualifiés » est un **rapport des sommes** :
+`sum(femmes) / sum(effectif)` par PCS. La moyenne des parts décrit « l'établissement
+moyen », qui n'est pas ce qu'annonce le titre de l'issue.
+:::
+::: correction
+L'auteur passe au rapport des sommes, ajoute un test sur une petite table où les deux
+calculs diffèrent, et répond dans le fil en expliquant le choix. C'est le relecteur qui
+résout le fil qu'il a ouvert. Si le désaccord persiste, la responsable de la
+publication tranche, et la décision est écrite dans la MR.
+:::
+::: prevention
+La review porte sur le code **et** sur la méthode
+([R08](../../memos/carnet-de-regles.qmd#R08)) ; une règle méthodologique importante
+devient un test ([R12](../../memos/carnet-de-regles.qmd#R12)). Rendre l'approbation
+obligatoire par des règles d'approbation demande GitLab Premium ; le blocage par les
+fils non résolus, lui, existe dans toutes les éditions.
+:::
+:::
+
+::: {.incident #inc-e11-7 titre="Carte 7 · La branche qui a divergé"}
+Pendant que vous prépariez la carte des zones d'emploi (#34), deux MR ont été fusionnées.
+GitLab indique dans votre MR que la branche source est en retard sur la branche cible
+(« The source branch is 2 commits behind the target branch »). Vous regardez le
+graphe :
+
+::: symptome
+```{.text .sortie}
+$ git fetch
+$ git log --oneline --graph --all
+* 9c41d2e (origin/main) Ajoute la part des femmes par PCS (#32)
+* 71ab0f3 Arrondit les parts à l'affichage seulement (#31)
+| * 3f8e0c1 (HEAD -> 34-carte-zones-emploi, origin/34-carte-zones-emploi) Ajoute la carte des établissements par zone d'emploi (#34)
+|/
+* d2e9a14 (tag: etape-11-debut, main) Documente le workflow de l'équipe (#27)
+```
+:::
+::: hypotheses
+- Il faut fusionner `main` dans ma branche.
+- Il faut remettre ma branche à jour au-dessus de `origin/main`.
+- Il faut supprimer la branche et tout refaire.
+:::
+::: diagnostic
+Votre branche est partie de c25 ; `main` a avancé depuis. Les deux historiques ont un
+ancêtre commun et chacun des commits que l'autre n'a pas : c'est une divergence. Votre
+relecteur lirait un travail qui ne correspond plus au `main` d'aujourd'hui, et la CI
+testerait une combinaison qui n'existera jamais.
+:::
+::: correction
+C'est la situation de E7. La branche est la vôtre : vous pouvez la réécrire.
+
+```{.bash risque="reecrit"}
+git rebase origin/main
+git push --force-with-lease
+```
+
+Entre les deux, relancez tests et rendu. Si `--force-with-lease` refuse le push
+(`stale info`), quelqu'un a poussé sur votre branche entre-temps : `git fetch`, regardez,
+n'écrasez rien. Si le projet exige un historique linéaire, GitLab propose aussi un
+bouton **Rebase** dans la MR ; récupérez ensuite le résultat avec `git pull --rebase`.
+:::
+::: prevention
+On ne réécrit jamais un historique partagé ; si l'on doit forcer, c'est
+`--force-with-lease`, sur sa propre branche
+([R13](../../memos/carnet-de-regles.qmd#R13)).
+:::
+:::
+
+::: {.incident #inc-e11-8 titre="Carte 8 · « J'ai commité sur main »"}
+L'auteur de #32 a enchaîné sans changer de branche. Son commit est fait. Il pousse.
+
+::: symptome
+```{.text .sortie}
+$ git push
+remote: GitLab: You are not allowed to push code to protected branches on this project.
+To https://gitlab.example.org/oei/observatoire-industrie.git
+ ! [remote rejected] main -> main (pre-receive hook declined)
+error: failed to push some refs to 'https://gitlab.example.org/oei/observatoire-industrie.git'
+```
+:::
+::: hypotheses
+- GitLab est en panne.
+- Il faut demander à Inès de déprotéger `main` quelques secondes.
+- Le commit est au mauvais endroit : il faut lui donner une autre étiquette.
+:::
+::: diagnostic
+Le refus vient de **GitLab** (`remote: GitLab:`) : `main` est protégée, et c'est
+heureux. Côté Git, rien n'est perdu : le commit existe dans votre dépôt, sur votre `main`
+locale, qui est en avance sur `origin/main`. Une branche n'est qu'une étiquette : il
+suffit d'en poser une nouvelle sur ce commit, puis de remettre `main` à sa place.
+:::
+::: correction
+```{.bash risque="reversible"}
+git fetch
+git switch -c 32-part-femmes-pcs
+git branch -f main origin/main
+git push -u origin 32-part-femmes-pcs
+```
+
+L'ordre compte : la nouvelle branche **d'abord**, pour que le commit garde une
+étiquette. Ensuite seulement, `main` est replacée sur `origin/main`. Le schéma
+[plus bas](#schema-carte-8) décompose ces quatre commandes. Ouvrez ensuite
+la MR ; si `main` a avancé, remettez la branche à jour comme pour la carte 7.
+:::
+::: prevention
+Aucune modification n'entre dans `main` sans MR : `main` est protégée
+([R06](../../memos/carnet-de-regles.qmd#R06)) et l'on n'y commite jamais
+([R07](../../memos/carnet-de-regles.qmd#R07)). Avant chaque commit, un coup d'œil à
+`git status` ou à la barre d'état de VS Code, qui affiche la branche courante.
+:::
+:::
+
+## Revoir la carte 8 en schéma {#schema-carte-8}
+
+L'incident le plus fréquent est aussi celui qui fait le plus peur. Il se répare pourtant
+sans créer ni détruire un seul commit : on ne fait que déplacer des étiquettes.
+
+::: {.git-graph scenario="e11-commit-sur-main"}
+:::
+
+::: {.vscode titre="Voir sur quelle branche on commite"}
+La barre d'état, en bas à gauche, affiche la branche courante. Si elle indique `main`
+alors que vous allez commiter, arrêtez-vous. Après la réparation, la vue **Source
+Control** montre le commit sur `32-part-femmes-pcs` et plus rien en attente sur `main`.
+:::
+
+## Débrief
+
+### Les questions
+
+1. Quelle carte vous a le plus coûté ? Quelle règle du carnet vous a tirés d'affaire ?
+2. Quelle règle avez-vous été tentés de contourner ? Est-ce un signe qu'elle est mal
+   écrite, ou qu'elle est utile ?
+3. Dans ce que vous venez de faire, qu'est-ce qui relève de **Git** et qu'est-ce qui
+   relève de **GitLab** ? Citez trois exemples de chaque.
+4. Pourriez-vous poser le tag `2027.0` sur `main`, maintenant ? Qu'est-ce qui manque ?
+5. Que changeriez-vous dans le `CONTRIBUTING.md` de l'équipe après cette simulation ?
+
+La question 4 mérite qu'on s'y arrête. `main` est **exécutable, relue, testée** : c'est
+la promesse. Une publication demande davantage : le commit précis, la référence exacte
+des données (l'empreinte du `MANIFEST.json`), un environnement figé et le rapport
+correspondant, réunis sous un tag annoté. Chaque maillon de la chaîne a été construit
+pendant ces deux jours.
+
+::: {.chaine-confiance}
+:::
+
+### Post-test
+
+Ces questions reprennent les notions du [diagnostic de départ](../jour-1/e0-ouverture.qmd).
+Répondez sans notes, puis comparez avec ce que vous aviez répondu au premier matin.
+
+::: {.checkpoint titre="Post-test : les questions du premier matin"}
+::: {.question rappel="e1"}
+Que contient réellement un commit ? Et une branche ?
+
+::: reponse
+Un commit est un **instantané complet** du projet (pas un diff), avec son auteur, sa
+date, son message et le hash de son ou ses parents. Le diff se calcule entre deux
+instantanés. Une branche est une **référence mobile** : un nom qui désigne un commit et
+qui avance quand on commite dessus. Ce n'est pas une copie du projet.
+:::
+:::
+
+::: {.question rappel="e2"}
+Quelle différence entre votre `main`, `origin/main` et la branche `main` sur GitLab ?
+
+::: reponse
+Votre `main` est votre branche locale. `origin/main` est une branche distante : la
+mémoire, dans votre dépôt, de l'état de `main` sur le remote nommé `origin` lors du
+dernier `fetch`, `pull` ou `push`. La branche `main` sur GitLab est la vraie branche du
+dépôt distant. `origin` n'est qu'un nom local pour ce dépôt : ce n'est pas GitLab.
+:::
+:::
+
+::: {.question rappel="e2"}
+Que fait exactement `git pull` ?
+
+::: reponse
+Un `git fetch` (télécharger les commits et mettre à jour `origin/…`), puis une
+intégration dans la branche courante : fast-forward, fusion ou rebase, selon les options
+et la configuration. Il ne « synchronise » pas : il n'envoie rien, et il peut créer un
+commit de fusion.
+:::
+:::
+
+::: {.question rappel="e3"}
+Quand une fusion est-elle un fast-forward ? Quand est-elle une fusion à trois voies ?
+
+::: reponse
+Fast-forward : la branche cible n'a pas avancé depuis le départ de l'autre ; l'étiquette
+avance, aucun commit n'est créé. Fusion à trois voies : les deux branches ont divergé ;
+Git compare chacune à leur ancêtre commun et crée un commit de fusion à deux parents,
+avec un conflit si les deux côtés ont modifié les mêmes lignes.
+:::
+:::
+
+::: {.question rappel="e7"}
+Que fait réellement `git rebase origin/main`, et pourquoi pousse-t-on ensuite avec
+`--force-with-lease` plutôt qu'avec `--force` ?
+
+::: reponse
+Il **crée de nouveaux commits** qui rejouent vos changements au-dessus de `origin/main` :
+nouveaux hash, anciens commits toujours retrouvables par `git reflog`. La branche
+distante doit donc être remplacée. `--force-with-lease` refuse si la branche distante a
+changé depuis votre dernier `fetch` : il n'écrase pas le travail d'un autre, alors que
+`--force` le ferait sans prévenir.
+:::
+:::
+
+::: {.question rappel="e4"}
+Classez : commit, Merge Request, tag, pipeline, branche protégée, rebase, approval,
+GitLab Release, remote, squash au merge.
+
+::: reponse
+**Git** : commit, tag, rebase, remote. **GitLab** : Merge Request, pipeline, branche
+protégée, approval, GitLab Release. Le squash au merge est une **option de GitLab** qui
+crée un commit Git ordinaire.
+:::
+:::
+
+::: {.question rappel="e8"}
+Pourquoi un `main` vert n'est-il pas encore une publication reproductible ?
+
+::: reponse
+`main` garantit un code exécutable, relu et testé. Une publication reproductible exige
+en plus un commit précis désigné par un tag annoté, la référence exacte des données,
+l'environnement figé (lockfile, image) et le rapport correspondant.
+:::
+:::
+
+::: {.question rappel="e9"}
+Dans quel contexte Git Flow se justifierait-il, et pourquoi l'Observatoire ne l'a-t-il
+pas adopté ?
+
+::: reponse
+Quand on maintient plusieurs versions en parallèle, avec des cycles de livraison lourds
+et planifiés. L'Observatoire n'a qu'une version vivante à la fois et publie une fois par
+an : `develop` et `release/*` ajouteraient des branches longues et une intégration
+tardive sans bénéfice. Une branche de maintenance ponctuelle suffit pour les errata.
+:::
+:::
+:::
+
+### La phrase-boussole, entièrement décodée
+
+Au premier matin, c'était du jargon. Chaque mot correspond désormais à un geste que vous
+avez fait.
+
+::: decodeur
+« J'ai ouvert une [MR]{.t ref="merge-request"} sur ma [feature branch]{.t}, mais elle a
+[divergé]{.t ref="divergence"} de [main]{.t}. Je vais [rebase]{.t} avant la
+[review]{.t} et [squash]{.t} mes commits au [merge]{.t}. »
+
+::: traduction
+- **« J'ai ouvert une MR »** : j'ai demandé, dans GitLab, que ma branche soit relue puis
+  intégrée dans `main`. La Merge Request (`!7`, par exemple) est un objet GitLab, pas une
+  commande Git.
+- **« sur ma feature branch »** : sur la branche courte, née d'une issue
+  (`32-part-femmes-pcs`), où je suis seul à commiter. Pour Git, c'est une branche comme
+  une autre, une référence mobile ; « feature branch » est une convention d'équipe.
+- **« elle a divergé de main »** : depuis le départ de ma branche, `main` a reçu d'autres
+  commits. Les deux historiques ont un ancêtre commun et chacun des commits que l'autre
+  n'a pas.
+- **« Je vais rebase »** : `git fetch`, puis `git rebase origin/main`. Git recrée mes
+  commits au-dessus de `origin/main` : nouveaux commits, nouveaux hash. Ma branche étant
+  déjà poussée, je la remplace avec `git push --force-with-lease`, ce qui est permis
+  parce qu'elle est à moi.
+- **« avant la review »** : pour que mon relecteur lise, et que la CI teste, mon travail
+  tel qu'il s'appliquera au `main` d'aujourd'hui.
+- **« et squash mes commits au merge »** : au moment de fusionner, GitLab remplace mes
+  commits de travail par **un seul nouveau commit** sur `main`, à un seul parent, dont le
+  message cite l'issue. Je n'ai pas besoin de réécrire mon historique moi-même.
+:::
+:::
+
+## Et après
+
+**Les mémos**, faits pour être relus dans six mois :
+[notre workflow](../../memos/notre-workflow.qmd),
+[les commandes par intention](../../memos/commandes.qmd),
+[le dépannage](../../memos/depannage.qmd),
+[relire une MR](../../memos/relecture-mr.qmd),
+[Git ou GitLab ?](../../memos/git-ou-gitlab.qmd),
+[le carnet de règles](../../memos/carnet-de-regles.qmd) et
+[le lexique](../../memos/lexique.qmd).
+
+**Les approfondissements**, si un sujet vous a manqué :
+[retrouver le commit qui a changé un chiffre avec `git bisect`](../approfondissements/bisect.qmd),
+[contribuer à un projet qui n'est pas le vôtre](../approfondissements/forks-upstream.qmd),
+[réécrire son propre historique avec `rebase -i`](../approfondissements/rebase-interactif.qmd),
+[versionner autour de Git : données et environnement](../approfondissements/donnees-environnement.qmd).
+
+**Les références officielles** :
+
+- *Pro Git*, le livre de référence, gratuit et traduit en français :
+  <https://git-scm.com/book/fr/v2>
+- La documentation de chaque commande Git : <https://git-scm.com/docs>
+- La documentation GitLab des Merge Requests :
+  <https://docs.gitlab.com/user/project/merge_requests/>
+- La documentation GitLab CI/CD : <https://docs.gitlab.com/ci/>
+- Les branches protégées dans GitLab :
+  <https://docs.gitlab.com/user/project/repository/branches/protected/>
+
+**Dès votre retour**, trois gestes suffisent pour commencer : protéger `main` ; faire
+passer chaque changement par une issue, une branche courte et une MR ; transformer en test
+la règle méthodologique qui vous a déjà trahis une fois.
+
+::: retenir
+- Le workflow n'est pas une liste de commandes : c'est la réponse, déjà éprouvée, à
+  chacun des incidents que vous venez de revivre.
+- Face à un incident : lire le message, `git fetch`, regarder le graphe, puis seulement
+  agir, et savoir si c'est Git ou GitLab qui a parlé.
+- `main` est une promesse tenue par des mécanismes : protection, MR, CI, review, squash.
+  Une publication est davantage : un tag qui désigne un état reproductible.
+:::
+
+::: pont
+Deux jours plus tôt, vous saviez utiliser Git seul. Vous venez de mener une édition
+complète à plusieurs, sous contrainte, en tenant la promesse de `main`. Le mémo
+« Notre workflow » rassemble ce que vous emportez.
+:::
