@@ -1,0 +1,31 @@
+---
+title: "Lexique"
+surtitre: "Mémo"
+chapeau: "Les mots du parcours, avec leur sens exact, le piège qui les accompagne et, surtout, qui les fournit : Git, GitLab, VS Code ou une simple pratique d'équipe."
+description: "Lexique de la formation Git à plusieurs : définitions exactes, pièges, propriétaire (Git, GitLab, GitHub, VS Code, pratique, outil) et étape d'introduction de chaque terme."
+---
+
+Chaque terme balisé dans les pages du parcours renvoie ici. Les entrées sont regroupées par **propriétaire**, parce que la première question à se poser devant un mot de jargon est : qui fournit cette notion ?
+
+- []{.git} : Git lui-même. La notion existe sur votre machine, sans serveur ni réseau.
+- []{.gitlab} : la plateforme GitLab. Elle n'existe pas dans Git ; un autre serveur l'appellera autrement, ou ne l'aura pas.
+- []{.github} : l'équivalent sur GitHub, cité pour que vous le reconnaissiez.
+- []{.vscode} : l'interface de VS Code. Elle exécute des commandes Git à votre place.
+- []{.pratique} : une convention d'équipe. Ni Git ni GitLab ne l'imposent ; c'est un choix.
+- []{.outil} : un outil tiers de l'écosystème (conteneurs, linters, gestionnaires de paquets).
+
+Chaque entrée porte aussi un **niveau**, qui dit ce que l'on attend de vous à la fin des deux jours :
+
+à pratiquer
+: vous l'utilisez vous-même, sans aide, dans le terminal ou dans GitLab ;
+
+à comprendre
+: vous savez expliquer ce qui se passe et reconnaître la situation, même si vous la provoquez rarement ;
+
+à reconnaître
+: vous identifiez le mot quand un collègue ou une documentation l'emploie.
+
+La mention « déjà vu au niveau 1 » signale une notion que vous connaissez sans doute, mais dont la définition est ici **précisée** : relisez-la, car c'est souvent là que se cache l'idée reçue.
+
+::: {.lexique}
+:::
