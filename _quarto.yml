@@ -60,6 +60,8 @@ format:
     page-layout: custom
     template-partials:
       - _partials/title-block.html
+    include-before-body:
+      - _partials/evitement.html
     toc: false
     anchor-sections: true
     code-copy: true

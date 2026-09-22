@@ -11,8 +11,15 @@ import { initReview } from './review.js';
 
 document.documentElement.classList.add('gf-js');
 
+// Le lien d'évitement doit être le premier élément focalisable de la page.
+function placerEvitement() {
+  const lien = document.querySelector('.gf-evitement');
+  if (lien && document.body.firstElementChild !== lien) document.body.prepend(lien);
+}
+
 function demarrer() {
   const etapes = [
+    ['évitement', placerEvitement],
     ['rail', initRail],
     ['onglets', initOnglets],
     ['graphes', initGraphes],
