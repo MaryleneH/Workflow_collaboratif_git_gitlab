@@ -1,0 +1,24 @@
+# Sorties Quarto
+/_site/
+/_site-formateur/
+/.quarto/
+*_files/
+*.quarto_ipynb
+
+# Outils de test du site
+/tests/node_modules/
+/tests/rapports/
+
+# Python / R
+__pycache__/
+*.pyc
+.venv/
+.Rhistory
+.RData
+.Rproj.user/
+
+# Systèmes
+.DS_Store
+Thumbs.db
+
+**/*.quarto_ipynb

@@ -1,0 +1,15 @@
+# Profil par défaut : le site public des stagiaires.
+# Aucune page du dossier formateur/ n'est rendue, et les blocs
+# réservés au formateur (::: formateur, ::: corrige) sont supprimés
+# par l'extension _extensions/formation.
+project:
+  output-dir: _site
+  render:
+    - index.qmd
+    - parcours/
+    - fil-rouge/
+    - memos/
+    - "!formateur/"
+    - "!depot-compagnon/"
+    - "!docs/"
+    - "!tests/"
