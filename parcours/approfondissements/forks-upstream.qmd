@@ -1,0 +1,252 @@
+---
+title: "Contribuer à un projet qui n'est pas le vôtre"
+approfondissement: a-forks
+description: "Fork GitLab, remote upstream et branche amont : contribuer par Merge Request à un projet où l'on n'a pas le droit d'écrire, et tenir son fork à jour."
+chapeau: "Quand vous n'avez pas le droit de pousser sur un projet, vous travaillez dans votre propre copie côté GitLab, puis vous proposez vos commits par Merge Request."
+---
+
+::: situation
+Pour le panorama, Karim a besoin d'une table de passage entre codes NAF et sous-filières industrielles. Elle aurait sa place dans `nomenclatures`, le paquet R interne que le pôle méthodes maintient pour toutes les équipes (projet `methodes/nomenclatures`). Karim y est *Reporter* : il peut lire le code, ouvrir des issues, mais pas pousser de branche. L'issue #42 du pôle méthodes lui dit : « contribution bienvenue, passez par un fork ».
+:::
+
+## Ce qu'est un fork, et ce qu'il n'est pas
+
+Un [fork]{.t} est un **objet GitLab** []{.gitlab}. C'est une copie du projet, créée sur le serveur, dans un espace où vous avez les droits d'écriture : votre espace personnel, ou un groupe de votre équipe. GitLab garde le lien « *Forked from* `methodes/nomenclatures` ». C'est ce lien qui permet ensuite d'ouvrir une [Merge Request]{.t} du fork vers le projet d'origine.
+
+La copie porte sur le **dépôt Git** : commits, branches, tags. Les issues, les MR, les réglages de CI et les variables CI/CD du projet d'origine ne sont pas copiés.
+
+Git []{.git}, lui, ne connaît pas les forks. Pour Git, le fork et le projet d'origine sont deux dépôts distants comme les autres, avec deux URL. Tout le travail de synchronisation repose sur ce que vous connaissez depuis l'étape 2 : [remote]{.t}, [fetch]{.t}, [push]{.t}, [branche distante]{.t}.
+
+::: idee-fausse
+::: fausse
+Mon fork suit automatiquement le projet d'origine.
+:::
+::: juste
+Un fork est un dépôt indépendant : dès sa création, les deux historiques évoluent séparément. Mettre le fork à jour est une action explicite : `git fetch upstream`, puis un fast-forward et un `git push` vers le fork.
+:::
+:::
+
+## Les deux sens d'« upstream »
+
+Le mot [upstream]{.t} désigne deux choses différentes. La confusion est fréquente, même chez des développeurs expérimentés.
+
+| | Sens 1 : branche amont | Sens 2 : dépôt d'origine |
+|---|---|---|
+| Ce que c'est | La branche distante **suivie** par une branche locale | Un **remote** nommé `upstream` par convention |
+| Où ça vit | Configuration de la branche (`branch.<nom>.merge`) | Liste des remotes (`git remote -v`) |
+| Comment on le crée | `git push -u origin ma-branche` | `git remote add upstream <url>` |
+| À quoi ça sert | `git status` dit « ahead 2 » ; `git pull` et `git push` savent où aller | Lire les nouveautés du projet d'origine |
+| Existe sans fork ? | Oui, dès l'étape 2 | Non |
+
+Le nom `upstream` n'a rien de spécial pour Git : c'est une convention, comme `origin`. Dans un workflow de fork, `origin` est **votre fork** et `upstream` est **le projet d'origine**.
+
+## La mise en place, pas à pas
+
+**1. Créer le fork (GitLab).** Sur la page du projet `methodes/nomenclatures`, bouton **Fork** en haut à droite. Choisissez l'espace de destination (`karim`), gardez le nom, et la visibilité proposée. Selon votre version de GitLab, le formulaire propose de copier toutes les branches ou seulement la branche par défaut : la branche par défaut suffit.
+
+**2. Cloner le fork, pas l'original.**
+
+```{.bash risque="sur"}
+git clone https://gitlab.example.org/karim/nomenclatures.git
+cd nomenclatures
+```
+
+**3. Déclarer le projet d'origine.**
+
+```{.bash risque="reversible"}
+git remote add upstream https://gitlab.example.org/methodes/nomenclatures.git
+git remote -v
+```
+
+```{.text .sortie}
+origin	https://gitlab.example.org/karim/nomenclatures.git (fetch)
+origin	https://gitlab.example.org/karim/nomenclatures.git (push)
+upstream	https://gitlab.example.org/methodes/nomenclatures.git (fetch)
+upstream	https://gitlab.example.org/methodes/nomenclatures.git (push)
+```
+
+**4. Lire le projet d'origine.**
+
+```{.bash risque="sur"}
+git fetch upstream
+```
+
+```{.text .sortie}
+From https://gitlab.example.org/methodes/nomenclatures
+ * [new branch]      main       -> upstream/main
+```
+
+Comme `git fetch origin`, cette commande ne touche à aucune de vos branches : elle crée ou déplace les branches distantes `upstream/*`.
+
+**5. Partir du bon endroit.** La branche de travail part de `upstream/main`, l'état le plus récent du projet d'origine. Votre `main` local ou `origin/main` peuvent être en retard.
+
+```{.bash risque="reversible"}
+git switch -c 42-passage-naf-filiere upstream/main
+```
+
+```{.text .sortie}
+branch '42-passage-naf-filiere' set up to track 'upstream/main'.
+Switched to a new branch '42-passage-naf-filiere'
+```
+
+Les deux sens se croisent ici : la branche a pour **branche amont** (sens 1) `upstream/main`, qui appartient au **remote** `upstream` (sens 2). Ce suivi disparaît au premier push :
+
+**6. Pousser sur son fork.**
+
+```{.bash risque="reversible"}
+git push -u origin 42-passage-naf-filiere
+```
+
+```{.text .sortie}
+remote:
+remote: To create a merge request for 42-passage-naf-filiere, visit:
+remote:   https://gitlab.example.org/karim/nomenclatures/-/merge_requests/new?merge_request%5Bsource_branch%5D=42-passage-naf-filiere
+remote:
+To https://gitlab.example.org/karim/nomenclatures.git
+ * [new branch]      42-passage-naf-filiere -> 42-passage-naf-filiere
+branch '42-passage-naf-filiere' set up to track 'origin/42-passage-naf-filiere'.
+```
+
+Désormais, `git status` compare la branche à `origin/42-passage-naf-filiere`, sur votre fork.
+
+::: {.git-graph scenario="a-forks"}
+:::
+
+::: {.incident #inc-a-forks-1 titre="Le push vers le projet d'origine est refusé"}
+::: symptome
+Karim a tapé `git push upstream 42-passage-naf-filiere` par réflexe.
+
+```{.text .sortie}
+remote: You are not allowed to push code to this project.
+fatal: unable to access 'https://gitlab.example.org/methodes/nomenclatures.git/': The requested URL returned error: 403
+```
+:::
+::: hypotheses
+- Son jeton d'accès GitLab a expiré.
+- Il pousse vers le projet d'origine, où il n'a qu'un rôle de lecture.
+- La branche `main` du projet d'origine est protégée.
+:::
+::: diagnostic
+L'URL du message est celle de `methodes/nomenclatures` : le push visait `upstream`. Un jeton expiré produirait `HTTP Basic: Access denied` puis `Authentication failed`, pas « *not allowed to push code* ». La protection de `main` n'est pas en cause : Karim ne poussait pas sur `main`, et le refus porte sur tout le projet. Avec un rôle *Reporter*, on ne peut pousser aucune branche.
+:::
+::: correction
+Pousser sur le fork, où Karim a les droits :
+
+```{.bash risque="reversible"}
+git push -u origin 42-passage-naf-filiere
+```
+:::
+::: prevention
+Lisez `git remote -v` avant un premier push. Certains désactivent l'envoi vers le projet d'origine avec `git remote set-url --push upstream PAS_DE_PUSH`. L'URL de push devient invalide, et l'erreur arrive avant même de contacter le serveur.
+:::
+:::
+
+## La Merge Request d'un fork vers le projet d'origine
+
+L'URL affichée au push ouvre le formulaire de MR. Vérifiez les deux côtés en haut du formulaire (**Change branches** si besoin) :
+
+- **source** : `karim/nomenclatures`, branche `42-passage-naf-filiere` ;
+- **cible** : `methodes/nomenclatures`, branche `main`.
+
+La MR vit dans le **projet d'origine**. Elle y reçoit son numéro (`!17`, par exemple). Dans sa description, `Closes #42` ferme donc l'issue #42 **du pôle méthodes**. Depuis un autre projet, on écrirait `methodes/nomenclatures#42`.
+
+Trois différences avec une MR interne :
+
+- **Qui peut modifier la branche.** Par défaut, seul Karim peut pousser sur son fork. La case *Allow commits from members who can merge to the target branch* permet aux mainteneurs du pôle méthodes d'y pousser une correction.
+- **Où tourne le pipeline.** Par défaut, dans le fork : avec les runners et les variables CI/CD du fork, pas ceux du projet d'origine. Les secrets du projet d'origine ne sont donc pas exposés à un code non relu. Selon la version et les réglages, un mainteneur peut lancer le pipeline dans le projet d'origine, après avoir relu le code.
+- **La review est la même** : diff, commentaires, [approval]{.t}, squash au merge si le projet l'a choisi.
+
+## Tenir son fork à jour
+
+Le pôle méthodes continue d'avancer. Avant toute nouvelle contribution :
+
+```{.bash risque="sur"}
+git fetch upstream
+```
+
+```{.bash risque="reversible"}
+git switch main
+git merge --ff-only upstream/main
+git push origin main
+```
+
+`--ff-only` garantit qu'aucun commit de fusion n'est créé : si votre `main` avait divergé, Git refuserait au lieu de mélanger les historiques. C'est la règle R07 appliquée au fork : on ne commite jamais sur `main`, ni dans le projet, ni dans le fork.
+
+Les versions récentes de GitLab affichent aussi, sur la page du fork, son retard sur le projet d'origine, avec un bouton **Update fork**. La commande reste la référence : elle dit exactement ce qui se passe.
+
+::: {.vscode titre="Deux remotes dans VS Code"}
+Dans la vue **Source Control**, menu **…** › **Remote** › **Add Remote…** fait l'équivalent de `git remote add`. Le sélecteur de branche (en bas à gauche) liste alors `origin/*` et `upstream/*`. **Fetch From All Remotes** met à jour les deux. Vérifiez toujours dans le [terminal intégré]{.t} avec `git remote -v` et `git branch -vv`.
+:::
+
+## Fork ou branche : quand utiliser quoi
+
+| Situation | Branches dans le même projet | Fork |
+|---|---|---|
+| Vous êtes *Developer* du projet | **Oui** : c'est le cas de l'Observatoire | Non : complexité inutile |
+| Paquet interne d'une autre équipe (`nomenclatures`) | Si l'équipe vous donne le rôle *Developer* | **Oui**, sinon |
+| Projet d'une autre direction, contribution ponctuelle | Rarement | **Oui** |
+| Projet open source public | Jamais | **Oui** : c'est la norme |
+
+À l'Observatoire, tout le monde est *Developer* et `main` est protégée : une [feature branch]{.t} dans le projet commun suffit. Tout le monde voit les branches en cours, la CI a les mêmes variables pour tous, il n'y a qu'un dépôt à synchroniser. Le fork sert à contribuer **ailleurs**.
+
+::: {.rosette principe="revue"}
+::: principe
+Aucun changement n'entre sans avoir été relu par ceux qui en répondent.
+:::
+::: dev
+En open source, n'importe qui peut forker et proposer une contribution ; seuls les mainteneurs fusionnent, après review et CI.
+:::
+::: stat
+Un paquet de nomenclatures partagé engage toutes les équipes qui l'utilisent. Le pôle méthodes relit la table de passage de Karim avant de la publier dans une nouvelle version du paquet.
+:::
+:::
+
+::: {.mission #m-a-forks-1 titre="Contribuer depuis un fork" duree="20 min" mode="seul" depart="etape-2-debut"}
+::: objectif
+Mettre en place un fork avec ses deux remotes, et proposer une MR vers le projet d'origine.
+:::
+
+::: consignes
+1. Sur le GitLab de formation, forkez `oei/observatoire-industrie` dans votre espace personnel.
+2. Clonez **votre fork**, puis ajoutez le projet d'origine sous le nom `upstream`.
+3. Faites `git fetch upstream`, puis créez une branche `essai-fork` à partir de `upstream/main`.
+4. Commitez une précision dans `data/README.md` (le champ du panel), poussez sur votre fork, et ouvrez une **Draft MR** vers `oei/observatoire-industrie`.
+5. Refermez la MR sans la fusionner : c'était un essai.
+:::
+
+::: reussite
+`git remote -v` liste `origin` (votre fork) et `upstream` (le projet de l'Observatoire). `git branch -vv` montre `essai-fork` suivant `origin/essai-fork`. Dans GitLab, la MR affiche votre fork comme source et `oei/observatoire-industrie` comme cible.
+:::
+
+::: indice
+Si le formulaire de MR propose votre fork comme cible, cliquez sur **Change branches** et choisissez le projet cible.
+:::
+
+::: corrige
+Erreurs fréquentes : cloner l'original au lieu du fork (le push est alors refusé) ; créer la branche depuis `main` local, en retard ; confondre `git push -u origin` (qui définit la branche amont, sens 1) et `git remote add upstream` (qui déclare le dépôt d'origine, sens 2). Pensez à supprimer ensuite le fork d'essai (**Settings › General › Advanced › Delete project**), pour ne pas multiplier les copies.
+:::
+:::
+
+::: retenir
+- Le fork est un objet GitLab : une copie du dépôt, sur le serveur, dans un espace où vous pouvez écrire. Git n'y voit qu'un remote de plus.
+- `origin` est votre fork, `upstream` le projet d'origine ; la « branche amont » d'une branche locale est une autre notion.
+- À l'Observatoire, on travaille en branches dans le projet commun ; le fork sert à contribuer à un projet où l'on n'a pas le droit d'écrire.
+:::
+
+::: {.checkpoint titre="Avant de revenir au parcours"}
+::: {.question rappel="e2"}
+Après `git fetch upstream`, votre `main` local a-t-il changé ? Et votre fork sur GitLab ?
+
+::: reponse
+Non, ni l'un ni l'autre. `fetch` ne déplace que les branches distantes `upstream/*` dans votre dépôt local. Il faut ensuite `git merge --ff-only upstream/main` pour avancer `main`, puis `git push origin main` pour mettre le fork à jour.
+:::
+:::
+
+::: question
+Pourquoi le pipeline d'une MR venant d'un fork tourne-t-il, par défaut, dans le fork et non dans le projet d'origine ?
+
+::: reponse
+Parce que le code n'est pas encore relu. Dans le projet d'origine, il aurait accès aux variables CI/CD, donc aux secrets, et aux runners de ce projet. Dans le fork, il n'a accès qu'à ce que le contributeur possède déjà.
+:::
+:::
+:::
