@@ -1,0 +1,236 @@
+---
+title: "Retrouver le commit qui a changé un chiffre"
+approfondissement: a-bisect
+description: "git bisect : retrouver par dichotomie le commit qui a modifié un indicateur, à la main puis automatiquement avec un script R qui recalcule la part des 55 ans et plus."
+chapeau: "Quand lire l'historique ne suffit plus, on le teste : git bisect coupe l'historique en deux jusqu'à isoler le commit responsable."
+---
+
+::: situation
+À l'étape 1, vous avez retrouvé le commit qui a changé la part des 55 ans et plus en **lisant** l'historique : `git log -S`, `git blame`, `git show`. Cela a marché parce que le changement était visible dans `R/age.R`. Imaginez maintenant que l'écart vienne d'une requête DuckDB, d'une nomenclature mise à jour ou d'un paquet : aucun mot-clé à chercher. Il reste une question simple, que l'on peut poser à chaque commit : « le calcul donne-t-il encore le chiffre publié ? »
+:::
+
+## Pourquoi une dichotomie
+
+Entre le tag `2025.0` et `main`, il y a *n* commits. Les tester un par un coûte *n* calculs. La commande `git bisect` []{.git} teste le commit du milieu, puis garde la moitié qui contient le changement, puis recommence. Il faut environ log₂(*n*) tests : 3 pour 8 commits, 10 pour 1 000.
+
+Cela suppose une seule chose : l'historique passe **une fois** d'un état « ancien » à un état « nouveau ». C'est le cas ici : avant le changement, le code donne la valeur publiée ; après, il donne l'autre.
+
+::: idee-fausse
+::: fausse
+`git bisect` sert à trouver un bug.
+:::
+::: juste
+`git bisect` trouve **le premier commit où un comportement change**. Ce changement peut être un bug, ou une correction. Ici, c'est une correction : le commit c11 a corrigé le calcul de l'âge (#7). Pour ne pas se mélanger dans « good » et « bad », Git accepte les mots `old` et `new` (depuis Git 2.7).
+:::
+:::
+
+## Ce que fait réellement Git
+
+`git bisect` ne modifie aucun commit. Il fait trois choses :
+
+- il enregistre vos verdicts sous forme de références, dans `refs/bisect/` ;
+- il calcule le prochain commit à tester ;
+- il l'extrait dans votre [copie de travail]{.t}, en [detached HEAD]{.t} : HEAD pointe sur ce commit, pas sur une [branche]{.t}.
+
+Les fichiers ignorés par `.gitignore` (`data/prepare/`, `resultats/`) ne sont pas touchés par ces extractions. C'est ce qui permet de préparer les données une seule fois, puis de recalculer l'indicateur à chaque étape.
+
+::: {.git-graph scenario="a-bisect"}
+:::
+
+## À la main : cinq commandes
+
+Partez d'une copie de travail propre (`git status` ne montre aucune modification) : `git bisect` doit pouvoir changer de commit.
+
+```{.bash risque="reversible"}
+git bisect start
+git bisect new main        # sur main, le calcul donne la nouvelle valeur
+git bisect old 2025.0      # au tag publié, il donne l'ancienne
+```
+
+```{.text .sortie}
+status: waiting for both good and bad commits
+status: waiting for good commit(s), bad commit known
+Bisecting: 2 revisions left to test after this (roughly 1 step)
+[795366e72052e0f368a6c8ba13a28e65fe1eb3e9] Harmonise les figures avec une charte commune
+```
+
+Git vous a placé sur c12. Vous relancez le calcul, vous comparez, puis vous donnez votre verdict :
+
+```{.bash risque="reversible"}
+git bisect new     # ce commit donne la nouvelle valeur
+git bisect old     # ce commit donne encore la valeur publiée
+git bisect skip    # impossible de tester ce commit (le script plante)
+```
+
+Au bout de deux verdicts :
+
+```{.text .sortie}
+2793e7cb047115448f2c8654712f910fc71e12d1 is the first new commit
+commit 2793e7cb047115448f2c8654712f910fc71e12d1
+Author: Karim <karim@example.org>
+Date:   Mon Sep 15 10:12:00 2025 +0200
+
+    Corrige le calcul de l'âge : âge au 31 décembre de l'année de référence
+
+ R/age.R                   | 6 +++---
+ tests/testthat/test-age.R | 8 ++++++++
+ 2 files changed, 11 insertions(+), 3 deletions(-)
+```
+
+Terminez **toujours** par :
+
+```{.bash risque="reversible"}
+git bisect reset
+```
+
+HEAD revient sur la branche de départ. Avant cela, `git bisect log` affiche vos verdicts : copiez-les dans l'[issue]{.t} pour que le diagnostic soit traçable.
+
+::: {.vscode titre="Pendant une bissection"}
+La barre d'état de VS Code affiche un hash abrégé à la place du nom de branche : c'est la detached HEAD. La vue **Source Control** (contrôle de code source) n'a pas de bouton pour `git bisect` : tout se fait dans le [terminal intégré]{.t}. Évitez de commiter pendant une bissection.
+:::
+
+## Automatiquement : `git bisect run`
+
+Un verdict répété à la main est une source d'erreurs. `git bisect run <commande>` exécute une commande sur chaque commit à tester, et lit son **code de sortie** :
+
+| Code de sortie | Verdict |
+|---|---|
+| `0` | `old` (ou `good`) |
+| `1` à `127`, sauf `125` | `new` (ou `bad`) |
+| `125` | `skip` : commit non testable |
+| `128` ou plus | la bissection s'arrête |
+
+Le script vit **hors du dépôt** : dans les commits anciens, il n'existerait pas. Il recalcule la part des 55 ans et plus avec le code du commit extrait, et la compare à une référence calculée au tag `2025.0`.
+
+```r
+#!/usr/bin/env Rscript
+# ~/bisect/part_55_plus.R : verdict pour « git bisect run »
+#   0 = old (valeur publiée), 1 = new (valeur changée), 125 = non testable
+reference <- utils::read.csv("~/bisect/reference_2025.csv")
+attendu <- reference$valeur[reference$indicateur == "part_55_plus"]
+
+sortie <- "resultats/indicateurs_2025.csv"
+unlink(sortie)  # jamais de résultat périmé laissé par un autre commit
+statut <- system2("Rscript", "scripts/03_indicateurs.R",
+                  stdout = FALSE, stderr = FALSE)
+if (statut != 0 || !file.exists(sortie)) quit(status = 125)
+
+calcul <- utils::read.csv(sortie)
+obtenu <- calcul$valeur[calcul$indicateur == "part_55_plus"]
+if (length(obtenu) != 1) quit(status = 125)
+
+quit(status = if (isTRUE(all.equal(obtenu, attendu))) 0 else 1)
+```
+
+Les noms `indicateur` et `valeur` supposent un fichier de résultats au format long. Adaptez-les à ce que produit réellement `scripts/03_indicateurs.R`.
+
+La référence se prépare une fois, au commit publié :
+
+```{.bash risque="reversible"}
+git switch --detach 2025.0
+Rscript scripts/03_indicateurs.R
+cp resultats/indicateurs_2025.csv ~/bisect/reference_2025.csv
+git switch main
+```
+
+Puis la bissection tourne seule :
+
+```{.bash risque="reversible"}
+git bisect start
+git bisect new main
+git bisect old 2025.0
+git bisect run Rscript ~/bisect/part_55_plus.R
+git bisect reset
+```
+
+```{.text .sortie}
+running 'Rscript' '/home/onyxia/bisect/part_55_plus.R'
+Bisecting: 0 revisions left to test after this (roughly 0 steps)
+[2793e7cb047115448f2c8654712f910fc71e12d1] Corrige le calcul de l'âge : âge au 31 décembre de l'année de référence
+running 'Rscript' '/home/onyxia/bisect/part_55_plus.R'
+2793e7cb047115448f2c8654712f910fc71e12d1 is the first new commit
+...
+bisect found first bad commit
+```
+
+La dernière ligne dit « bad » même avec les mots `old` et `new` : c'est un libellé fixe de Git.
+
+Pour un bug au sens strict, les [tests automatiques]{.t ref="test"} existants suffisent souvent comme commande : `git bisect run Rscript -e 'testthat::test_dir("tests/testthat", stop_on_failure = TRUE)'`. Attention : un test qui n'existe pas encore dans les commits anciens, ou qui échoue pour une autre raison, compte comme `new`. Préférez un script qui renvoie `125` dans ce cas.
+
+::: {.mission #m-a-bisect-1 titre="Retrouver c11 sans le chercher" duree="20 min" mode="seul" depart="etape-1-debut"}
+::: objectif
+Retrouver, par un test et non par une lecture, le commit qui a changé la part des 55 ans et plus depuis la publication 2025.
+:::
+
+::: consignes
+1. Générez et préparez les données 2025 (`scripts/01_generer_donnees.py`, puis `scripts/02_preparer.py`), si ce n'est pas déjà fait.
+2. Au tag `2025.0`, calculez les indicateurs et copiez le résultat hors du dépôt, comme référence.
+3. Écrivez `~/bisect/part_55_plus.R` (ou son équivalent Python) en respectant les codes de sortie.
+4. Lancez `git bisect run`, notez le commit trouvé, puis faites `git bisect reset`.
+:::
+
+::: reussite
+`git bisect log` se termine par `# first new commit: [...] Corrige le calcul de l'âge : âge au 31 décembre de l'année de référence`, et `git status` montre ensuite que vous êtes de retour sur `main`.
+:::
+
+::: indice
+Si tous les commits sont marqués `new`, votre script ne renvoie jamais `0` : testez-le d'abord à la main au tag `2025.0`, puis lisez son code de sortie avec `echo $?`.
+:::
+
+::: corrige
+Le commit trouvé est c11. Pièges fréquents : oublier `unlink()` (un commit qui plante laisse le fichier du commit précédent, et le verdict est faux) ; placer le script dans le dépôt, où `git bisect` le fait disparaître en changeant de commit s'il est suivi ; comparer des nombres flottants avec `==` sans tolérance.
+:::
+:::
+
+## Pourquoi de petits commits rendent bisect efficace
+
+`git bisect` désigne **un commit**, pas une ligne. Sa réponse n'est utile que si ce commit est petit et cohérent.
+
+- **Un commit, une intention.** Si c11 avait aussi réécrit la pyramide des âges et renommé trois colonnes, bisect l'aurait désigné sans dire laquelle de ces modifications change le chiffre.
+- **Chaque commit s'exécute.** Un commit « wip » qui ne tourne pas oblige à répondre `skip`. S'il y en a trop autour du changement, Git ne conclut pas :
+
+  ```{.text .sortie}
+  There are only 'skip'ped commits left to test.
+  The first bad commit could be any of:
+  ```
+
+- **Un message qui dit pourquoi.** Quand bisect désigne « maj » (c04), il faut encore lire tout le diff. Quand il désigne un message clair qui cite l'issue #7, le diagnostic est fini.
+
+Notre workflow produit exactement cet historique. Le **squash au merge** donne un commit par MR dans `main`, et chacun a passé le [pipeline]{.t}. Si `main` contient aussi des commits de fusion, `git bisect start --first-parent` (Git ≥ 2.29) ne teste que la ligne de `main` et ignore l'intérieur des branches fusionnées.
+
+::: {.regle ref="R01"}
+:::
+
+## En pratique statistique
+
+Bisect répond à une question fréquente de relecture : « pourquoi le chiffre de cette année n'est-il pas comparable à celui de l'an dernier ? ». Trois conditions pour qu'il fonctionne sur nos projets :
+
+- **Les données d'entrée sont fixes** pendant toute la bissection. Si vous régénérez les données à chaque étape, vous mesurez aussi l'effet du générateur. Préparez-les une fois, puis ne touchez qu'au code.
+- **L'environnement est fixe.** Une version différente de dplyr peut changer un résultat : lancez la bissection dans la même image que la CI.
+- **La comparaison est explicite.** Comparer à une valeur de référence avec une tolérance vaut mieux que « le chiffre a l'air bon ».
+
+Le commit trouvé ne dit pas si le changement est une erreur. Ici, c11 est une **correction** légitime : c'est ce qui a conduit, à l'étape 8, à l'erratum `2025.1`.
+
+::: retenir
+- `git bisect` trouve par dichotomie le premier commit où un comportement change, en environ log₂(*n*) tests.
+- `git bisect run` automatise les verdicts : code `0` pour l'ancien comportement, `1` pour le nouveau, `125` pour un commit non testable ; terminez toujours par `git bisect reset`.
+- Des commits petits, exécutables et bien nommés rendent la réponse de bisect directement utilisable.
+:::
+
+::: {.checkpoint titre="Avant de revenir au parcours"}
+::: {.question rappel="e1"}
+Pendant la bissection, `git status` affiche `HEAD detached at 795366e`. Qu'est-ce que cela signifie, et pourquoi n'est-ce pas grave ici ?
+
+::: reponse
+HEAD pointe directement sur un commit, pas sur une branche. On ne fait qu'extraire des commits existants pour les tester, sans commiter : aucun travail ne risque d'être perdu, et `git bisect reset` rattache HEAD à `main`.
+:::
+:::
+
+::: question
+Votre script plante sur un commit parce qu'un paquet manque. Que doit-il renvoyer, et pourquoi pas `1` ?
+
+::: reponse
+`125` : Git saute ce commit. Renvoyer `1` le déclarerait `new` et fausserait la dichotomie, qui pourrait désigner un commit sans rapport avec le chiffre.
+:::
+:::
+:::
