@@ -392,7 +392,7 @@ termes:
     proprio: git
     niveau: comprendre
     etape: e7
-    def: "Journal local des positions successives de HEAD et des branches. Il permet de retrouver un commit « perdu » après un rebase ou un reset malheureux (90 jours par défaut)."
+    def: "Journal local des positions successives de HEAD et des branches. Il permet de retrouver un commit « perdu » après un rebase ou un reset malheureux (90 jours par défaut, 30 jours pour les commits qui ne sont plus accessibles depuis aucune branche)."
   - id: conventional-commits
     terme: "Conventional Commits"
     proprio: pratique
