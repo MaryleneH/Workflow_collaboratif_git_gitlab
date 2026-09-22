@@ -1,0 +1,99 @@
+---
+title: "Les workflows professionnels"
+surtitre: "Mémo"
+chapeau: "Git Flow, GitHub Flow, GitLab Flow, trunk-based development : quatre façons d'assembler les mêmes briques (branches, fusions, tags, revue, CI). Aucune n'est « la » bonne pratique ; chacune répond à un rythme de publication et à un nombre de versions à maintenir."
+description: "Synthèse comparée de Git Flow, GitHub Flow, GitLab Flow et trunk-based development : tableau, critères de choix, vocabulaire et atlas des quatre workflows rejoués sur le même scénario."
+---
+
+Un workflow n'ajoute aucune commande à Git. Il fixe des **conventions** : quelles branches sont permanentes, d'où partent les branches de travail, où elles arrivent, comment on publie et comment on corrige une version publiée. Tout ce qui suit s'écrit avec `git switch -c`, `git merge`, `git tag` et des Merge Requests : les briques que vous connaissez déjà.
+
+Le raisonnement complet, avec la proposition de Jules et la décision de l'équipe, se trouve à l'[étape 9](../parcours/jour-2/e9-workflows-pros.qmd).
+
+## Le même scénario, quatre workflows
+
+Deux sujets en parallèle (#30 et #31), une publication `2027.0`, puis un erratum `2027.1`. Faites défiler chaque graphe : les commits sont les mêmes, seules les étiquettes et les chemins changent.
+
+::: {.atlas titre="Un même scénario, quatre workflows"}
+::: {.git-graph scenario="e9-gitflow"}
+:::
+::: {.git-graph scenario="e9-github-flow"}
+:::
+::: {.git-graph scenario="e9-gitlab-flow"}
+:::
+::: {.git-graph scenario="e9-trunk-based"}
+:::
+:::
+
+## Tableau comparatif
+
+| | [Git Flow]{.t} | [GitHub Flow]{.t} | [GitLab Flow]{.t} | [Trunk-based]{.t ref="trunk-based"} |
+|---|---|---|---|---|
+| **Origine** | Vincent Driessen, 2010 | GitHub, 2011 | GitLab, 2014 | Pratique ancienne, formalisée dans les années 2010 |
+| **Branches permanentes** | `main` et `develop` | `main` | `main`, plus des branches d'environnement (`production`) **ou** de versions (`2-3-stable`) si besoin | `main` (le *tronc*) |
+| **Branches de travail** | `feature/*`, nées de `develop`, parfois longues | Courtes, nées de `main` | Courtes, nées de `main` | Très courtes (quelques heures), ou commits directs sur le tronc |
+| **Où arrive le travail** | Dans `develop` | Dans `main`, par Pull Request | Dans `main`, par Merge Request | Dans le tronc, au moins une fois par jour |
+| **Publication** | Branche `release/*` stabilisée, fusionnée dans `main` **et** `develop`, tag sur `main` | Chaque fusion dans `main` est déployable ; tag si on versionne | Tag sur `main`, ou promotion vers une branche d'environnement | Tag sur le tronc, ou branche de publication coupée au dernier moment |
+| **Correction d'une version publiée** | `hotfix/*` depuis `main`, fusionnée dans `main` **et** `develop` | Nouvelle branche depuis `main` : la version suivante corrige | Correction d'abord dans `main`, puis cherry-pick vers la branche de version (*upstream first*) | Correction dans le tronc, puis cherry-pick si une branche de publication existe |
+| **Versions maintenues en parallèle** | Plusieurs, par construction | Une seule | Une ou plusieurs, à la demande | Une, en général |
+| **Prérequis** | Discipline de fusion dans deux branches | Review et CI | Review et CI | CI très solide, [feature flags]{.t ref="feature-flag"}, revue rapide |
+| **Coût principal** | Branches longues, intégration tardive, conflits, charge cognitive | Suppose que `main` reste toujours publiable | Branches de version à entretenir | Exige une grande maturité de tests et d'équipe |
+
+## Quand utiliser quoi
+
+Deux questions suffisent le plus souvent (règle R17) :
+
+1. **Combien de versions faut-il maintenir en même temps ?** Si des utilisateurs gardent la 2.x pendant que vous livrez la 3.x, il faut des branches de version : Git Flow ou GitLab Flow. Si seule la dernière version compte, GitHub Flow ou trunk-based suffisent.
+2. **À quel rythme publiez-vous, et avec quelle confiance dans les tests ?** Des déploiements plusieurs fois par jour exigent du trunk-based ou du GitHub Flow, et une CI irréprochable. Des publications rares, préparées longuement, tolèrent une branche de stabilisation.
+
+| Votre situation | Workflow adapté |
+|---|---|
+| Logiciel ou package livré par versions, plusieurs versions maintenues chez les utilisateurs | Git Flow, ou GitLab Flow avec branches de version |
+| Application ou site déployé en continu, une seule version en production | GitHub Flow, ou trunk-based si la CI le permet |
+| Environnements successifs (recette, production) à promouvoir | GitLab Flow avec branches d'environnement |
+| Publication statistique annuelle, errata ponctuels sur la dernière édition | GitHub Flow, plus une branche de maintenance **créée à la demande** depuis le tag publié |
+
+Vincent Driessen lui-même a ajouté en 2020 une note à son article : pour un logiciel livré en continu, il recommande un workflow plus simple, comme GitHub Flow, plutôt que Git Flow.
+
+::: idee-fausse
+::: fausse
+Git Flow est le workflow des professionnels ; les autres sont des versions simplifiées pour petites équipes.
+:::
+::: juste
+Git Flow répond à un besoin précis : plusieurs versions livrées et maintenues en parallèle. Beaucoup de grandes équipes travaillent en trunk-based ou en GitHub Flow, parce qu'elles publient en continu. Choisir un workflow plus simple que Git Flow n'est pas une concession : c'est éviter de payer des branches longues et une intégration tardive pour un bénéfice que l'on n'a pas.
+:::
+:::
+
+## Vocabulaire
+
+`feature/*`
+: Préfixe des branches de travail dans Git Flow. Attention à l'homonymie : en data science, une *feature* est une variable. Ici, c'est une fonctionnalité, un sujet de travail. L'équipe nomme ses branches `30-difficulte-recrutement` : numéro d'issue, puis sujet.
+
+[develop]{.t}
+: Branche d'intégration permanente de Git Flow. `main` n'y reçoit que les versions publiées.
+
+`release/*`
+: Dans Git Flow, branche où l'on stabilise une version (corrections mineures, numéro de version) pendant que `develop` continue d'avancer.
+
+[hotfix]{.t}
+: Correction urgente d'une version publiée, partie du tag de cette version. Chez nous : un erratum.
+
+Branche de version, branche de maintenance
+: Branche qui porte une version publiée et ses corrections (`2-3-stable` chez GitLab, `maintenance/2025` chez nous). Elle ne reçoit que des corrections, jamais de nouveautés.
+
+Branche d'environnement
+: Dans GitLab Flow, branche qui représente ce qui est déployé dans un environnement (`staging`, `production`) ; on y fusionne `main` pour « promouvoir ».
+
+*Upstream first*
+: Principe de GitLab Flow : une correction entre d'abord dans `main`, puis est reportée par cherry-pick vers les branches de version. Ainsi, aucune correction n'est oubliée dans la version suivante.
+
+Tronc (*trunk*)
+: La branche principale, dans le vocabulaire du [trunk-based development]{.t}.
+
+[Feature flag]{.t ref="feature-flag"}
+: Interrupteur dans le code qui permet d'intégrer tôt une fonctionnalité inachevée sans l'activer.
+
+## Et nous ?
+
+L'Observatoire n'a qu'une édition « vivante » à la fois, publiée une fois par an, avec des errata rares. Git Flow y ajouterait `develop` et `release/*` sans bénéfice. L'équipe a retenu une base **GitHub Flow** (branches courtes, MR, CI, `main` toujours relue et exécutable), complétée par **une brique GitLab Flow** : une branche `maintenance/AAAA`, créée depuis le tag publié seulement quand un erratum est nécessaire.
+
+Le détail, étape par étape : [notre workflow](notre-workflow.qmd).
