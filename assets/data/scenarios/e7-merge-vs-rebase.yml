@@ -1,0 +1,31 @@
+titre: "Mettre sa branche à jour : merger main, ou rebaser ?"
+couleurs:
+  "21-regrouper-pcs": travail
+commits:
+  C: {x: 0, y: 0, msg: "c21 · Met en place l'intégration continue (#20)"}
+  L: {x: 2, y: 0, parents: [C], msg: "c22 · Ajoute la répartition des établissements par région (#19)"}
+  D: {x: 1, y: 1, parents: [C], msg: "Regroupe les PCS en quatre grandes catégories"}
+  E: {x: 2, y: 1, parents: [D], msg: "corrige le test"}
+  F: {x: 3, y: 1, parents: [E], msg: "corrige le lint"}
+  M: {x: 4, y: 1, parents: [F, L], msg: "Merge remote-tracking branch 'origin/main' into 21-regrouper-pcs"}
+  "D'": {x: 3, y: 2, parents: [L], label: "D′", msg: "Regroupe les PCS en quatre grandes catégories (copie)"}
+  "E'": {x: 4, y: 2, parents: ["D'"], label: "E′", msg: "corrige le test (copie)"}
+  "F'": {x: 5, y: 2, parents: ["E'"], label: "F′", msg: "corrige le lint (copie)"}
+etapes:
+  - texte: "Point de départ, simplifié à trois commits : la branche et `origin/main` ont divergé depuis **C**."
+    commits: [C, L, D, E, F]
+    refs: {origin/main: L, 21-regrouper-pcs: F}
+    head: 21-regrouper-pcs
+  - texte: "**Option 1 : merger `main` dans sa branche.** Git crée un commit de fusion **M** à deux parents (**F**, puis **L**). Aucun commit existant n'est remplacé : un simple `git push` suffit, sans danger sur une branche partagée. Le prix : un commit de fusion à chaque mise à jour, et un historique en tresse."
+    commande: "git merge origin/main"
+    commits: [C, L, D, E, F, M]
+    refs: {origin/main: L, 21-regrouper-pcs: M}
+    head: 21-regrouper-pcs
+    surligne: [M]
+  - texte: "**Option 2 : rebaser**, depuis le même point de départ. Git crée **D′**, **E′**, **F′** au-dessus de **L** et abandonne **D**, **E**, **F**. L'historique est linéaire, mais ce sont d'autres commits : il faudra `--force-with-lease`, et un collègue qui avait récupéré **D** à **F** travaille désormais sur des commits abandonnés."
+    commande: "git rebase origin/main"
+    commits: [C, L, D, E, F, "D'", "E'", "F'"]
+    refs: {origin/main: L, 21-regrouper-pcs: "F'"}
+    head: 21-regrouper-pcs
+    estompes: [D, E, F]
+    surligne: ["D'", "E'", "F'"]
