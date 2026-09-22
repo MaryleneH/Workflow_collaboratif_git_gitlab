@@ -34,6 +34,13 @@ const TYPES = {
   '.woff2': 'font/woff2', '.txt': 'text/plain', '.xml': 'application/xml',
 };
 
+// Chemin de base du site publié (ex. /Workflow_collaboratif_git_gitlab/), lu dans
+// site-url : la page 404 utilise des liens absolus qui en dépendent.
+const config = fs.readFileSync(path.resolve(RACINE, '..', '_quarto.yml'), 'utf8');
+const siteUrl = (config.match(/site-url:\s*"?([^"\n]+)"?/) || [])[1] || '';
+const BASE_CHEMIN = siteUrl ? new URL(siteUrl).pathname : '/';
+const sansBase = (u) => (BASE_CHEMIN !== '/' && u.startsWith(BASE_CHEMIN) ? '/' + u.slice(BASE_CHEMIN.length) : u);
+
 if (!fs.existsSync(path.join(RACINE, 'index.html'))) {
   console.error(`Site introuvable : ${RACINE}/index.html (lancez d'abord quarto render)`);
   process.exit(2);
@@ -41,7 +48,7 @@ if (!fs.existsSync(path.join(RACINE, 'index.html'))) {
 
 // Serveur statique minimal (aucune dépendance)
 const serveur = http.createServer((req, res) => {
-  const url = decodeURIComponent(new URL(req.url, 'http://x').pathname);
+  const url = sansBase(decodeURIComponent(new URL(req.url, 'http://x').pathname));
   let fichier = path.join(RACINE, url);
   if (!fichier.startsWith(RACINE)) { res.writeHead(403); return res.end(); }
   if (fs.existsSync(fichier) && fs.statSync(fichier).isDirectory()) fichier = path.join(fichier, 'index.html');
@@ -97,20 +104,22 @@ for (const p of pages) {
 
     if (largeur === 1280) {
       // Liens internes et ancres
-      const liens = await page.$$eval('a[href]', (as) => as.map((a) => a.getAttribute('href')));
+      // Liens résolus par le navigateur (Quarto réécrit certains liens en absolu).
+      const liens = await page.$$eval('a[href]', (as) => as.map((a) => ({ brut: a.getAttribute('href'), url: a.href })));
       // Identifiants présents dans le DOM vivant (certains sont créés par Quarto au chargement)
       const idsVivants = new Set(await page.$$eval('[id]', (els) => els.map((e) => e.id)));
-      for (const h of liens) {
-        if (/^(https?:|mailto:|javascript:)/.test(h)) continue;
-        const [chemin, ancre] = h.split('#');
-        let cible = chemin ? path.posix.normalize(path.posix.join(path.posix.dirname(p), chemin)) : p;
-        if (cible.endsWith('/')) cible += 'index.html';
+      for (const { brut, url: absolu } of liens) {
+        if (!absolu.startsWith(BASE + '/')) continue; // lien externe, mailto, javascript…
+        const u = new URL(absolu);
+        let cible = sansBase(decodeURIComponent(u.pathname)).slice(1);
+        if (cible === '' || cible.endsWith('/')) cible += 'index.html';
+        const ancre = u.hash ? decodeURIComponent(u.hash.slice(1)) : '';
         if (!ids.has(cible)) {
-          if (!fs.existsSync(path.join(RACINE, cible))) echouer(p, `lien cassé → ${h}`);
+          if (!fs.existsSync(path.join(RACINE, cible))) echouer(p, `lien cassé → ${brut}`);
           continue;
         }
         const idsCible = cible === p ? new Set([...ids.get(cible), ...idsVivants]) : ids.get(cible);
-        if (ancre && !idsCible.has(decodeURIComponent(ancre))) echouer(p, `ancre absente → ${h}`);
+        if (ancre && !idsCible.has(ancre)) echouer(p, `ancre absente → ${brut}`);
       }
       // Accessibilité (axe-core)
       await page.addScriptTag({ content: AXE });
