@@ -1,0 +1,411 @@
+/* ==========================================================================
+   Git à plusieurs · base
+   Jetons de conception (couleurs, typographie, espacements) et éléments HTML.
+   Toutes les couleurs du site sont définies ici, et nulle part ailleurs.
+   ========================================================================== */
+
+:root {
+  /* Surfaces et encres ---------------------------------------------------- */
+  --gf-papier: #faf8f4;
+  --gf-papier-2: #f3f0e9;
+  --gf-papier-3: #ebe6db;
+  --gf-blanc: #ffffff;
+  --gf-encre: #17202b;
+  --gf-encre-2: #3e4855;
+  --gf-encre-3: #5a6370;
+  --gf-trait: #e2ddd2;
+  --gf-trait-fort: #cbc3b2;
+
+  /* Accents d'interface --------------------------------------------------- */
+  --gf-accent: #0f6b6b;          /* pétrole : liens, actions, missions */
+  --gf-accent-fonce: #0a4d4d;
+  --gf-accent-clair: #e2efec;
+  --gf-head: #c2410c;            /* HEAD : « vous êtes ici » */
+  --gf-head-clair: #fcebe2;
+
+  /* Grammaire Git : une couleur par rôle de branche (jamais seule : toujours
+     doublée d'un libellé ou d'une forme) --------------------------------- */
+  --gf-b-main: #17202b;
+  --gf-b-travail: #1f6fb2;
+  --gf-b-travail2: #8b46c1;
+  --gf-b-travail3: #0e7a4f;
+  --gf-b-develop: #0f6b6b;
+  --gf-b-release: #a86a06;
+  --gf-b-hotfix: #c0392b;
+  --gf-b-tag: #6b4f2a;
+
+  /* Qui fournit la notion ? ----------------------------------------------- */
+  --gf-p-git: #17202b;
+  --gf-p-gitlab: #6a3fb5;
+  --gf-p-github: #3e4855;
+  --gf-p-vscode: #1f5fa8;
+  --gf-p-pratique: #0f6b6b;
+  --gf-p-outil: #5a6370;
+
+  /* Niveaux de risque ------------------------------------------------------ */
+  --gf-r-sur: #1b7a4a;
+  --gf-r-reversible: #1f5fa8;
+  --gf-r-reecrit: #9a5b00;
+  --gf-r-dangereux: #b42318;
+
+  /* Principes du carnet de règles ----------------------------------------- */
+  --gf-pr-integrite: #0f6b6b;
+  --gf-pr-tracabilite: #1f5fa8;
+  --gf-pr-revue: #6a3fb5;
+  --gf-pr-reproductibilite: #9a5b00;
+
+  /* Personnages ------------------------------------------------------------ */
+  --gf-perso-1: #0f6b6b;
+  --gf-perso-2: #1f6fb2;
+  --gf-perso-3: #8b46c1;
+  --gf-perso-4: #a86a06;
+  --gf-perso-5: #3e4855;
+
+  /* Typographie : piles système (voir theme.scss) ------------------------- */
+  --gf-sans: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, "SF Pro Text", "Helvetica Neue", "Noto Sans", "Liberation Sans", Arial, sans-serif;
+  --gf-display: "Segoe UI Variable Display", "Segoe UI", system-ui, -apple-system, "SF Pro Display", "Helvetica Neue", "Noto Sans", Arial, sans-serif;
+  --gf-serif: "Iowan Old Style", "Charter", "Bitstream Charter", "Sitka Text", Cambria, "Source Serif Pro", "Noto Serif", Georgia, serif;
+  --gf-mono: "Cascadia Code", "Cascadia Mono", "SF Mono", ui-monospace, Menlo, Consolas, "Liberation Mono", "DejaVu Sans Mono", monospace;
+
+  --gf-t-xs: .78rem;
+  --gf-t-s: .88rem;
+  --gf-t-m: 1rem;
+  --gf-t-l: 1.18rem;
+  --gf-t-xl: clamp(1.35rem, 1.1rem + .9vw, 1.7rem);
+  --gf-t-2xl: clamp(1.7rem, 1.25rem + 1.6vw, 2.35rem);
+  --gf-t-3xl: clamp(2.1rem, 1.4rem + 2.6vw, 3.4rem);
+
+  /* Espacements (échelle de 4 px) ----------------------------------------- */
+  --gf-e-1: .25rem;
+  --gf-e-2: .5rem;
+  --gf-e-3: .75rem;
+  --gf-e-4: 1rem;
+  --gf-e-5: 1.5rem;
+  --gf-e-6: 2rem;
+  --gf-e-7: 3rem;
+  --gf-e-8: 4.5rem;
+  --gf-e-9: 6rem;
+
+  /* Mesures ---------------------------------------------------------------- */
+  --gf-texte: 42rem;             /* colonne de lecture ≈ 70 caractères */
+  --gf-large: 60rem;             /* figures élargies */
+  --gf-rayon: .5rem;
+  --gf-rayon-l: .875rem;
+  --gf-cible: 2.75rem;           /* taille minimale des cibles tactiles */
+  --gf-duree: 420ms;
+  --gf-courbe: cubic-bezier(.2, .7, .2, 1);
+  --gf-navbar: 3.5rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --gf-duree: 0ms; }
+}
+
+/* Éléments de base --------------------------------------------------------- */
+html { scroll-padding-top: calc(var(--gf-navbar) + 1rem); }
+
+body {
+  background: var(--gf-papier);
+  color: var(--gf-encre);
+  font-family: var(--gf-sans);
+  font-feature-settings: "kern", "liga", "calt";
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: clip;
+}
+
+::selection { background: var(--gf-accent-clair); color: var(--gf-encre); }
+
+h1, h2, h3, h4 {
+  font-family: var(--gf-display);
+  color: var(--gf-encre);
+  letter-spacing: -.012em;
+  text-wrap: balance;
+}
+
+h2 {
+  font-size: var(--gf-t-2xl);
+  font-weight: 650;
+  line-height: 1.15;
+  margin-top: var(--gf-e-8);
+  margin-bottom: var(--gf-e-4);
+}
+
+h3 {
+  font-size: var(--gf-t-xl);
+  font-weight: 650;
+  line-height: 1.25;
+  margin-top: var(--gf-e-6);
+  margin-bottom: var(--gf-e-3);
+}
+
+h4 { font-size: var(--gf-t-l); font-weight: 650; margin-top: var(--gf-e-5); }
+
+p, li { text-wrap: pretty; }
+
+a {
+  color: var(--gf-accent);
+  text-decoration-thickness: .08em;
+  text-underline-offset: .18em;
+}
+a:hover { color: var(--gf-accent-fonce); text-decoration-thickness: .12em; }
+
+strong { font-weight: 650; }
+
+hr { border: 0; border-top: 1px solid var(--gf-trait); opacity: 1; margin: var(--gf-e-7) auto; }
+
+blockquote {
+  border-left: 3px solid var(--gf-trait-fort);
+  padding-left: var(--gf-e-4);
+  color: var(--gf-encre-2);
+  font-family: var(--gf-serif);
+  font-size: 1.06em;
+}
+
+/* Focus visible, net et cohérent ------------------------------------------- */
+:focus-visible {
+  outline: 3px solid var(--gf-head);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+.gf-main:focus { outline: none; }
+
+/* Lien d'évitement ----------------------------------------------------------- */
+.gf-evitement {
+  position: absolute;
+  left: 1rem;
+  top: -4rem;
+  z-index: 2000;
+  background: var(--gf-encre);
+  color: var(--gf-papier);
+  padding: .75rem 1rem;
+  border-radius: var(--gf-rayon);
+  font-weight: 600;
+  text-decoration: none;
+}
+.gf-evitement:focus { top: .75rem; color: var(--gf-papier); }
+
+/* Code ---------------------------------------------------------------------- */
+code, kbd, pre, samp { font-family: var(--gf-mono); font-variant-ligatures: none; }
+
+:not(pre) > code {
+  background: var(--gf-papier-3);
+  color: var(--gf-encre);
+  padding: .08em .32em;
+  border-radius: .3em;
+  font-size: .88em;
+  white-space: nowrap;
+}
+p :not(pre) > code, li :not(pre) > code, td :not(pre) > code { white-space: normal; overflow-wrap: anywhere; }
+
+div.sourceCode, pre.sourceCode, .gf-contenu pre {
+  background: var(--gf-papier-2) !important;
+  border: 1px solid var(--gf-trait) !important;
+  border-left: 3px solid var(--gf-trait-fort) !important;
+  border-radius: var(--gf-rayon) !important;
+}
+div.sourceCode { margin: var(--gf-e-4) 0 var(--gf-e-5); }
+div.sourceCode pre.sourceCode { border: 0 !important; margin: 0; }
+pre, pre.sourceCode { font-size: .86rem; line-height: 1.55; padding: .9rem 1rem; }
+pre code { white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* Sorties de terminal : ```{.text .sortie} */
+div.sourceCode:has(> pre.sortie), pre.sortie {
+  background: var(--gf-blanc) !important;
+  border-left-color: var(--gf-encre-3) !important;
+}
+.code-copy-button { opacity: .8; }
+
+/* Tableaux ------------------------------------------------------------------- */
+table { font-size: var(--gf-t-s); }
+.gf-contenu table:not(.gf-diff__table) {
+  width: 100%;
+  border-collapse: collapse;
+  margin: var(--gf-e-5) 0;
+}
+.gf-contenu table:not(.gf-diff__table) th {
+  font-weight: 650;
+  text-align: left;
+  border-bottom: 2px solid var(--gf-encre);
+  padding: .5rem .75rem .5rem 0;
+  vertical-align: bottom;
+}
+.gf-contenu table:not(.gf-diff__table) td {
+  border-bottom: 1px solid var(--gf-trait);
+  padding: .55rem .75rem .55rem 0;
+  vertical-align: top;
+}
+.gf-table-defile { overflow-x: auto; }
+
+/* details / summary ---------------------------------------------------------- */
+summary {
+  cursor: pointer;
+  min-height: var(--gf-cible);
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  font-weight: 600;
+  list-style: none;
+}
+summary::-webkit-details-marker { display: none; }
+summary::after {
+  content: "";
+  width: .5rem;
+  height: .5rem;
+  margin-left: auto;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg) translateY(-2px);
+  transition: transform var(--gf-duree) var(--gf-courbe);
+  flex: none;
+}
+details[open] > summary::after { transform: rotate(225deg) translateY(-2px); }
+
+/* Utilitaires ------------------------------------------------------------------ */
+.gf-label {
+  font-family: var(--gf-sans);
+  font-size: var(--gf-t-xs);
+  font-weight: 650;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--gf-encre-3);
+  margin: 0 0 var(--gf-e-2);
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+}
+
+.gf-icone { flex: none; vertical-align: -.2em; }
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+.gf-bouton {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  min-height: var(--gf-cible);
+  padding: .55rem 1.1rem;
+  border-radius: 999px;
+  border: 1.5px solid var(--gf-encre);
+  background: var(--gf-encre);
+  color: var(--gf-papier);
+  font-weight: 600;
+  font-size: var(--gf-t-s);
+  text-decoration: none;
+  cursor: pointer;
+  transition: background var(--gf-duree) var(--gf-courbe), color var(--gf-duree) var(--gf-courbe);
+}
+.gf-bouton:hover { background: var(--gf-accent-fonce); border-color: var(--gf-accent-fonce); color: var(--gf-papier); }
+.gf-bouton--discret { background: transparent; color: var(--gf-encre); border-color: var(--gf-trait-fort); }
+.gf-bouton--discret:hover { background: var(--gf-papier-2); color: var(--gf-encre); border-color: var(--gf-encre-3); }
+.gf-bouton[aria-pressed="true"] { background: var(--gf-accent-clair); border-color: var(--gf-accent); color: var(--gf-accent-fonce); }
+
+/* Badges « qui fournit la notion ? » ------------------------------------------ */
+.gf-badge {
+  --c: var(--gf-p-git);
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  font-family: var(--gf-sans);
+  font-size: .68rem;
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  line-height: 1;
+  padding: .28rem .45rem .26rem;
+  border: 1.25px solid var(--c);
+  color: var(--c);
+  border-radius: .3rem;
+  vertical-align: .12em;
+  margin-left: .35rem;
+  white-space: nowrap;
+  background: var(--gf-blanc);
+}
+.gf-badge::before {
+  content: "";
+  width: .5rem;
+  height: .5rem;
+  background: var(--c);
+  flex: none;
+}
+.gf-badge--git::before { border-radius: 50%; }                 /* Git : un nœud */
+.gf-badge--gitlab { --c: var(--gf-p-gitlab); border-radius: 999px; }
+.gf-badge--gitlab::before { border-radius: 1px; }              /* GitLab : un serveur */
+.gf-badge--github { --c: var(--gf-p-github); border-radius: 999px; }
+.gf-badge--vscode { --c: var(--gf-p-vscode); }
+.gf-badge--vscode::before { width: .55rem; height: .4rem; border-radius: 1px; background: transparent; border: 1.5px solid var(--c); }
+.gf-badge--pratique { --c: var(--gf-p-pratique); border-style: dashed; }
+.gf-badge--pratique::before { transform: rotate(45deg); width: .4rem; height: .4rem; }
+.gf-badge--outil { --c: var(--gf-p-outil); border-style: dotted; }
+
+/* Termes du lexique dans le texte --------------------------------------------- */
+a.gf-t {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-decoration-thickness: .1em;
+  text-decoration-color: var(--gf-p-git);
+  text-underline-offset: .22em;
+  cursor: help;
+}
+a.gf-t--gitlab { text-decoration-color: var(--gf-p-gitlab); }
+a.gf-t--vscode { text-decoration-color: var(--gf-p-vscode); }
+a.gf-t--pratique { text-decoration-color: var(--gf-p-pratique); }
+a.gf-t--outil, a.gf-t--github { text-decoration-color: var(--gf-p-outil); }
+a.gf-t:hover { text-decoration-style: solid; color: inherit; }
+
+/* Infobulle de terme (créée par termes.js) */
+.gf-bulle {
+  position: absolute;
+  z-index: 1100;
+  max-width: min(22rem, calc(100vw - 2rem));
+  background: var(--gf-encre);
+  color: var(--gf-papier);
+  border-radius: var(--gf-rayon);
+  padding: .8rem .95rem .85rem;
+  font-size: var(--gf-t-s);
+  line-height: 1.5;
+  box-shadow: 0 10px 30px -12px rgba(23, 32, 43, .45);
+}
+.gf-bulle[hidden] { display: none; }
+.gf-bulle__tete { display: flex; align-items: baseline; gap: .5rem; flex-wrap: wrap; margin-bottom: .35rem; }
+.gf-bulle__terme { font-weight: 700; font-size: var(--gf-t-m); }
+.gf-bulle__proprio { font-size: .68rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #b9e3dc; }
+.gf-bulle a { color: #b9e3dc; }
+.gf-bulle p { margin: 0 0 .4rem; }
+.gf-bulle p:last-child { margin: 0; }
+
+/* Avatars des personnages ----------------------------------------------------- */
+.gf-avatar {
+  --c: var(--gf-perso-1);
+  display: inline-grid;
+  place-items: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  flex: none;
+  border-radius: 50%;
+  background: var(--gf-blanc);
+  color: var(--c);
+  border: 2px solid var(--c);
+  font-family: var(--gf-display);
+  font-weight: 700;
+  font-size: .95rem;
+}
+.gf-avatar--2 { --c: var(--gf-perso-2); }
+.gf-avatar--3 { --c: var(--gf-perso-3); }
+.gf-avatar--4 { --c: var(--gf-perso-4); }
+.gf-avatar--5 { --c: var(--gf-perso-5); }
+.gf-avatar--grand { width: 3.4rem; height: 3.4rem; font-size: 1.4rem; border-width: 2.5px; }
+.gf-avatars { display: inline-flex; }
+.gf-avatars .gf-avatar { margin-left: -.45rem; box-shadow: 0 0 0 2px var(--gf-papier); }
+.gf-avatars .gf-avatar:first-child { margin-left: 0; }
