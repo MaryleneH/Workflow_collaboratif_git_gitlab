@@ -82,6 +82,14 @@ local filtre_contenu = {
   CodeBlock = function(cb)
     return V.commande(cb)
   end,
+  -- Tableaux : conteneur défilant (jamais de défilement horizontal de la page)
+  Table = function(t)
+    return {
+      pandoc.RawBlock('html', '<div class="gf-table-defile" tabindex="0" role="region" aria-label="Tableau (défilement horizontal possible)">'),
+      t,
+      pandoc.RawBlock('html', '</div>'),
+    }
+  end,
   Div = function(div)
     for _, c in ipairs(div.classes) do
       local f = composants[c]

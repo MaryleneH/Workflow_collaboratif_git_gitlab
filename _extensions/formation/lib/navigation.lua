@@ -260,8 +260,8 @@ function M.anatomie(blocs)
     end
   end
   if #items < 2 then return '' end
-  return '<aside class="gf-anatomie" aria-label="Sur cette page"><p class="gf-anatomie__titre">Sur cette page</p><ol>'
-    .. table.concat(items) .. '</ol></aside>'
+  return '<nav class="gf-anatomie" aria-label="Sur cette page"><p class="gf-anatomie__titre">Sur cette page</p><ol>'
+    .. table.concat(items) .. '</ol></nav>'
 end
 
 return M

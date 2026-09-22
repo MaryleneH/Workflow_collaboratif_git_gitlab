@@ -64,8 +64,8 @@ local est_formateur = (O.profil() == 'formateur')
 -- Bloc réservé au formateur ---------------------------------------------------
 local function bloc_formateur(blocs, titre)
   if not est_formateur then return {} end
-  return envelopper('<aside class="gf-formateur"><p class="gf-formateur__tete">' .. I.svg('personne')
-    .. '<span>' .. O.esc(titre or 'Note formateur') .. '</span></p>', blocs, '</aside>')
+  return envelopper('<div class="gf-formateur" role="note"><p class="gf-formateur__tete">' .. I.svg('personne')
+    .. '<span>' .. O.esc(titre or 'Note formateur') .. '</span></p>', blocs, '</div>')
 end
 
 function M.formateur(div)
@@ -197,7 +197,7 @@ function M.regle(div)
   end
   local p = D.principe(r.principe) or {}
   local total = #D.regles()
-  local html = '<aside class="gf-regle" aria-label="Nouvelle règle au carnet : ' .. O.esc(r.id) .. '">'
+  local html = '<div class="gf-regle" role="note" aria-label="Nouvelle règle au carnet : ' .. O.esc(r.id) .. '">'
     .. '<p class="gf-regle__tete">' .. I.svg('carnet') .. '<span class="gf-regle__num">' .. O.esc(r.id) .. '</span>'
     .. '<span class="gf-regle__label">Nouvelle règle au carnet</span>'
     .. '<span class="gf-principe gf-principe--' .. O.esc(r.principe) .. '">' .. O.texte(p.titre or '') .. '</span></p>'
@@ -206,7 +206,7 @@ function M.regle(div)
     .. '<p class="gf-regle__lien"><a href="' .. O.url('memos/carnet-de-regles.qmd', r.id) .. '">Voir le carnet · règle ' .. rang .. ' sur ' .. total .. '</a></p>'
   local blocs = { O.raw(html) }
   for _, b in ipairs(div.content) do blocs[#blocs + 1] = b end
-  blocs[#blocs + 1] = O.raw('</aside>')
+  blocs[#blocs + 1] = O.raw('</div>')
   return blocs
 end
 
@@ -264,9 +264,9 @@ end
 -- VS Code : l'équivalent visuel ------------------------------------------------------
 function M.vscode(div)
   local titre = attr(div, 'titre', 'L\'équivalent visuel')
-  return envelopper('<aside class="gf-vscode" aria-label="Dans VS Code"><p class="gf-vscode__tete">' .. I.svg('fenetre')
+  return envelopper('<div class="gf-vscode" role="note" aria-label="Dans VS Code"><p class="gf-vscode__tete">' .. I.svg('fenetre')
     .. '<span class="gf-vscode__nom">Dans VS Code</span><span class="gf-vscode__titre">' .. O.esc(titre) .. '</span></p><div class="gf-vscode__corps">',
-    div.content, '</div></aside>')
+    div.content, '</div></div>')
 end
 
 -- Idée reçue → réalité ------------------------------------------------------------------
