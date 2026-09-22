@@ -1,0 +1,258 @@
+---
+title: "Notre workflow"
+surtitre: "Mémo"
+chapeau: "La façon de travailler de l'équipe de l'Observatoire, de l'issue au tag publié, et jusqu'à l'erratum. C'est le résultat de l'étape 10 : chaque étape du cycle applique une ou plusieurs règles du carnet, nées d'un incident vécu."
+description: "Le workflow de l'équipe de l'Observatoire : cycle de contribution en étapes numérotées avec commandes et règles R01 à R17, différence entre main et tag, procédure d'erratum, réglages GitLab et git config."
+---
+
+Ce mémo dit **quoi faire**. Pour comprendre **pourquoi** chaque règle existe, et comment l'équipe l'a déduite de son carnet plutôt que de l'adopter toute faite, relisez l'[étape 10](../parcours/jour-2/e10-workflow-statistique.qmd). La version de référence, versionnée avec le code, est le fichier `CONTRIBUTING.md` du dépôt compagnon (voir [plus bas](#contributing)).
+
+En une phrase : **une issue, une branche courte, une Merge Request relue et testée, un squash au merge, et un tag pour chaque publication.** C'est la phrase-boussole du parcours, devenue pratique d'équipe :
+
+> « J'ai ouvert une MR sur ma feature branch, mais elle a divergé de main. Je vais rebase avant la review et squash mes commits au merge. »
+
+::: {.parcours-mr}
+:::
+
+## Le cycle d'une contribution
+
+Exemple : Léa traite l'issue #30, *Taux de difficulté de recrutement par métier*.
+
+### 1. Partir d'une issue
+
+Tout changement commence par une [issue]{.t} GitLab : le besoin, la question méthodologique, le critère de fin. Si elle n'existe pas, on la crée. Le numéro (#30) servira partout : nom de branche, commits, MR.
+
+*Règles R01, R04.*
+
+### 2. Créer une branche courte depuis origin/main
+
+```{.bash risque="reversible"}
+git switch main
+git pull
+git switch -c 30-difficulte-recrutement
+```
+
+Nom : `<issue>-<sujet-court>`, le format que produit le bouton *Create merge request* d'une issue GitLab (si vous l'utilisez, la branche existe déjà sur le serveur : `git fetch` puis `git switch 30-difficulte-recrutement`). Une branche = un sujet, quelques jours au plus. Avec `pull.ff only`, le `git pull` sur `main` est toujours un fast-forward : on ne commite jamais sur `main`.
+
+*Règles R02, R04, R07.*
+
+### 3. Commiter petit et explicite
+
+```{.bash risque="reversible"}
+git status
+git add R/indicateurs.R tests/testthat/test-indicateurs.R
+git commit
+```
+
+Le message dit **pourquoi**, et cite l'issue : `Calcule le taux de difficulté par métier (#30)`, puis un corps qui explique le choix méthodologique. Avant chaque commit, `git status` : ni données individuelles, ni secret, ni fichier de sortie.
+
+*Règles R01, R09.*
+
+### 4. Pousser tôt, et au moins à chaque fin de session
+
+```{.bash risque="reversible"}
+git push -u origin 30-difficulte-recrutement
+```
+
+Un service Onyxia est éphémère : ce qui n'est pas poussé n'existe pas.
+
+*Règle R03.*
+
+### 5. Ouvrir une Merge Request en Draft
+
+Dès le premier push, ouvrez la MR vers `main`, marquée [Draft]{.t} (titre préfixé par `Draft:`). Description : ce qui change, comment le vérifier, et `Closes #30` pour que l'issue se ferme au merge. Le pipeline tourne à chaque push ; l'équipe voit le travail en cours.
+
+*Règle R06.*
+
+### 6. Obtenir un pipeline vert
+
+Le pipeline vérifie le style (`lint-r`, `lint-python`), les tests (`tests-r`, `tests-python`) et la production (données, indicateurs, rapport). Une règle méthodologique introduite par la MR devient un test : les parts somment à 1, les taux sont entre 0 et 1.
+
+*Règles R11, R12.*
+
+### 7. Se remettre à jour si main a avancé
+
+```{.bash risque="reecrit"}
+git fetch
+git rebase origin/main
+git push --force-with-lease
+```
+
+Seulement sur **votre** branche, que personne d'autre ne modifie. En cas de conflit : comprendre les deux intentions, résoudre, `git add`, `git rebase --continue`, **relancer les tests**, puis pousser. Jamais `git push --force`. Si la branche est partagée, préférez `git merge origin/main`.
+
+*Règles R02, R05, R13.*
+
+### 8. Passer en review : code et méthode
+
+Retirez le statut Draft (*Mark as ready*) et désignez un relecteur. La review suit la [liste de contrôle de l'équipe](relecture-mr.qmd) : code, méthode statistique, reproductibilité, données, secrets, chemins, tests, clarté, historique. L'auteur répond à chaque fil ; le relecteur le résout. Le relecteur approuve quand il se porte garant.
+
+*Règles R06, R08.*
+
+### 9. Fusionner dans GitLab, en squash
+
+Quand le pipeline est vert, les fils résolus et la MR approuvée, un Maintainer ou un Developer clique **Merge**, avec :
+
+- **Squash commits** : les commits de travail deviennent **un** commit dans `main`. Relisez son message : c'est lui qui restera. Il reprend le titre de la MR et cite l'issue ;
+- **Delete source branch** : la branche disparaît du serveur.
+
+L'issue #30 se ferme automatiquement.
+
+*Règles R10, R11, R14.*
+
+### 10. Nettoyer en local
+
+```{.bash risque="reversible"}
+git switch main
+git pull
+git fetch --prune
+```
+
+```{.bash risque="dangereux"}
+git branch -D 30-difficulte-recrutement
+```
+
+`git branch -d` refuse souvent après un squash (`not fully merged`) : le commit de `main` n'a pas les mêmes hash que vos commits de travail. Vérifiez dans GitLab que la MR est **Merged**, puis utilisez `-D`.
+
+*Règle R10.*
+
+## main et les tags : deux promesses différentes
+
+`main` et un tag de publication ne promettent pas la même chose. Les confondre, c'est promettre trop.
+
+| | `main` | Un tag de publication (`2026.0`) |
+|---|---|---|
+| **Promesse** | Toujours exécutable, relue, pipeline vert | Reproductible : on peut reconstruire le chiffre publié |
+| **Contenu garanti** | Le code a été relu et testé sur des données synthétiques | Un commit précis, **plus** la référence exacte des données (`MANIFEST.json`, empreintes SHA-256), l'environnement figé (`requirements.txt`, `renv.lock`, images de CI épinglées) et le rapport correspondant |
+| **Bouge ?** | Avance à chaque MR fusionnée | Jamais. Une correction donne un **nouveau** tag (`2026.1`) |
+| **Fourni par** | Git (la branche) et GitLab (la protection, les MR) | Git (le tag annoté) et GitLab (la Release, créée par le job `publication`) |
+
+`main` n'est pas « forcément reproductible » : entre deux publications, les données de référence ou une dépendance peuvent changer. C'est le **tag** qui fige l'ensemble (règle R15).
+
+::: {.chaine-confiance}
+:::
+
+## Publier une édition
+
+Quand le panorama est prêt sur `main`, Inès (Maintainer) pose le tag :
+
+```{.bash risque="reversible"}
+git switch main
+git pull
+git tag -a 2026.0 -m "Panorama 2026 : publication"
+git push origin 2026.0
+```
+
+Avant de taguer : pipeline de `main` vert, `MANIFEST.json` des données du millésime vérifié, fichiers de dépendances à jour. Le push du tag déclenche le job `publication`, qui crée la [GitLab Release]{.t} avec le rapport et le manifeste. Versions calendaires : `AAAA.0` pour la publication, `AAAA.1`, `AAAA.2` pour les errata.
+
+*Règle R15.*
+
+## Corriger une publication : l'erratum
+
+Un lecteur signale une erreur dans le panorama **2025**, alors que `main` contient déjà une partie de l'édition 2026. On ne publie pas l'erratum depuis `main` : il embarquerait des indicateurs inachevés. On part du **tag publié**.
+
+1. **Explorer** la version publiée, sans rien modifier :
+
+   ```{.bash risque="reversible"}
+   git fetch --tags
+   git switch --detach 2025.0
+   ```
+
+2. **Créer la branche de maintenance** depuis le tag, une seule fois par millésime. C'est Inès, Maintainer du projet, qui la crée ; elle est protégée comme `main` :
+
+   ```{.bash risque="reversible"}
+   git switch -c maintenance/2025 2025.0
+   git push -u origin maintenance/2025
+   ```
+
+3. **Créer la branche de hotfix** et y reporter la correction. Si elle existe déjà dans `main`, on la reprend par cherry-pick (`-x` garde la trace du commit d'origine) ; sinon on l'écrit ici :
+
+   ```{.bash risque="reversible"}
+   git switch -c hotfix/25-erratum-age maintenance/2025
+   git cherry-pick -x 7c1e0b4
+   git push -u origin hotfix/25-erratum-age
+   ```
+
+   Ajoutez une note d'erratum dans `reports/panorama.qmd`.
+
+4. **MR vers `maintenance/2025`**, pas vers `main` : même review, même pipeline, squash, suppression de la branche.
+
+5. **Taguer l'erratum** sur `maintenance/2025` après le merge :
+
+   ```{.bash risque="reversible"}
+   git switch maintenance/2025
+   git pull
+   git tag -a 2025.1 -m "Panorama 2025 : erratum sur la part des 55 ans et plus (#25)"
+   git push origin 2025.1
+   ```
+
+6. **Vérifier que la correction est aussi dans `main`.** Si elle n'y est pas, une MR vers `main` l'y apporte. Une correction qui ne vit que dans une branche de maintenance réapparaîtra comme bug à l'édition suivante.
+
+*Règle R16.* La branche `maintenance/AAAA` est la seule branche longue de l'équipe ; elle ne reçoit que des corrections.
+
+## Réglages GitLab du projet
+
+Ces réglages font respecter par le serveur les règles que l'on pourrait oublier. Les libellés sont ceux de GitLab 16 et 17 ; ils peuvent varier légèrement selon votre version.
+
+| Où | Réglage | Valeur | Règle |
+|---|---|---|---|
+| **Settings › Repository › Branch defaults** | Default branch | `main` | |
+| **Settings › Repository › Protected branches** | `main` : *Allowed to merge* | Developers + Maintainers | R06 |
+| | `main` : *Allowed to push and merge* | No one | R06, R07 |
+| | `main` : *Allowed to force push* | désactivé | R13 |
+| | `maintenance/*` : *Allowed to merge* / *Allowed to push and merge* | Maintainers / No one | R16 |
+| **Settings › Repository › Protected tags** | `20*` : *Allowed to create* | Maintainers | R15 |
+| **Settings › Merge requests** | *Merge method* | *Fast-forward merge* | R14 |
+| | *Squash commits when merging* | *Require* (ou *Encourage*) | R14 |
+| | *Enable "Delete source branch" option by default* | coché | R10 |
+| | *Merge checks* : *Pipelines must succeed* | coché | R11 |
+| | *Merge checks* : *All threads must be resolved* | coché | R08 |
+| **Settings › Merge requests › Merge request approvals** | Approbations obligatoires | 1 | R06, R08 |
+
+Remarques :
+
+- **Méthode de merge.** Avec *Fast-forward merge* et le squash, chaque MR donne exactement **un** commit dans `main`, sans commit de fusion : l'historique de `main` se lit comme une liste de sujets. Si `main` a avancé, GitLab bloque le merge et propose un bouton **Rebase** (ou vous rebasez vous-même, étape 7). Avec la méthode *Merge commit*, chaque sujet apparaîtrait en deux commits : le squash et un commit de fusion.
+- **Approbations obligatoires** : les règles d'approbation obligatoires relèvent de GitLab **Premium** ou supérieur. En édition Free, on peut approuver une MR, mais le merge n'est pas bloqué par l'absence d'approbation ; la règle R06 repose alors sur la discipline d'équipe et sur *All threads must be resolved*.
+- **Variables CI** (**Settings › CI/CD › Variables**) : tout secret utilisé par le pipeline y est déclaré, masqué, et protégé s'il ne sert que sur `main` et les tags.
+
+## Réglages Git de chaque poste
+
+Une fois par poste ou par service Onyxia :
+
+```{.bash risque="reversible"}
+git config --global user.name "Prénom Nom"
+git config --global user.email "prenom.nom@example.org"
+git config --global init.defaultBranch main
+git config --global pull.ff only
+git config --global core.editor "code --wait"
+git config --global fetch.prune true
+```
+
+`pull.ff only` est la traduction locale de « on ne commite pas sur `main` » : un `git pull` qui ne peut pas avancer en fast-forward s'arrête au lieu de fabriquer un commit de fusion (règle R07). Le détail de chaque option est dans le mémo [commandes par intention](commandes.qmd#configuration).
+
+## Les dix-sept règles, et où elles s'appliquent
+
+| Règle | En bref | Où dans le cycle |
+|---|---|---|
+| [R01](carnet-de-regles.qmd#R01) | Message qui dit pourquoi, et cite l'issue | Étapes 1, 3, 9 |
+| [R02](carnet-de-regles.qmd#R02) | `git fetch` avant d'intégrer | Étapes 2, 7 |
+| [R03](carnet-de-regles.qmd#R03) | Pousser au moins à chaque fin de session | Étape 4 |
+| [R04](carnet-de-regles.qmd#R04) | Une branche courte par sujet, née d'une issue | Étapes 1, 2 |
+| [R05](carnet-de-regles.qmd#R05) | Conflit : comprendre les deux intentions, relancer les tests | Étape 7 |
+| [R06](carnet-de-regles.qmd#R06) | Rien dans `main` sans MR relue ; `main` protégée | Étapes 5, 8, réglages |
+| [R07](carnet-de-regles.qmd#R07) | `pull.ff only`, jamais de commit sur `main` | Étape 2, `git config` |
+| [R08](carnet-de-regles.qmd#R08) | Review du code **et** de la méthode | Étape 8 |
+| [R09](carnet-de-regles.qmd#R09) | Ni données individuelles, ni secrets dans Git | Étape 3 |
+| [R10](carnet-de-regles.qmd#R10) | Branche fusionnée, branche supprimée | Étapes 9, 10 |
+| [R11](carnet-de-regles.qmd#R11) | Pas de merge avec un pipeline rouge | Étapes 6, 9 |
+| [R12](carnet-de-regles.qmd#R12) | Règle méthodologique importante = test automatique | Étape 6 |
+| [R13](carnet-de-regles.qmd#R13) | Pas de réécriture d'historique partagé ; `--force-with-lease` sur sa branche | Étape 7 |
+| [R14](carnet-de-regles.qmd#R14) | Squash au merge : un sujet, un commit dans `main` | Étape 9 |
+| [R15](carnet-de-regles.qmd#R15) | Chaque publication est un tag annoté reproductible | Publier une édition |
+| [R16](carnet-de-regles.qmd#R16) | Erratum depuis le tag publié, correction aussi dans `main` | Corriger une publication |
+| [R17](carnet-de-regles.qmd#R17) | Workflow choisi selon le rythme de publication et le nombre de versions | Le choix de ce workflow |
+
+Ce workflow ressemble à **GitHub Flow**, complété d'une brique **GitLab Flow** (la branche de maintenance) : voir la [comparaison des workflows](workflows.qmd). Il n'a ni `develop` ni `release/*` : l'Observatoire n'a qu'une édition vivante à la fois (règle R17).
+
+## Le CONTRIBUTING.md du dépôt compagnon {#contributing}
+
+À l'étape 10, l'équipe écrit ce workflow dans le fichier `CONTRIBUTING.md`, à la racine du dépôt `observatoire-industrie` (MR !6, issue #27). C'est là que le trouvera un nouvel arrivant, et c'est par une MR sur ce fichier que l'équipe fera évoluer ses règles. Le dépôt compagnon, ses tags de reprise et la manière de le récupérer sont décrits sur la page [dépôt compagnon](../fil-rouge/depot-compagnon.qmd) ; le fichier est présent à partir du tag `etape-11-debut`.
