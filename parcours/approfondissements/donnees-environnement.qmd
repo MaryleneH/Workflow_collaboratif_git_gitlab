@@ -39,46 +39,53 @@ mc cp --recursive s3/oei-panel/2026/brut/ data/brut/
 
 ## Référencer les données : `MANIFEST.json`
 
-Les données ne sont pas dans Git, mais leur **identité** doit l'être. Le générateur écrit un `MANIFEST.json`. Il est versionné avec le code, et joint à la [GitLab Release]{.t} du tag.
+Les données ne sont pas dans Git, mais leur **identité** doit l'être. Le générateur écrit, à côté des tables, un `data/brut/<millésime>/MANIFEST.json`. Ce fichier est dans `data/brut/`, donc ignoré par Git comme les données qu'il décrit ; son **contenu** est conservé de deux façons : le job `donnees` le transmet en artefact et le job `publication` le joint à la [GitLab Release]{.t} du tag, et le message du tag annoté cite les empreintes (`git show 2026.0`). Voici celui du millésime 2026 :
 
 ```json
 {
   "millesime": 2026,
-  "genere_le": "2026-03-02T09:14:07Z",
-  "generateur": "scripts/01_generer_donnees.py",
+  "graine": 236492200501070,
+  "graine_panel": 20250113,
+  "version_generateur": "1.0.0",
   "tables": {
     "etablissements": {
-      "chemin": "s3://oei-panel/2026/brut/etablissements.parquet",
-      "lignes": 812,
-      "sha256_contenu": "5b0e6c1f…"
+      "fichier": "etablissements.parquet",
+      "lignes": 800,
+      "sha256_contenu": "d010fd1bac4c6d2d8fd7c5da04b606a5d3ce137f463bb9cdb31be4fb2cf5bc47"
+    },
+    "recrutements": {
+      "fichier": "recrutements.parquet",
+      "lignes": 6571,
+      "sha256_contenu": "1f4c949386f24ec4118ed27a6dbd64f2fdf988a6bf77e5bb1228c22031717b6a"
     },
     "salaries": {
-      "chemin": "s3://oei-panel/2026/brut/salaries.parquet",
-      "lignes": 41230,
-      "sha256_contenu": "a91d44e0…"
+      "fichier": "salaries.parquet",
+      "lignes": 86771,
+      "sha256_contenu": "4b25597872f4e131fdb473d42178d0b34429cc591cb64f9861aa4f8660f543b6"
     }
   }
 }
 ```
 
-Pourquoi l'empreinte du **contenu**, et pas celle du fichier ? Deux fichiers Parquet contenant exactement les mêmes lignes peuvent différer octet par octet : compression, taille des blocs, version de la bibliothèque qui les a écrits. L'empreinte du fichier changerait alors sans que les données changent. On calcule donc le SHA-256 d'une représentation **canonique** des lignes : colonnes fixées, lignes triées. Le principe, simplifié :
+Il ne contient ni date de génération ni chemin absolu : deux générations du même millésime, sur deux machines, écrivent le **même** fichier.
+
+Pourquoi l'empreinte du **contenu**, et pas celle du fichier ? Deux fichiers Parquet contenant exactement les mêmes lignes peuvent différer octet par octet : compression, taille des blocs, version de la bibliothèque qui les a écrits. L'empreinte du fichier changerait alors sans que les données changent. On calcule donc le SHA-256 d'une représentation **canonique** des lignes : noms de colonnes, puis lignes triées par leur clé, chacune écrite en JSON. C'est ce que fait le générateur du projet (`python/observatoire/generation.py`) :
 
 ```python
-import hashlib
-import duckdb
-
-
-def empreinte_contenu(chemin: str) -> str:
-    """SHA-256 du contenu d'une table, indépendant de l'encodage Parquet."""
-    con = duckdb.connect()
-    cur = con.execute(f"SELECT * FROM read_parquet('{chemin}') ORDER BY ALL")
+def empreinte_table(table: pa.Table, nom: str) -> str:
+    """SHA-256 du contenu canonique d'une table (indépendant du fichier)."""
+    colonnes = table.column_names
+    lignes = table.to_pylist()
+    lignes.sort(key=lambda ligne: tuple(ligne[c] for c in CLES[nom]))
     h = hashlib.sha256()
-    h.update("|".join(col[0] for col in cur.description).encode())
-    while lignes := cur.fetchmany(10_000):
-        for ligne in lignes:
-            h.update(repr(ligne).encode())
+    h.update((json.dumps(colonnes, ensure_ascii=False) + "\n").encode("utf-8"))
+    for ligne in lignes:
+        valeurs = [_valeur_canonique(ligne[c]) for c in colonnes]
+        h.update((json.dumps(valeurs, ensure_ascii=False, separators=(",", ":")) + "\n").encode("utf-8"))
     return h.hexdigest()
 ```
+
+`CLES` donne la clé de tri de chaque table (par exemple `id_salarie` pour `salaries`), et `_valeur_canonique()` écrit les dates et les valeurs manquantes toujours de la même façon.
 
 Une publication est reproductible si, au tag, on retrouve la même empreinte, que les données soient régénérées ou relues depuis S3. C'est ce qu'Inès a vérifié à l'étape 8.
 
@@ -121,13 +128,16 @@ On versionne `renv.lock`, `.Rprofile`, `renv/activate.R` et `renv/settings.json`
 
 **Python : versions épinglées.** Un `requirements.txt` épinglé fixe chaque version avec `==` :
 
-```text
-duckdb==1.1.3
-pandas==2.2.3
-pyarrow==18.1.0
-pytest==8.3.4
-ruff==0.8.4
+```{.text filename="requirements.txt"}
+# Versions épinglées : le même code doit produire les mêmes données partout.
+pyarrow==25.0.1
+duckdb==1.5.5
+matplotlib==3.11.2
+pytest==9.1.1
+ruff==0.16.8
 ```
+
+C'est le fichier du projet à partir de c15 : la CI l'installe dans chaque job Python (E6), et ruff y est épinglé comme les autres outils.
 
 Épingler les paquets directs ne suffit pas : leurs dépendances (numpy, par exemple) peuvent encore varier. Deux solutions : `uv pip compile requirements.in -o requirements.txt` produit une liste complète et épinglée ; dans un projet décrit par `pyproject.toml`, `uv lock` écrit `uv.lock`, et `uv sync --locked` le respecte strictement.
 
@@ -156,29 +166,46 @@ Un jeton d'API, un mot de passe de base de données ou une clé S3 n'ont rien à
 
 ## Le `.gitignore` du projet
 
-```text
-# Données : jamais dans Git (R09), référencées par MANIFEST.json (R15)
+```{.text filename=".gitignore"}
+# Données individuelles : jamais dans Git (voir data/README.md)
 data/brut/
 data/prepare/
+
+# Résultats et rendus : ils se régénèrent à partir du code
 resultats/
 _output/
+.quarto/
+*_files/
 
+# R
+.Rhistory
+.RData
+.Rproj.user/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.ruff_cache/
+```
+
+Il manque une section : les secrets locaux. Avant de créer un `.Renviron` ou un `.env` dans le projet, ajoutez-les au `.gitignore`, dans une MR comme tout changement :
+
+```text
 # Secrets locaux
 .Renviron
 .env
-
-# Environnements locaux (renv.lock et requirements.txt, eux, sont versionnés)
-.venv/
 ```
 
 Pour savoir quelle règle ignore un fichier :
 
 ```{.bash risque="sur"}
-git check-ignore -v data/brut/salaries.parquet
+git check-ignore -v data/brut/2026/salaries.parquet
 ```
 
 ```{.text .sortie}
-.gitignore:2:data/brut/	data/brut/salaries.parquet
+.gitignore:2:data/brut/	data/brut/2026/salaries.parquet
 ```
 
 ::: {.incident #inc-a-donnees-1 titre="Le fichier est dans .gitignore, mais Git le suit toujours"}
@@ -221,12 +248,12 @@ Vérifier que le dépôt contient le code, les références et les lockfiles, et
 ::: consignes
 1. Listez les fichiers suivis : `git ls-files`. Aucun fichier de `data/brut/`, `data/prepare/` ou `resultats/` ne doit apparaître.
 2. Générez les données 2026, puis vérifiez avec `git check-ignore -v` qu'elles sont bien ignorées.
-3. Comparez les empreintes du `MANIFEST.json` produit avec celles jointes à la publication `2026.0`.
+3. Comparez les empreintes de `data/brut/2026/MANIFEST.json` avec celles de la publication `2026.0` : `git show 2026.0` les cite dans le message du tag.
 4. Cherchez dans l'historique une trace de secret : `git log -p -S "API_TOKEN" --all`.
 :::
 
 ::: reussite
-`git ls-files data/` ne liste que `data/README.md` et `data/reference/*.csv` ; les empreintes du `MANIFEST.json` régénéré sont identiques à celles de la publication.
+`git ls-files data/` ne liste que `data/README.md` et les trois nomenclatures de `data/reference/` (`naf_filiere.csv`, `pcs.csv`, `regions.csv`) ; les empreintes du `MANIFEST.json` régénéré sont identiques à celles du tag (pour `salaries` : `4b255978…`).
 :::
 
 ::: indice
@@ -234,7 +261,7 @@ Vérifier que le dépôt contient le code, les références et les lockfiles, et
 :::
 
 ::: corrige
-La recherche de `API_TOKEN` retrouve la branche `18-taux-recrutement` de l'étape 4 si elle existe encore dans votre dépôt : c'est l'illustration d'un historique indélébile. Le jeton (fictif) doit être considéré comme compromis, même si la MR !1 l'a retiré avant le merge.
+La recherche de `API_TOKEN` retrouve le commit « maj » (`805fa9a`) de la branche `18-taux-recrutement` de l'étape 4 si elle existe encore dans votre dépôt : c'est l'illustration d'un historique indélébile. Le jeton (fictif) doit être considéré comme compromis, même si la MR !1 l'a retiré avant le merge.
 :::
 :::
 
