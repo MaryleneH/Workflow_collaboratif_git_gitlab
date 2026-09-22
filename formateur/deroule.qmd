@@ -92,7 +92,8 @@ Activités
   sur le commit c11. La règle R01 naît des messages « maj » et « modifs ».
 
 Matériel
-: Dépôt au tag `etape-1-debut`. L'étape est en **lecture seule**.
+: Dépôt au tag `etape-1-debut` : `main` sur c15 dans les projets de binôme (voir
+  [l'import](preparation.qmd#import)). L'étape est en **lecture seule**.
 
 Points d'attention
 : Ne donnez pas la réponse avant que deux binômes au moins aient trouvé c11.
@@ -103,17 +104,20 @@ Points d'attention
 ### E2 · Dépôt partagé · 75 min
 
 Activités
-: Chaque binôme clone son projet, commite une modification sans rapport avec
-  `data/README.md`. Pendant ce temps, vous poussez au nom de Karim un commit
-  sur `data/README.md` avec `simuler_collegue.py` (voir
+: Chaque binôme clone son projet et commite, sans pousser, la section
+  `## Sources` de `data/README.md`. Pendant ce temps, vous poussez au nom de
+  Karim un commit qui complète la section `## Champ` du même fichier
+  (« Décrit le champ du panel dans data/README.md ») avec
+  `simuler_collegue.py --depot <votre clone>` (voir
   [Simuler un collègue](remise-a-zero.qmd#simuler)). Premier push refusé,
   diagnostic par `git fetch` puis `git log --oneline --graph --all`. Premier
   `git pull` refusé (« divergent branches »), puis `git pull --no-rebase`.
   Règles R02 et R03.
 
 Matériel
-: Simulateur de collègue prêt, avec votre jeton ; `main` **non protégée** dans
-  les projets des binômes.
+: Simulateur de collègue prêt : un clone de chaque projet de binôme sur votre
+  poste, essayé en `--dry-run` ; `main` **non protégée** dans les projets des
+  binômes.
 
 Points d'attention
 : Lancez le simulateur **après** le commit local des stagiaires et **avant**

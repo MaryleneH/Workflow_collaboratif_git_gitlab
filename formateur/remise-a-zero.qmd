@@ -236,27 +236,43 @@ partir de `origin/21-regrouper-pcs-e7` et la relie à son upstream.
 ## Simuler un collègue en E2 {#simuler}
 
 L'incident de E2 exige que « Karim » pousse sur `main` **pendant** que le
-binôme travaille. L'outil `simuler_collegue.py` le fait pour vous : il ajoute
-sur la `main` du projet un commit qui modifie `data/README.md`, dont l'**auteur
-Git** est Karim.
+binôme travaille. L'outil `simuler_collegue.py` le fait pour vous, depuis
+**votre** clone de chaque projet (jamais celui d'un stagiaire) : il met la
+branche à jour en fast-forward, ajoute trois lignes sous `## Champ` dans
+`data/README.md`, commite au nom de Karim Haddad
+(`karim.haddad@oei.example.org`, auteur **et** commiteur) avec le message
+« Décrit le champ du panel dans data/README.md », puis pousse avec Git. Il ne
+touche pas à la section `## Sources` : le push du binôme est refusé
+(`fetch first`), puis `git pull --no-rebase` fusionne sans conflit.
+
+| Option | Rôle |
+|---|---|
+| `--depot DOSSIER` | **obligatoire** : votre clone du projet, propre (aucune modification non commitée) |
+| `--branche NOM` | branche à modifier (défaut : `main`) |
+| `--distant NOM` | remote où pousser (défaut : `origin`) |
+| `--dry-run` | afficher le commit et les lignes qui seraient ajoutées, sans commit ni push |
+
+Préparez vos clones avant la séance, puis :
 
 ```{.bash risque="sur"}
-python depot-compagnon/outils/simuler_collegue.py --projet oei-2026-09/observatoire-binome-01 \
-  --token "$GITLAB_TOKEN" --dry-run
+for n in 01 02 03 04 05 06; do
+  git clone "https://gitlab.example.org/oei-2026-09/observatoire-binome-$n.git" ~/formateur/binome-$n
+done
+python3 depot-compagnon/outils/simuler_collegue.py --depot ~/formateur/binome-01 --dry-run
 ```
 
 ```{.bash risque="reversible"}
 for n in 01 02 03 04 05 06; do
-  python depot-compagnon/outils/simuler_collegue.py --projet "oei-2026-09/observatoire-binome-$n" \
-    --token "$GITLAB_TOKEN"
+  python3 depot-compagnon/outils/simuler_collegue.py --depot ~/formateur/binome-$n
 done
 ```
 
 **Le bon moment.** Dites aux binômes : « commitez, mais ne poussez pas
 encore ». Quand tous ont un commit local, lancez la boucle, puis donnez le
 signal : « poussez ». Chacun obtient le refus `(fetch first)`. Si un binôme a
-poussé trop tôt, il n'y a pas de divergence chez lui : relancez l'outil pour
-son seul projet, faites-lui faire un second commit, et c'est reparti.
+poussé trop tôt, il n'y a pas de divergence chez lui. L'outil ne pousse qu'une
+fois par projet (il répond « Rien à faire » s'il retrouve ses lignes) : faites
+plutôt pousser un commit par A, puis refaire un commit à B, et c'est reparti.
 
 **Un effet secondaire à exploiter.** Dans GitLab, le commit apparaît avec
 Karim pour auteur, mais l'activité du projet indique que c'est **vous** qui avez
@@ -267,8 +283,8 @@ c'est un excellent exercice « Git ou GitLab ? ».
 ::: {.formateur titre="Prérequis"}
 Pour que l'incident ait lieu, `main` ne doit pas être protégée dans les projets
 de binôme en E2 : sinon, le push des stagiaires est refusé par GitLab, et non
-par Git, ce qui brouille la leçon. Votre jeton doit avoir la portée `api` si
-l'outil passe par l'API de GitLab, et `write_repository` s'il pousse avec Git.
+par Git, ce qui brouille la leçon. L'outil pousse avec Git, avec vos
+identifiants : votre jeton doit avoir la portée `write_repository`.
 :::
 
 ## Reconstruire tout le dépôt {#reconstruire}
@@ -277,17 +293,28 @@ Trois raisons de reconstruire : la bible a changé, les outils du dépôt
 compagnon ont été mis à jour, ou un projet est dans un état irrécupérable.
 
 ```{.bash risque="sur"}
-python depot-compagnon/outils/construire_historique.py --sortie ../construit/observatoire-industrie
-python depot-compagnon/outils/verifier_historique.py --sortie ../construit/observatoire-industrie
+python3 depot-compagnon/outils/construire_historique.py --sortie ../construit/observatoire-industrie
+python depot-compagnon/outils/verifier_historique.py            # environ 1 min 30
+python depot-compagnon/outils/verifier_historique.py --rapide   # sans seconde construction ni Quarto
 ```
 
-Pour ne reconstruire qu'un point de reprise, par exemple pour préparer un
-projet de rattrapage qui démarre en E6, utilisez `--jusqua` avec l'étape
-voulue (voir `--help`).
+`--sortie` doit désigner un dossier vide ou inexistant. Le vérificateur
+construit son propre dépôt dans un dossier temporaire (`--garder DOSSIER` pour
+le conserver, `--json FICHIER` pour enregistrer les mesures). Les options
+complètes sont dans [la préparation](preparation.qmd#import).
 
-**Le constructeur est déterministe.** Dates, auteurs et contenus sont fixes :
-tant que le code du constructeur ne change pas, les hash des commits sont
-**identiques** d'une construction à l'autre. Deux constructions sur deux
+Pour ne reconstruire qu'un point de reprise, par exemple pour préparer un
+projet de rattrapage qui démarre en E6, ajoutez `--jusqua etape-6-debut` : la
+construction s'arrête juste après ce tag. `main` est alors sur c21, avec la
+branche `21-regrouper-pcs` mais pas encore `21-regrouper-pcs-e7` ; de même,
+`--jusqua etape-8-debut` donne `main` sur c24 **sans** le tag `2026.0`, que
+les stagiaires créent en E8. `--carte FICHIER.json` écrit la correspondance
+entre les identifiants de la bible et les hash (`c11` → `42931da…`).
+
+**Le constructeur est déterministe.** Dates, auteurs et contenus sont fixes, et
+la configuration Git de la machine est ignorée : tant que le scénario et les
+états ne changent pas, les hash des commits sont **identiques** d'une
+construction à l'autre (c11 est toujours `42931da`, c24 `15385ef`). Deux constructions sur deux
 machines donnent le même `git log`. C'est d'ailleurs un bon argument de
 reproductibilité à montrer. En revanche, si le contenu a changé, **tous** les
 hash changent à partir du premier commit modifié. Les clones des stagiaires ne
@@ -326,7 +353,8 @@ git -C observatoire-miroir-binomes.git push --mirror -o ci.skip \
 - **Sauvegarder avant `reset --hard`** : une branche `sauvegarde/…` et un
   stash. Cela coûte deux secondes.
 - **`--dry-run` d'abord** pour tous les outils du dépôt compagnon.
-- **Le jeton hors de l'historique du shell** : `read -rs GITLAB_TOKEN`, et une
-  date d'expiration proche.
+- **Le jeton hors de l'historique du shell** : `read -rs GITLAB_TOKEN` puis
+  `export GITLAB_TOKEN` (c'est là que `creer_issues.py` le lit), et une date
+  d'expiration proche.
 - **Noter ce que vous avez fait** : quel projet, quel tag, à quelle heure.
   Quand un binôme dira « tout a changé depuis la pause », vous saurez pourquoi.

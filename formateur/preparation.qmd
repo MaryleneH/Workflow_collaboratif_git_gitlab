@@ -110,15 +110,34 @@ tel quel dans chaque projet.
 **1. Construire et vérifier** (sur votre poste ou dans un service VS Code) :
 
 ```{.bash risque="sur"}
-python depot-compagnon/outils/construire_historique.py --sortie ../construit/observatoire-industrie
-python depot-compagnon/outils/verifier_historique.py --sortie ../construit/observatoire-industrie
+python3 depot-compagnon/outils/construire_historique.py --sortie ../construit/observatoire-industrie
+python3 -m venv .venv-verif && . .venv-verif/bin/activate
+pip install -r depot-compagnon/requirements-verification.txt
+python depot-compagnon/outils/verifier_historique.py
 ```
 
-Le vérificateur contrôle notamment les tags de reprise `etape-N-debut`, les
-branches d'exercice et l'écart de la part des 55 ans et plus entre `2025.0` et
-`main`. L'option `--jusqua` limite la construction à une étape donnée : elle
-est utile pour reconstruire un point de reprise précis. Consultez `--help` pour
-les options exactes.
+`construire_historique.py` n'utilise que la bibliothèque standard de Python.
+Ses options :
+
+| Option | Rôle |
+|---|---|
+| `--sortie DOSSIER` | **obligatoire** : dossier vide ou inexistant où créer le dépôt |
+| `--jusqua TAG` | s'arrêter juste après la création de ce tag (par exemple `etape-3-debut`) : utile pour reconstruire un point de reprise précis |
+| `--carte FICHIER.json` | écrire la correspondance identifiant → hash (`c11` → `42931da…`) |
+| `--scenario FICHIER` | appliquer un autre scénario que `historique/scenario.yml` |
+| `--silencieux` | n'afficher que le résumé (branches et tags créés) |
+
+`verifier_historique.py` construit **lui-même** le dépôt, deux fois, dans un
+dossier temporaire, puis vérifie tout : construction déterministe (mêmes hash),
+tags de reprise `etape-N-debut`, branches d'exercice, tests et lints verts à
+chaque tag, échecs attendus sur `21-regrouper-pcs`, conflits de E3 et de E7,
+cherry-pick de E8, écart de la part des 55 ans et plus entre `2025.0` et
+`main`, rendu du rapport. Il demande Git ≥ 2.40, R avec dplyr, testthat,
+lintr, knitr et rmarkdown, et Quarto. Comptez une minute et demie. Ses
+options : `--rapide` (sans seconde construction ni rendu Quarto),
+`--sans-quarto`, `--garder DOSSIER` (conserver les dépôts et arbres de travail
+pour les inspecter) et `--json FICHIER` (écrire les mesures et les textes
+exacts). Il sort avec le code 1 à la moindre vérification en échec.
 
 **2. Préparer un miroir nu.** `git clone --mirror` copie **toutes** les
 références (branches et tags), sans copie de travail et sans les références
@@ -143,7 +162,14 @@ Préparez donc un second miroir, sans ces quatre références :
 git clone --mirror ../construit/observatoire-industrie observatoire-miroir-binomes.git
 git -C observatoire-miroir-binomes.git tag -d 2026.0 2025.1
 git -C observatoire-miroir-binomes.git branch -D maintenance/2025 hotfix/25-erratum-age
+git -C observatoire-miroir-binomes.git update-ref refs/heads/main 'etape-1-debut^{commit}'
 ```
+
+La dernière ligne place `main` sur c15, le point de départ de E1 et de E2 : dans
+le miroir construit, `main` est sur c25 (`etape-11-debut`), et la mission
+d'archéologie de E1 suppose que `main` s'arrête à « Teste le schéma et la
+cohérence des données générées ». Les commits suivants restent accessibles par
+les tags de reprise et les branches d'exercice.
 
 Les projets d'équipe (E11) et le projet de référence reçoivent le miroir
 **complet** : l'incident « erratum urgent `2026.1` » de E11 suppose que `2026.0`
@@ -183,20 +209,24 @@ par des issues de service, fermées aussitôt. Ainsi, « Ajouter le taux de
 recrutement par métier » reçoit bien le numéro #18.
 
 ```{.bash risque="sur"}
-read -rs GITLAB_TOKEN        # collez le jeton : il n'apparaît pas à l'écran ni dans l'historique
-python depot-compagnon/outils/creer_issues.py --projet oei-2026-09/observatoire-binome-01 \
-  --token "$GITLAB_TOKEN" --dry-run
+python3 depot-compagnon/outils/creer_issues.py --url https://gitlab.example.org \
+  --projet oei-2026-09/observatoire-binome-01 --dry-run
 ```
 
 ```{.bash risque="reversible"}
+read -rs GITLAB_TOKEN        # collez le jeton : il n'apparaît pas à l'écran ni dans l'historique
+export GITLAB_TOKEN          # l'outil le lit dans l'environnement, jamais en argument
 for n in 01 02 03 04 05 06; do
-  python depot-compagnon/outils/creer_issues.py --projet "oei-2026-09/observatoire-binome-$n" \
-    --token "$GITLAB_TOKEN"
+  python3 depot-compagnon/outils/creer_issues.py --url https://gitlab.example.org \
+    --projet "oei-2026-09/observatoire-binome-$n"
 done
 ```
 
-- `--dry-run` affiche ce qui serait créé sans rien créer : lancez-le toujours
-  d'abord.
+- `--dry-run` affiche le plan (les 34 issues, dans l'ordre) sans appeler
+  GitLab, et sans jeton : lancez-le toujours d'abord.
+- Les issues « historiques » sont créées puis fermées ; #12, #13, #18, #19,
+  #20, #21, #25, #27 et #30 à #34 restent ouvertes. `--toutes-ouvertes` ne
+  ferme rien.
 - Le jeton est un jeton personnel **de votre compte**, avec la portée `api`.
   Donnez-lui une date d'expiration proche : après la session, il ne sert plus.
 - L'outil suppose un projet **sans aucune issue**. Si le projet en contient
@@ -236,9 +266,14 @@ Le `.gitlab-ci.yml` du dépôt (apparu en c21) utilise trois [images]{.t ref="im
 
 | Image | Jobs | Remarque |
 |---|---|---|
-| `python:3.12-slim` | `lint-python`, `tests-python`, `donnees` | légère ; installe `requirements.txt` à chaque job |
-| `rocker/r-ver:4.4.1` | `lint-r`, `tests-r`, `indicateurs` | installe dplyr, testthat, lintr depuis le dépôt de paquets configuré dans l'image |
+| `python:3.12-slim` | `lint-python`, `tests-python`, `donnees`, `figures` | légère ; installe `requirements.txt` à chaque job (paquets mis en cache) |
+| `rocker/r-ver:4.4.1` | `lint-r`, `tests-r`, `indicateurs` | installe dplyr, testthat, lintr depuis le dépôt de paquets configuré dans l'image ; `lint-r` installe aussi `libxml2` par `apt-get` |
 | `rocker/verse:4.4.1` | `rapport` | contient Quarto et TeX : **plusieurs gigaoctets**, c'est elle qui coûte le plus au premier tirage |
+
+S'y ajoutent deux petites images pour le stage `publier` : `alpine:3.20`
+(`pages`) et `registry.gitlab.com/gitlab-org/release-cli:v0.18.0`
+(`publication`). Un pipeline de MR compte **8 jobs** ; sur `main`, 9 (avec
+`pages`) ; sur un tag de publication, 9 (avec `publication`).
 
 **Ce que vous devez obtenir de l'équipe plateforme :**
 
@@ -273,10 +308,12 @@ lequel tombe chaque job ; le gain est alors moins prévisible.
 
 - `pages` (sur `main`) ne déploie un site que si GitLab Pages est activé sur
   l'instance. Sinon, ce n'est pas bloquant pour le parcours : signalez-le en E6.
-- `publication` (sur tag) crée la GitLab Release en E8. Il utilise l'outil de
-  release de GitLab (image `release-cli` ou `glab`, selon la version du dépôt
-  compagnon), qui doit pouvoir être tiré par le runner. Testez-le à J-7 en
-  poussant un tag de test sur le projet de référence. Supprimez ensuite la
+- `publication` (sur tag) crée la GitLab Release en E8. Il utilise l'image
+  `registry.gitlab.com/gitlab-org/release-cli:v0.18.0`, qui doit pouvoir être
+  tirée par le runner. Il ne se déclenche que pour un tag de la forme
+  `AAAA.N` (règle `^\d{4}\.\d+$`) : les tags `etape-N-debut` n'ouvrent aucun
+  pipeline. Testez-le à J-7 en poussant un tag de test **de cette forme**
+  (par exemple `9999.0`) sur le projet de référence. Supprimez ensuite la
   Release (Deploy › Releases), puis le tag.
 
 ## Services VS Code sur Onyxia {#onyxia}
@@ -367,7 +404,8 @@ paquets R et Python bien avant J-7.
   supprimés.
 - [ ] Service VS Code neuf : Git ≥ 2.40, aucun `pull.*`, clone et push d'une
   branche de test réussis, `testthat` et `pytest` lancés avec succès.
-- [ ] Simulateur de collègue essayé en `--dry-run` sur le projet de référence.
+- [ ] Simulateur de collègue essayé en `--dry-run` dans votre clone du projet de
+  référence (`simuler_collegue.py --depot <clone> --dry-run`).
 - [ ] Carnet de règles (une carte par règle) et cartes-incident de E11
   imprimés.
 - [ ] Parcours complet relu dans le profil formateur, corrigés compris.
@@ -419,6 +457,6 @@ fournit : MR, review, branche protégée, pipeline, Release. Dites-le.
 Pour les tests à la main, en cas de runners indisponibles :
 
 ```{.bash risque="sur"}
-Rscript -e 'testthat::test_dir("tests/testthat")'
+Rscript -e 'testthat::test_dir("tests/testthat", stop_on_failure = TRUE)'
 python -m pytest tests/python
 ```
