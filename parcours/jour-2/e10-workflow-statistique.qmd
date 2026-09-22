@@ -448,7 +448,7 @@ Une personne du binôme a le rôle Maintainer sur le projet ; l'autre a le rôle
 1. Le Maintainer applique la liste de contrôle de la section 7 (branches protégées, tags protégés, méthode de merge, squash, merge checks, suppression de la branche source).
 2. Les deux configurent leur poste avec `pull.ff only` et vérifient la valeur.
 3. **Test 1.** Le Developer fait un commit directement sur `main` (par exemple, une phrase ajoutée dans `data/README.md`), puis `git push origin main`. Observez la réponse. Remettez ensuite votre dépôt en ordre, comme l'indique la section « J'ai commité sur `main` par erreur » du `CONTRIBUTING.md`.
-4. **Test 2.** Sur une branche `test-pipeline-rouge`, réintroduisez le bug de E1 : dans `R/age.R`, calculez l'âge au 30 juin de l'année suivante au lieu du 31 décembre. Poussez, ouvrez une MR vers `main` et attendez la fin du pipeline.
+4. **Test 2.** Sur une branche `test-pipeline-rouge`, réintroduisez le bug de E1 : dans `R/age.R`, remplacez `paste0(annee, "-12-31")` par `paste0(annee + 1, "-06-30")`, c'est-à-dire l'âge au 30 juin de l'année suivante. Poussez, ouvrez une MR vers `main` et attendez la fin du pipeline.
 5. Fermez la MR sans la fusionner, et supprimez la branche.
 :::
 
@@ -462,7 +462,7 @@ To https://gitlab.example.org/oei/observatoire-industrie.git
 error: failed to push some refs to 'https://gitlab.example.org/oei/observatoire-industrie.git'
 ```
 
-Au test 2, le job `tests-r` est rouge et la MR ne peut pas être fusionnée : le bouton **Merge** est indisponible, avec un message qui indique que le pipeline doit réussir (le libellé exact dépend de votre version de GitLab). Enfin, `git config --global --get pull.ff` répond `only`.
+Au test 2, le job `tests-r` est rouge (le test ajouté par Karim en c11 échoue : `Failure ('test-age.R:25:3'): l'âge est calculé au 31 décembre de l'année de référence (#7)`, `[1] 55 - 54 == 1`) et la MR ne peut pas être fusionnée : le bouton **Merge** est indisponible, avec un message qui indique que le pipeline doit réussir (le libellé exact dépend de votre version de GitLab). Enfin, `git config --global --get pull.ff` répond `only`.
 :::
 
 ::: indice
