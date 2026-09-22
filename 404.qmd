@@ -1,0 +1,20 @@
+---
+title: "Cette page n'existe pas"
+surtitre: "Erreur 404"
+chapeau: "Comme une branche supprimée après son merge : l'adresse ne pointe plus vers rien."
+---
+
+La page demandée n'existe pas, ou a été déplacée. Rien n'est perdu pour autant :
+
+- la [carte du parcours](parcours/index.qmd) donne accès aux douze étapes ;
+- les [mémos](memos/index.qmd) rassemblent commandes, lexique et carnet de règles ;
+- la recherche, en haut à droite, parcourt tout le site.
+
+::: {.idee-fausse}
+::: fausse
+Une page introuvable, c'est un contenu effacé.
+:::
+::: juste
+Souvent, c'est seulement une **référence** qui a changé : le contenu existe toujours ailleurs. Dans Git aussi, un commit « perdu » se retrouve souvent avec `git reflog`.
+:::
+:::

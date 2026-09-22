@@ -6,6 +6,7 @@ project:
   output-dir: _site
   render:
     - index.qmd
+    - 404.qmd
     - parcours/
     - fil-rouge/
     - memos/

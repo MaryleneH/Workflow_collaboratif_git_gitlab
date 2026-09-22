@@ -5,8 +5,6 @@
 # ---------------------------------------------------------------------------
 project:
   type: website
-  resources:
-    - assets/images/
 
 profile:
   default: stagiaire

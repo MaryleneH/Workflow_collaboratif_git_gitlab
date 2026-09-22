@@ -5,6 +5,7 @@ project:
   output-dir: _site-formateur
   render:
     - index.qmd
+    - 404.qmd
     - parcours/
     - fil-rouge/
     - memos/
