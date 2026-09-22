@@ -1,0 +1,153 @@
+---
+title: "Git dans VS Code"
+surtitre: "Mémo"
+chapeau: "Le terminal intégré reste la référence : c'est là que Git vous dit ce qu'il fait. La vue Source Control, le graphe, le Merge Editor et la Timeline en sont l'équivalent visuel, à condition de savoir quelle commande se cache derrière chaque bouton."
+description: "Git dans VS Code : terminal intégré, vue Source Control et ce que font réellement ses boutons, graphe, éditeur de diff, Merge Editor, Timeline, barre d'état, extension GitLab Workflow, réglages, et correspondances pour ceux qui viennent de RStudio."
+---
+
+L'interface de VS Code est en anglais dans ce mémo, comme sur la plupart des postes ; la traduction française est donnée entre parenthèses quand elle aide.
+
+## Le terminal intégré, la référence
+
+Ouvrez-le par le menu **Terminal › New Terminal** (Nouveau terminal). Le raccourci dépend de la disposition du clavier : consultez **Help › Keyboard Shortcuts Reference** si <kbd>Ctrl</kbd>+<kbd>Maj</kbd>+<kbd>&#96;</kbd> ne fonctionne pas sur votre clavier AZERTY. Le [terminal intégré]{.t} s'ouvre à la racine du dossier ouvert : c'est là que vous tapez `git status`.
+
+Pourquoi le terminal d'abord ? Parce que Git y **répond** : un push refusé, un conflit, une divergence s'expliquent en toutes lettres, avec des pistes (`hint:`). Un bouton qui échoue affiche au mieux une notification résumée. Et parce que les commandes du terminal sont les mêmes partout : sur votre poste, dans un service Onyxia, dans un job de CI, dans une documentation.
+
+```{.bash risque="sur"}
+git status
+git log --oneline --graph --all
+```
+
+Deux réflexes avant toute action dans l'interface. Pour savoir ce qu'a réellement exécuté un bouton, ouvrez **View › Output** puis choisissez **Git** dans la liste : VS Code y journalise chaque commande lancée.
+
+## La vue Source Control
+
+Elle s'ouvre avec <kbd>Ctrl</kbd>+<kbd>Maj</kbd>+<kbd>G</kbd> ou l'icône de branche de la barre latérale. Chaque élément correspond à une commande Git précise.
+
+| Dans [Source Control]{.t} | Commande réellement exécutée | À savoir |
+|---|---|---|
+| Section **Changes** (Modifications) | `git status` (partie non indexée) | Fichiers modifiés, et fichiers nouveaux marqués `U` (*untracked*). |
+| Bouton **+** (*Stage Changes*) | `git add fichier` | Le fichier passe dans **Staged Changes** : l'[index]{.t}. |
+| Bouton **−** (*Unstage Changes*) | `git restore --staged fichier` | Réversible : le fichier reste modifié sur le disque. |
+| Flèche courbe (*Discard Changes*) | `git restore fichier` ; pour un fichier non suivi, **suppression** du fichier | Dangereux : les modifications non commitées sont perdues. VS Code demande confirmation ; lisez-la. |
+| Zone de message + **Commit** | `git commit -m "…"` | Ne commite que l'index. Voir *Smart Commit* plus bas. |
+| Menu du bouton : **Commit (Amend)** | `git commit --amend` | Réécrit le dernier commit : seulement s'il n'est pas partagé. |
+| **Publish Branch** | `git push -u origin <branche>` | Apparaît quand la branche n'a pas encore d'amont. |
+| **Sync Changes** (Synchroniser) `1↓ 1↑` | `git pull`, **puis** `git push` | Voir l'encadré ci-dessous. |
+
+::: idee-fausse
+::: fausse
+Le bouton *Sync Changes* synchronise ma branche avec GitLab.
+:::
+::: juste
+Il enchaîne deux commandes : un `git pull` (fetch **puis intégration** : fast-forward, fusion ou rebase selon votre configuration et le réglage `git.rebaseWhenSync`), puis un `git push`. Si la branche a divergé, ce pull peut créer un commit de fusion, ou échouer avec `pull.ff only`. Avant de cliquer, regardez les compteurs : `1↓ 1↑` signifie **divergence**, et c'est une décision à prendre dans le terminal.
+:::
+:::
+
+## Le graphe
+
+Les versions récentes de VS Code affichent, dans la vue Source Control, une section **Graph** (appelée *Source Control Graph* selon la version) : les commits de la branche courante, de sa branche amont et, si vous le demandez, de toutes les branches. Survolez un commit pour voir son hash, son auteur et son message ; cliquez pour voir les fichiers modifiés.
+
+C'est l'équivalent visuel de :
+
+```{.bash risque="sur"}
+git log --oneline --graph --all
+```
+
+Par défaut, le graphe peut n'afficher qu'une partie des références. Si un commit « manque », vérifiez le filtre de branches de la section, ou revenez au terminal. Et souvenez-vous qu'il ne montre que ce que votre dépôt **connaît** : sans `git fetch`, les nouveaux commits de GitLab n'y figurent pas.
+
+## L'éditeur de diff
+
+Cliquez sur un fichier dans **Changes** ou **Staged Changes** : VS Code ouvre un éditeur côte à côte, ancienne version à gauche, nouvelle à droite. Le bouton **…** de l'éditeur permet de basculer en vue en ligne (*Inline View*), plus lisible sur un petit écran.
+
+C'est l'équivalent visuel de `git diff` et `git diff --staged`. Pour comparer deux versions publiées, le terminal reste plus direct :
+
+```{.bash risque="sur"}
+git diff 2025.0 2026.0 -- R/indicateurs.R
+```
+
+## Le Merge Editor
+
+Pendant un conflit, le fichier apparaît dans une section **Merge Changes** et s'ouvre avec les marqueurs `<<<<<<<`, `=======`, `>>>>>>>`. Au-dessus de chaque conflit, des liens proposent *Accept Current Change*, *Accept Incoming Change*, *Accept Both Changes*. Le bouton **Resolve in Merge Editor** ouvre le [Merge Editor]{.t} :
+
+- en haut à gauche, **Incoming** (Entrant) : la version qui arrive ;
+- en haut à droite, **Current** (Actuel) : la version de la branche où vous êtes ;
+- en bas, **Result** (Résultat) : le fichier que vous construisez, modifiable à la main ;
+- le bouton **Complete Merge** enregistre le résultat et l'ajoute à l'index (`git add`).
+
+::: {.vscode titre="Current et Incoming s'inversent pendant un rebase"}
+Pendant un `git merge origin/main` sur votre branche, **Current** est votre branche et **Incoming** est `origin/main`. Pendant un `git rebase origin/main`, c'est l'inverse : Git rejoue vos commits **au-dessus** de `origin/main`, donc **Current** est `origin/main` (complétée des commits déjà rejoués) et **Incoming** est le commit que Git est en train de rejouer, le vôtre. Lisez le contenu, pas l'étiquette.
+:::
+
+Après avoir résolu, terminez dans le terminal : `git status` pour vérifier qu'il ne reste rien, relance des tests (règle R05), puis `git commit` (fusion) ou `git rebase --continue` (rebase).
+
+Un conflit méthodologique ne se résout pas en cliquant *Accept Both* par réflexe : deux lignes `summarise()` l'une sous l'autre donnent un code qui tourne peut-être, mais qui ne calcule pas ce que vous croyez.
+
+## La Timeline
+
+Dans l'Explorateur (*Explorer*), la section **Timeline** affiche l'histoire du fichier ouvert : ses commits Git, et, mêlées à eux, les sauvegardes locales de VS Code (*Local History*), qui ne sont **pas** des commits. Un clic ouvre le diff entre cette version et la précédente. Le filtre de la section permet de n'afficher que l'historique Git.
+
+C'est l'équivalent visuel de `git log --follow -- fichier`. Pour savoir **qui** a modifié une ligne et pourquoi, le terminal va plus loin : `git blame R/age.R`, puis `git show <commit>`.
+
+## La barre d'état
+
+En bas à gauche, en permanence :
+
+- **le nom de la branche courante** ; un clic ouvre la liste des branches (*Create new branch…*, *Checkout to…*). En HEAD détachée, c'est un hash ou un nom de tag qui s'affiche : un signal à ne pas ignorer ;
+- **les compteurs** `↓2 ↑1` : deux commits à récupérer, un à envoyer, **par rapport à votre dernier fetch**. Un clic sur ces compteurs lance *Sync Changes*, c'est-à-dire pull puis push.
+
+C'est l'équivalent visuel de `git status -sb`. Les compteurs ne bougent que si un fetch a lieu : manuellement, ou automatiquement avec le réglage `git.autofetch`.
+
+## L'extension GitLab Workflow (facultative)
+
+L'extension officielle **GitLab Workflow**, publiée par GitLab, relie VS Code à l'API de votre instance GitLab : liste des MR et des issues, statut du pipeline de la branche courante dans la barre d'état, review d'une MR avec commentaires depuis l'éditeur, validation de `.gitlab-ci.yml`.
+
+- Elle demande un jeton d'accès personnel GitLab (portées `api` et `read_user` en général) ou une connexion OAuth, selon votre instance et la version de l'extension. Ce jeton est un **secret** : il ne va ni dans un fichier du dépôt, ni dans un script.
+- Elle **n'ajoute rien à Git** : elle affiche des objets GitLab. Tout ce qu'elle montre existe aussi dans l'interface web.
+- Pendant la formation, on utilise l'interface web de GitLab : elle est identique pour tout le monde.
+
+## Réglages utiles, avec prudence
+
+À placer dans les réglages utilisateur (**File › Preferences › Settings**, puis l'icône *Open Settings (JSON)*). Chacun modifie ce que font les boutons : lisez ce qu'il change avant de l'adopter.
+
+```json
+{
+  "git.autofetch": true,
+  "git.pruneOnFetch": true,
+  "git.confirmSync": true,
+  "git.enableSmartCommit": false,
+  "git.postCommitCommand": "none",
+  "git.branchProtection": ["main", "maintenance/*"],
+  "git.branchProtectionPrompt": "alwaysPrompt"
+}
+```
+
+- `git.autofetch` : un `git fetch` régulier en arrière-plan. Sans risque (le fetch ne touche pas à vos branches) et les compteurs de la barre d'état deviennent fiables.
+- `git.pruneOnFetch` : l'équivalent de `fetch.prune` ; les branches distantes supprimées sur GitLab disparaissent de la liste.
+- `git.confirmSync` : garde la confirmation avant *Sync Changes*. Ne la désactivez pas.
+- `git.enableSmartCommit` : laissé à `false`, VS Code ne commite pas **tous** les fichiers modifiés quand l'index est vide. Répondez aussi « non » à la question qu'il pose alors : un commit doit être composé.
+- `git.postCommitCommand` : `none`. Les valeurs `push` et `sync` poussent automatiquement après chaque commit, sans vous laisser relire.
+- `git.branchProtection` et `git.branchProtectionPrompt` : VS Code vous avertit avant de commiter sur `main` ou une branche de maintenance. C'est un filet local ; la vraie protection reste la branche protégée **côté GitLab**.
+
+Évitez `git.rebaseWhenSync` tant que la différence entre fusion et rebase n'est pas claire : il transforme *Sync Changes* en rebase silencieux.
+
+## Je viens de RStudio
+
+::: {.vscode titre="Je viens de RStudio : où est passée ma fonctionnalité Git ?"}
+Tout existe encore, rangé autrement. La différence principale : RStudio cachait souvent la commande ; VS Code vous pousse vers le terminal. C'est voulu.
+
+| Dans RStudio | Dans VS Code |
+|---|---|
+| Onglet **Git** du panneau (Environment, History, Git…) | Vue **Source Control** (<kbd>Ctrl</kbd>+<kbd>Maj</kbd>+<kbd>G</kbd>) |
+| Case à cocher *Staged* | Bouton **+** (*Stage Changes*), soit `git add` |
+| Onglet **Terminal** | Terminal intégré (**Terminal › New Terminal**) |
+| Bouton **Diff** | Clic sur un fichier : éditeur de diff côte à côte |
+| Bouton **Commit** et fenêtre *Review Changes* | Zone de message et bouton **Commit** de Source Control ; ou `git commit`, qui ouvre un onglet VS Code |
+| Flèches **Pull** et **Push** | `git pull` et `git push` dans le terminal ; ou *Sync Changes*, qui fait les deux à la suite |
+| Bouton **History** | Section **Graph** de Source Control, section **Timeline** de l'Explorateur, ou `git log --oneline --graph --all` |
+| Bouton **New Branch** et liste des branches | Nom de branche dans la barre d'état ; ou `git switch -c` |
+| Conflit : marqueurs à corriger à la main dans l'éditeur | **Merge Editor** : Incoming, Current, Result |
+| Projet `.Rproj` (répertoire de travail, historique, options) | Un **dossier** ouvert (**File › Open Folder**) ou un espace de travail `.code-workspace`. Le fichier `.Rproj` peut rester dans le dépôt ; `.Rproj.user/` reste ignoré par `.gitignore` |
+
+**R dans VS Code.** L'extension **R** (éditeur *REditorSupport*) apporte l'exécution ligne à ligne (<kbd>Ctrl</kbd>+<kbd>Entrée</kbd>), l'aide, l'aperçu des objets ; elle s'appuie sur le paquet R `languageserver` pour la complétion. Certains préfèrent la console **radian**, plus confortable que la console R standard : c'est facultatif. L'extension **Quarto** gère l'aperçu des rapports `.qmd`. Sur Onyxia, les services VS Code avec R les proposent souvent déjà installées, selon l'image choisie.
+:::
