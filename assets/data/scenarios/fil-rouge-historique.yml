@@ -31,7 +31,8 @@ commits:
   c22: {x: 14.2, y: 0, parents: [c21], msg: "c22 · Ajoute la répartition des établissements par région (#19) · !4"}
   c23: {x: 14.8, y: 0, parents: [c22], msg: "c23 · Regroupe les PCS en quatre grandes catégories (#21) · squash de !3"}
   c24: {x: 15.4, y: 0, parents: [c23], msg: "c24 · Finalise le panorama 2026"}
-  e25: {x: 16.2, y: -1, parents: [c10], couleur: hotfix, msg: "Erratum du panorama 2025 : âge au 31 décembre (#25) · MR !5"}
+  h01: {x: 16.0, y: -1, parents: [c10], couleur: hotfix, msg: "Corrige le calcul de l'âge… (cherry picked from commit c11) · MR !5"}
+  h02: {x: 16.4, y: -1, parents: [h01], couleur: hotfix, msg: "Ajoute la note d'erratum du panorama 2025 (#25) · MR !5, fusionnée en fast-forward"}
   c25: {x: 16.8, y: 0, parents: [c24], msg: "c25 · Documente le workflow de l'équipe (#27) · !6"}
 etapes:
   - texte: "Début 2025 : Inès et Karim commitent **directement sur `main`**, l'un après l'autre. L'historique est une ligne. Deux messages (« maj », « modifs ») n'expliquent rien : c'est l'énigme de E1."
@@ -57,13 +58,13 @@ etapes:
     tags: {"2025.0": c10}
     estompes: [m18]
     surligne: [c20, c21, c22, c23]
-  - texte: "Mars 2026 : publication du panorama 2026 (tag `2026.0`). L'erratum 2025 part du tag `2025.0`, sur `maintenance/2025`, sans embarquer 2026 : il est publié sous `2025.1`."
-    commits: [c01, c02, c03, c04, c05, c06, c07, c08, c09, c10, c11, c12, c13, c14, c15, c16, c17, c18, c19, c20, c21, c22, c23, c24, e25]
-    refs: {main: c24, maintenance/2025: e25}
-    tags: {"2025.0": c10, "2026.0": c24, "2025.1": e25}
-    surligne: [c24, e25]
+  - texte: "Mars 2026 : publication du panorama 2026 (tag `2026.0`). L'erratum 2025 part du tag `2025.0`, sur `maintenance/2025`, sans embarquer 2026 : la correction c11 y est reportée par cherry-pick, puis la note d'erratum est ajoutée. Il est publié sous `2025.1`, deux commits au-dessus de `2025.0`."
+    commits: [c01, c02, c03, c04, c05, c06, c07, c08, c09, c10, c11, c12, c13, c14, c15, c16, c17, c18, c19, c20, c21, c22, c23, c24, h01, h02]
+    refs: {main: c24, maintenance/2025: h02}
+    tags: {"2025.0": c10, "2026.0": c24, "2025.1": h02}
+    surligne: [c24, h01, h02]
   - texte: "L'équipe écrit son workflow (`CONTRIBUTING.md`, MR !6). C'est l'état de départ de la simulation finale (E11) : vous préparez l'édition 2027."
-    commits: [c01, c02, c03, c04, c05, c06, c07, c08, c09, c10, c11, c12, c13, c14, c15, c16, c17, c18, c19, c20, c21, c22, c23, c24, e25, c25]
-    refs: {main: c25, maintenance/2025: e25}
-    tags: {"2025.0": c10, "2026.0": c24, "2025.1": e25}
+    commits: [c01, c02, c03, c04, c05, c06, c07, c08, c09, c10, c11, c12, c13, c14, c15, c16, c17, c18, c19, c20, c21, c22, c23, c24, h01, h02, c25]
+    refs: {main: c25, maintenance/2025: h02}
+    tags: {"2025.0": c10, "2026.0": c24, "2025.1": h02}
     surligne: [c25]
