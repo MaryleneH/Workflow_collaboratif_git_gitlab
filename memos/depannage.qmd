@@ -170,9 +170,9 @@ git reflog show 21-regrouper-pcs
 ```
 
 ```{.text .sortie}
-a41c9e2 21-regrouper-pcs@{0}: rebase (finish): refs/heads/21-regrouper-pcs onto 5d2e8f0
-9b7c3a1 21-regrouper-pcs@{1}: commit: encore
-e0f4d26 21-regrouper-pcs@{2}: commit: corrige le lint
+a41c9e2 21-regrouper-pcs@{0}: rebase (finish): refs/heads/21-regrouper-pcs onto dd0eadb06aff6990c8992cc576216cfd88c37133
+0762c2d 21-regrouper-pcs@{1}: commit: encore
+b3b7675 21-regrouper-pcs@{2}: commit: corrige le lint
 ```
 
 La ligne `@{1}` est la tête de la branche **avant** le rebase.
@@ -363,13 +363,13 @@ git push -u origin 35-annule-regroupement-pcs
 ```{.bash risque="sur"}
 git reflog
 git log -g --oneline --grep="PCS"
-git show 9b7c3a1
+git show 0762c2d
 ```
 
 **Correction.** Une fois le bon hash identifié, reposez-y un nom :
 
 ```{.bash risque="reversible"}
-git branch recup/regroupement-pcs 9b7c3a1
+git branch recup/regroupement-pcs 0762c2d
 ```
 
 **Limites.** Le reflog est **local** : un service Onyxia supprimé l'emporte avec lui. Ses entrées sont conservées 90 jours par défaut, et 30 jours pour les commits qui ne sont plus accessibles depuis aucune branche ; au-delà, un nettoyage automatique (`git gc`) peut les effacer. Si le commit a été poussé dans une MR, GitLab le conserve souvent dans la MR même après suppression de la branche source.
