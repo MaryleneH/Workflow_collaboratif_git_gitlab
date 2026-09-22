@@ -318,6 +318,11 @@ Ouvrez la vue **Source Control** (<kbd>Ctrl</kbd>+<kbd>Maj</kbd>+<kbd>G</kbd>) :
 
 Toujours **après** la commande terminal correspondante.
 
+Pour une touche, utilisez `<kbd>…</kbd>`. La touche accent grave (le
+*backtick*, qui ouvre le terminal intégré avec <kbd>Ctrl</kbd>) s'écrit
+`<kbd>&#96;</kbd>` : un accent grave tapé tel quel ouvrirait un bloc de code
+en ligne et casserait le rendu.
+
 ### Idée reçue → réalité
 
 ```markdown
@@ -433,6 +438,31 @@ etapes:                             # chaque étape = un ÉTAT COMPLET
     surligne: [C]                   # optionnel : commits mis en évidence
     estompes: []                    # optionnel : commits abandonnés (ex. après rebase)
 ```
+
+**Format simple, sans dépôt distant.** Quand le graphe ne montre qu'un seul
+dépôt, une étape peut porter directement `commits`, `refs`, `tags`, `head`,
+`surligne` et `estompes`, sans les ranger sous `local:` ; `distant:` est alors
+omis. L'extension traite ces étapes comme le dépôt local :
+
+```yaml
+etapes:
+  - texte: "Au tag `2025.0`, le code donne la part publiée."
+    commande: "git log --oneline 2025.0..main"
+    commits: [c10, c11, c12]
+    refs: {main: c12}
+    tags: {"2025.0": c10}
+    head: main
+```
+
+**Piège YAML : les identifiants lus comme des booléens.** En YAML, les mots
+`N`, `Y`, `n`, `y`, `no`, `yes`, `on`, `off`, `true` et `false` (quelle que
+soit leur casse) peuvent être lus comme des **booléens**, et non comme du
+texte. Un commit nommé `N` ou `Y`, ou une référence `on`, ne désignerait
+alors plus rien. Choisissez des identifiants sans ambiguïté (`c11`, `K`, `V`,
+`N1`…) ou entourez-les de guillemets (`"N"`). L'extension valide désormais
+chaque scénario au rendu et **avertit** (`[formation] scénario … : commit
+inconnu « true »`, parent inconnu, référence qui pointe vers un commit absent
+ou invisible, HEAD invalide) : corrigez ces avertissements comme les autres.
 
 **Géométrie.**
 
