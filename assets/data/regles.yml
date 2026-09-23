@@ -1,0 +1,107 @@
+# ---------------------------------------------------------------------------
+# Carnet de règles : chaque règle naît d'un incident vécu dans le parcours.
+# Dans une page : ::: {.regle ref="R04"} ::: affiche la règle au moment
+# où elle est découverte. La page memos/carnet-de-regles.qmd les rassemble.
+#
+# principe : integrite | tracabilite | revue | reproductibilite
+# ---------------------------------------------------------------------------
+principes:
+  - id: integrite
+    titre: "Intégrité"
+    def: "main n'est jamais cassée, et personne ne perd le travail d'un autre."
+  - id: tracabilite
+    titre: "Traçabilité"
+    def: "Chaque changement dit qui, quand, et surtout pourquoi."
+  - id: revue
+    titre: "Revue"
+    def: "Aucun changement n'entre sans avoir été relu, par un humain et par une machine."
+  - id: reproductibilite
+    titre: "Reproductibilité"
+    def: "Une publication peut être reconstruite à l'identique : code, données, environnement."
+
+regles:
+  - id: R01
+    etape: e1
+    principe: tracabilite
+    texte: "Un message de commit dit **pourquoi**, pas seulement quoi, et cite l'issue concernée."
+    origine: "Des commits nommés « maj » et « modifs » n'ont rien appris à personne."
+  - id: R02
+    etape: e2
+    principe: integrite
+    texte: "Avant d'intégrer, je fais `git fetch` et je regarde où est `origin/main`."
+    origine: "Un push refusé parce que le serveur avait avancé sans qu'on le sache."
+  - id: R03
+    etape: e2
+    principe: integrite
+    texte: "Je pousse mon travail au moins à chaque fin de session : un service Onyxia est éphémère, ce qui n'est pas poussé n'existe pas."
+    origine: "Un service Onyxia supprimé avec deux jours de commits non poussés."
+  - id: R04
+    etape: e3
+    principe: integrite
+    texte: "Une branche par sujet, née d'une issue, courte : quelques jours, pas quelques semaines."
+    origine: "Deux sujets mélangés dans les mêmes commits, impossibles à relire séparément."
+  - id: R05
+    etape: e3
+    principe: revue
+    texte: "Un conflit se résout en comprenant les deux intentions, puis en relançant les tests ; jamais en choisissant un camp au hasard."
+    origine: "Un conflit « résolu » qui a supprimé silencieusement la correction d'un collègue."
+  - id: R06
+    etape: e4
+    principe: revue
+    texte: "Aucune modification n'entre dans `main` sans Merge Request relue : `main` est protégée."
+    origine: "Un calcul discutable arrivé dans main sans que personne ne le voie."
+  - id: R07
+    etape: e4
+    principe: integrite
+    texte: "Sur `main`, `git pull` doit toujours être un fast-forward (`git config --global pull.ff only`) : on ne commite jamais directement sur `main`."
+    origine: "Des commits « Merge branch 'main' of … » créés par des pull, qui encombraient main."
+  - id: R08
+    etape: e4
+    principe: revue
+    texte: "La review porte sur le code **et** sur la méthode : données, hypothèses, reproductibilité, clarté."
+    origine: "Une moyenne de taux présentée comme un taux moyen, passée inaperçue."
+  - id: R09
+    etape: e4
+    principe: integrite
+    texte: "Ni données individuelles, ni secrets dans Git : un secret commité est un secret compromis, il se révoque."
+    origine: "Un fichier de microdonnées et un jeton d'API poussés dans une branche."
+  - id: R10
+    etape: e4
+    principe: tracabilite
+    texte: "Une branche fusionnée est supprimée : la liste des branches dit ce qui est en cours."
+    origine: "Trente branches mortes dont personne ne savait si elles étaient utiles."
+  - id: R11
+    etape: e6
+    principe: revue
+    texte: "On ne fusionne pas une Merge Request dont le pipeline est rouge."
+    origine: "Une MR relue et approuvée qui cassait pourtant le calcul des parts."
+  - id: R12
+    etape: e6
+    principe: reproductibilite
+    texte: "Une règle méthodologique importante devient un test automatique."
+    origine: "Des parts qui ne sommaient plus à 100 %, détectées par un lecteur du rapport."
+  - id: R13
+    etape: e7
+    principe: integrite
+    texte: "On ne réécrit jamais un historique partagé ; si l'on doit forcer, c'est `--force-with-lease`, sur sa propre branche."
+    origine: "Un `push --force` qui a effacé les commits d'un collègue sur une branche commune."
+  - id: R14
+    etape: e7
+    principe: tracabilite
+    texte: "Les commits de travail sont regroupés par **squash au moment du merge** dans GitLab : un sujet, un commit dans `main`."
+    origine: "Sept commits « wip » qui rendaient l'historique de main illisible."
+  - id: R15
+    etape: e8
+    principe: reproductibilite
+    texte: "Chaque publication est un tag annoté qui pointe vers un état reproductible : code, référence exacte des données, environnement figé."
+    origine: "Impossible de refaire le chiffre publié l'an dernier : quelle version du code, quelles données ?"
+  - id: R16
+    etape: e8
+    principe: integrite
+    texte: "Un erratum part du tag publié (branche de hotfix), sans embarquer le travail en cours, et la correction se retrouve aussi dans `main`."
+    origine: "Un erratum 2025 qui aurait publié par accident des indicateurs 2026 inachevés."
+  - id: R17
+    etape: e9
+    principe: integrite
+    texte: "Le workflow se choisit selon le rythme de publication et le nombre de versions à maintenir, pas selon la mode."
+    origine: "La tentation d'adopter Git Flow « parce que c'est ce que font les pros »."

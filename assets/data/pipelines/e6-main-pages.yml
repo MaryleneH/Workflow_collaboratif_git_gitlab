@@ -1,0 +1,43 @@
+# Pipeline de la branche par défaut après la fusion de la MR !2 (c21).
+# Mêmes contrôles que dans une MR (8 jobs), plus le job pages (publication automatique
+# du rapport de travail). Le job publication n'existe que sur un tag (E8).
+titre: "Pipeline #398 · main"
+statut: succes
+declencheur: "Fusion de la MR !2 « Met en place l'intégration continue (#20) » dans `main`"
+stages:
+  - nom: verifier
+    jobs:
+      - nom: lint-python
+        statut: succes
+        image: "python:3.12-slim"
+      - nom: lint-r
+        statut: succes
+        image: "rocker/r-ver:4.4.1"
+  - nom: tester
+    jobs:
+      - nom: tests-python
+        statut: succes
+        image: "python:3.12-slim"
+      - nom: tests-r
+        statut: succes
+        image: "rocker/r-ver:4.4.1"
+  - nom: produire
+    jobs:
+      - nom: donnees
+        statut: succes
+        image: "python:3.12-slim"
+      - nom: indicateurs
+        statut: succes
+        image: "rocker/r-ver:4.4.1"
+      - nom: figures
+        statut: succes
+        image: "python:3.12-slim"
+      - nom: rapport
+        statut: succes
+        image: "rocker/verse:4.4.1"
+  - nom: publier
+    jobs:
+      - nom: pages
+        statut: succes
+        image: "alpine:3.20"
+        question: "Met en ligne, sur GitLab Pages, le panorama tel qu'il est dans `main` : une version de travail, pas la publication officielle."

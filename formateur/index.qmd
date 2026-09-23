@@ -1,0 +1,115 @@
+---
+title: "Espace formateur"
+surtitre: "Espace formateur"
+chapeau: "Tout ce qu'il faut pour animer les deux jours : le déroulé minuté, la préparation de l'infrastructure GitLab, la remise à zéro du dépôt compagnon et la bible du fil rouge. Ces pages n'existent que dans le profil formateur."
+description: "Espace réservé au formateur de la formation Git/GitLab niveau 2 : déroulé, préparation, remise à zéro, bible."
+---
+
+## À quoi sert cet espace
+
+Le site existe en deux versions construites à partir des **mêmes sources** :
+
+| Profil | Commande | Dossier de sortie | Contenu |
+|---|---|---|---|
+| `stagiaire` (par défaut) | `quarto render` | `_site/` | parcours, fil rouge, mémos, **sans** corrigés ni notes formateur |
+| `formateur` | `quarto render --profile formateur` | `_site-formateur/` | tout le site stagiaire, **plus** les corrigés, les notes formateur et les pages `formateur/` |
+
+Vous animez avec la version formateur ouverte sur votre poste, et vous projetez
+la version stagiaire. Ainsi, rien de ce qui est projeté ne dévoile une réponse.
+
+::: {.formateur titre="Ne publiez jamais _site-formateur/"}
+Le dossier `_site-formateur/` contient toutes les solutions : corrigés des
+missions, diagnostics commentés, pièges attendus. Il est ignoré par Git
+(`.gitignore`) et ne doit être ni déployé sur un site public, ni déposé sur un
+partage accessible aux stagiaires. Pour le transmettre à un co-formateur,
+envoyez-lui le dépôt source : il le construit lui-même.
+:::
+
+## Construire les deux profils
+
+Depuis la racine du dépôt du site, dans le terminal de VS Code :
+
+```{.bash risque="sur"}
+quarto render                       # site stagiaire → _site/
+quarto render --profile formateur   # site formateur → _site-formateur/
+```
+
+Pour travailler une page sans tout reconstruire :
+
+```{.bash risque="sur"}
+quarto preview --profile formateur                                   # aperçu local, rechargé à chaque enregistrement
+quarto render parcours/jour-2/e7-rebase-squash.qmd --profile formateur
+```
+
+Les deux profils sont définis dans `_quarto-stagiaire.yml` et
+`_quarto-formateur.yml`. Le profil formateur ajoute le dossier `formateur/` à la
+liste des pages rendues et le lien « Espace formateur » dans la barre de
+navigation. Le profil stagiaire exclut `formateur/`.
+
+Avant toute publication du site stagiaire, vérifiez qu'aucun bloc réservé n'a
+fui dans la sortie publique :
+
+```{.bash risque="sur"}
+grep -rl "gf-formateur" _site/ || echo "Aucun bloc formateur dans _site/ : publication possible."
+```
+
+La commande ne doit lister **aucun fichier**. Les blocs ne sont pas masqués par
+CSS : l'extension `_extensions/formation` les **supprime** du HTML quand le
+profil actif n'est pas `formateur`. Un bloc qui apparaîtrait dans `_site/`
+signalerait donc une erreur de syntaxe dans la page (bloc mal fermé,
+classe mal orthographiée).
+
+## Où trouver les corrigés
+
+Les solutions ne sont pas rassemblées dans un document à part : elles vivent
+**dans les pages du parcours**, au plus près de l'exercice. Dans le profil
+formateur, vous les reconnaissez à leur encadré.
+
+| Dans la source | Dans le profil formateur | Contenu typique |
+|---|---|---|
+| `::: corrige` à l'intérieur d'une `::: mission` | encadré « Corrigé (formateur) » en bas de la mission | commandes attendues, sortie à obtenir, erreurs fréquentes |
+| `::: formateur` n'importe où dans une page | encadré « Note formateur » (ou le titre donné) | timing, piège observé, variante si le groupe est en avance |
+
+Les **incidents** (`::: incident`) ne sont pas des corrigés : leur diagnostic et
+leur correction sont visibles des stagiaires, mais repliés. Laissez le groupe
+formuler ses hypothèses avant de les déplier.
+
+Pour lister toutes les notes et tous les corrigés d'une étape avant de
+l'animer :
+
+```{.bash risque="sur"}
+grep -n -A3 "^::: corrige\|^::: formateur\|^::: {.formateur" parcours/jour-1/e4-merge-request.qmd
+```
+
+## Les pages de cet espace
+
+[Déroulé des deux jours](deroule.qmd)
+: Horaires indicatifs étape par étape, objectifs, activités, matériel, points
+  d'attention, pauses, plan B en cas de retard et conseils d'animation.
+
+[Préparer l'infrastructure](preparation.qmd)
+: Instance GitLab (Free ou Premium), groupes et projets, rôles, import du dépôt
+  compagnon, issues, runners et images, services VS Code sur Onyxia, réseau,
+  vérifications à J-7 et J-1, plan de secours.
+
+[Remettre à zéro](remise-a-zero.qmd)
+: Tags de reprise `etape-N-debut`, remettre un stagiaire sur les rails,
+  réaligner un projet entre deux étapes, recréer une branche d'exercice, simuler
+  un collègue en E2, reconstruire tout le dépôt.
+
+[Bible du fil rouge](bible.qmd)
+: Le projet fictif, l'équipe, les issues, l'historique `c01` à `c25`, les tags
+  de reprise et le scénario de chaque étape. En cas de doute, elle fait foi.
+
+## Les autres ressources utiles
+
+- [Le parcours](../parcours/index.qmd) : la carte des douze étapes et des
+  approfondissements.
+- [Le dépôt compagnon](../fil-rouge/depot-compagnon.qmd) : ce que les stagiaires
+  clonent, et les outils de `depot-compagnon/outils/`.
+- [Le carnet de règles](../memos/carnet-de-regles.qmd) : les dix-sept règles, à
+  faire grandir au fil des incidents.
+- [Git ou GitLab ?](../memos/git-ou-gitlab.qmd) : le tableau à projeter chaque
+  fois qu'un stagiaire mélange les deux.
+- [Dépannage](../memos/depannage.qmd) : les situations bloquantes les plus
+  fréquentes, côté stagiaire.

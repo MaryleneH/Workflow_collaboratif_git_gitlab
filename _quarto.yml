@@ -1,0 +1,69 @@
+# ---------------------------------------------------------------------------
+# Git à plusieurs : formation Git/GitLab niveau 2
+# Configuration commune aux deux profils (stagiaire, formateur).
+# La liste des fichiers rendus est définie dans _quarto-<profil>.yml.
+# ---------------------------------------------------------------------------
+project:
+  type: website
+
+profile:
+  default: stagiaire
+  group:
+    - [stagiaire, formateur]
+
+lang: fr
+
+website:
+  title: "Git à plusieurs"
+  description: "Formation Git/GitLab niveau 2 pour statisticiens : collaborer proprement, comprendre les workflows professionnels et construire un workflow adapté aux projets statistiques."
+  site-url: "https://maryleneh.github.io/Workflow_collaboratif_git_gitlab/"
+  favicon: assets/images/favicon.svg
+  page-navigation: false
+  search:
+    location: navbar
+    type: overlay
+  navbar:
+    title: "Git à plusieurs"
+    logo: assets/images/logo.svg
+    logo-alt: "Git à plusieurs, accueil"
+    left:
+      - text: "Parcours"
+        href: parcours/index.qmd
+      - text: "Fil rouge"
+        href: fil-rouge/index.qmd
+      - text: "Mémos"
+        href: memos/index.qmd
+  page-footer:
+    left: "Formation Git/GitLab niveau 2 · données et entreprises fictives"
+    right:
+      - text: "Lexique"
+        href: memos/lexique.qmd
+      - text: "Carnet de règles"
+        href: memos/carnet-de-regles.qmd
+
+filters:
+  - formation
+
+format:
+  html:
+    theme:
+      - assets/css/theme.scss
+    css:
+      - assets/css/base.css
+      - assets/css/mise-en-page.css
+      - assets/css/composants.css
+      - assets/css/graphe.css
+      - assets/css/accueil.css
+      - assets/css/impression.css
+    page-layout: custom
+    template-partials:
+      - _partials/title-block.html
+    include-before-body:
+      - _partials/evitement.html
+    toc: false
+    anchor-sections: true
+    code-copy: true
+    code-overflow: wrap
+    highlight-style: a11y
+    smooth-scroll: false
+    link-external-icon: false

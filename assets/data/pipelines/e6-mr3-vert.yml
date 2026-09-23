@@ -1,0 +1,44 @@
+# Pipeline de MR vert : après les deux correctifs de Tom (test, puis lint).
+# La chaîne donnees → indicateurs → figures → rapport s'exécute ; le rapport est un artefact.
+titre: "Pipeline #418 · MR !3 · 21-regrouper-pcs"
+statut: succes
+declencheur: "Push de Tom : commit « corrige le lint », tête de la branche `21-regrouper-pcs`"
+stages:
+  - nom: verifier
+    jobs:
+      - nom: lint-python
+        statut: succes
+        image: "python:3.12-slim"
+        question: "Style et erreurs probables du code Python (`ruff`)."
+      - nom: lint-r
+        statut: succes
+        image: "rocker/r-ver:4.4.1"
+        question: "Style et erreurs probables du code R (`lintr`) : aucun signalement."
+  - nom: tester
+    jobs:
+      - nom: tests-python
+        statut: succes
+        image: "python:3.12-slim"
+        question: "Schéma, bornes et déterminisme du générateur, préparation DuckDB (`pytest`, sur un panel réduit)."
+      - nom: tests-r
+        statut: succes
+        image: "rocker/r-ver:4.4.1"
+        question: "Règles méthodologiques des indicateurs (`testthat`) : les parts somment à 1 par établissement."
+  - nom: produire
+    jobs:
+      - nom: donnees
+        statut: succes
+        image: "python:3.12-slim"
+        question: "Génère et prépare le panel synthétique 2026 ; transmet `MANIFEST.json` et `data/prepare/` en artefacts."
+      - nom: indicateurs
+        statut: succes
+        image: "rocker/r-ver:4.4.1"
+        question: "Calcule `resultats/indicateurs_2026.csv` à partir des données préparées."
+      - nom: figures
+        statut: succes
+        image: "python:3.12-slim"
+        question: "Dessine les figures du panorama (`resultats/figures/`) à partir des données et des résultats R."
+      - nom: rapport
+        statut: succes
+        image: "rocker/verse:4.4.1"
+        question: "Le panorama se rend-il de bout en bout ? Le HTML est téléchargeable (artefact)."

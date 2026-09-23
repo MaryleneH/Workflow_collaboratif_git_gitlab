@@ -1,0 +1,12 @@
+---
+title: "Bible du fil rouge"
+surtitre: "Espace formateur"
+chapeau: "Le document de référence du projet fictif : l'Observatoire, l'équipe, les issues, l'historique c01 à c25, les tags de reprise et le scénario de chaque étape. En cas de doute sur un nom, un numéro ou une date, c'est elle qui fait foi."
+description: "Bible du fil rouge de la formation : projet fictif, équipe, issues, historique scénarisé et scénarios des étapes."
+---
+
+Cette page affiche `docs/bible-fil-rouge.md`, la source unique : pour la
+corriger, modifiez ce fichier, jamais la page. Toute page du parcours, tout
+exercice et tout fichier du dépôt compagnon doivent rester cohérents avec elle.
+
+{{< include ../docs/bible-fil-rouge.md >}}

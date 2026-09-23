@@ -1,0 +1,61 @@
+# Approfondissement a-rebase-interactif : Tom nettoie ses sept commits
+# (branche 21-regrouper-pcs, déjà à jour de main après E7) avec git rebase -i
+# --keep-base, avant la review de la MR !3. Voir la bible, §4 et §5 (E7).
+titre: "git rebase -i : sept commits de travail, deux commits lisibles"
+couleurs:
+  "21-regrouper-pcs": travail
+commits:
+  M1: {x: 0, y: 0, label: "c21", msg: "Met en place l'intégration continue (#20)"}
+  M2: {x: 1, y: 0, parents: [M1], label: "c22", msg: "Ajoute la répartition des établissements par région (#19)"}
+  W1: {x: 2, y: 2, parents: [M2], label: "1", msg: "Regroupe les PCS en quatre grandes catégories"}
+  W2: {x: 3, y: 2, parents: [W1], label: "2", msg: "wip"}
+  W3: {x: 4, y: 2, parents: [W2], label: "3", msg: "corrige le test"}
+  W4: {x: 5, y: 2, parents: [W3], label: "4", msg: "oups"}
+  W5: {x: 6, y: 2, parents: [W4], label: "5", msg: "wip 2"}
+  W6: {x: 7, y: 2, parents: [W5], label: "6", msg: "corrige le lint"}
+  W7: {x: 8, y: 2, parents: [W6], label: "7", msg: "encore"}
+  P1: {x: 2, y: 1, parents: [M2], label: "P1", msg: "Regroupe les PCS en quatre grandes catégories (#21)"}
+  P2: {x: 3, y: 1, parents: [P1], label: "P2", msg: "Présente le regroupement des PCS dans le panorama (#21)"}
+  S: {x: 9, y: 0, parents: [M2], label: "c23", msg: "Regroupe les PCS en quatre grandes catégories (#21) · squash de la MR !3"}
+etapes:
+  - texte: "La branche de Tom est à jour de `main` (étape 7), mais raconte sa journée : sept commits, dont « wip », « oups » et « encore ». Elle est poussée pour la MR !3, que personne n'a encore relue."
+    commande: "git log --oneline origin/main..HEAD"
+    local:
+      commits: [M1, M2, W1, W2, W3, W4, W5, W6, W7]
+      refs: {main: M2, origin/main: M2, 21-regrouper-pcs: W7, origin/21-regrouper-pcs: W7}
+      head: 21-regrouper-pcs
+    distant:
+      commits: [M1, M2, W1, W2, W3, W4, W5, W6, W7]
+      refs: {main: M2, 21-regrouper-pcs: W7}
+  - texte: "`rebase -i` rejoue les commits selon la liste que Tom a éditée : il **crée** **P1** et **P2**, puis déplace la branche. Les sept originaux existent toujours : `ORIG_HEAD`, le reflog et `origin/21-regrouper-pcs` y mènent encore."
+    commande: "git rebase -i --keep-base origin/main"
+    local:
+      commits: [M1, M2, W1, W2, W3, W4, W5, W6, W7, P1, P2]
+      refs: {main: M2, origin/main: M2, 21-regrouper-pcs: P2, origin/21-regrouper-pcs: W7, ORIG_HEAD: W7}
+      head: 21-regrouper-pcs
+    distant:
+      commits: [M1, M2, W1, W2, W3, W4, W5, W6, W7]
+      refs: {main: M2, 21-regrouper-pcs: W7}
+    surligne: [P1, P2]
+    estompes: [W1, W2, W3, W4, W5, W6, W7]
+  - texte: "La branche locale et la branche distante ont divergé. Tom remplace la branche distante, **seulement** si elle est encore sur **7** : personne d'autre n'y a poussé."
+    commande: "git push --force-with-lease"
+    local:
+      commits: [M1, M2, W1, W2, W3, W4, W5, W6, W7, P1, P2]
+      refs: {main: M2, origin/main: M2, 21-regrouper-pcs: P2, origin/21-regrouper-pcs: P2, ORIG_HEAD: W7}
+      head: 21-regrouper-pcs
+    distant:
+      commits: [M1, M2, P1, P2]
+      refs: {main: M2, 21-regrouper-pcs: P2}
+    surligne: [P1, P2]
+    estompes: [W1, W2, W3, W4, W5, W6, W7]
+  - texte: "Après la review, GitLab fusionne la MR !3 **avec squash** : un seul nouveau commit dans `main`, **c23**, et la branche source est supprimée. Le nettoyage local a servi la review, pas l'historique de `main`."
+    commande: "git fetch --prune"
+    local:
+      commits: [M1, M2, P1, P2, S]
+      refs: {main: M2, origin/main: S, 21-regrouper-pcs: P2}
+      head: 21-regrouper-pcs
+    distant:
+      commits: [M1, M2, S]
+      refs: {main: S}
+    surligne: [S]

@@ -1,0 +1,26 @@
+titre: "Le modèle Git Flow (Driessen, 2010)"
+ids: false
+couleurs:
+  "feature/tableau": travail
+  "feature/carte": travail2
+commits:
+  M0: {x: 0, y: 0, msg: "Version 0.1"}
+  D0: {x: 1, y: 3, parents: [M0], couleur: develop}
+  F1: {x: 2, y: 4, parents: [D0], couleur: travail}
+  F2: {x: 3, y: 4, parents: [F1], couleur: travail}
+  D1: {x: 4, y: 3, parents: [D0, F2], couleur: develop}
+  G1: {x: 5, y: 5, parents: [D1], couleur: travail2}
+  R1: {x: 5, y: 2, parents: [D1], couleur: release}
+  R2: {x: 6, y: 2, parents: [R1], couleur: release}
+  M1: {x: 7, y: 0, parents: [M0, R2], msg: "Version 1.0"}
+  D2: {x: 7, y: 3, parents: [D1, R2], couleur: develop}
+  G2: {x: 8, y: 5, parents: [G1], couleur: travail2}
+  H1: {x: 8, y: 1, parents: [M1], couleur: hotfix}
+  M2: {x: 9, y: 0, parents: [M1, H1], msg: "Version 1.0.1"}
+  D3: {x: 10, y: 3, parents: [D2, H1], couleur: develop}
+  D4: {x: 11, y: 3, parents: [D3, G2], couleur: develop}
+etapes:
+  - texte: "Cinq familles de branches, deux branches permanentes, des fusions dans les deux sens. Pour l'instant, ce schéma est une énigme."
+    commits: [M0, D0, F1, F2, D1, G1, R1, R2, M1, D2, G2, H1, M2, D3, D4]
+    refs: {main: M2, develop: D4, "release/1.0": R2, "hotfix/1.0.1": H1, "feature/tableau": F2, "feature/carte": G2}
+    tags: {"0.1": M0, "1.0": M1, "1.0.1": M2}

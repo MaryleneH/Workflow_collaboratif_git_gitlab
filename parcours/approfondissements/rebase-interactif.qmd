@@ -1,0 +1,290 @@
+---
+title: "Réécrire son propre historique avant de le partager"
+approfondissement: a-rebase-interactif
+description: "git rebase -i (pick, reword, edit, squash, fixup, drop), git commit --fixup et --autosquash, git commit --amend : nettoyer ses commits non partagés, et comparer avec le squash au merge de GitLab."
+chapeau: "Le rebase interactif transforme une suite de commits de travail en quelques commits lisibles. C'est de la culture technique avancée : dans notre workflow, le squash au merge suffit."
+---
+
+::: situation
+À l'étape 7, Tom a remis sa branche `21-regrouper-pcs` à jour de `main`. Ses sept commits racontent sa journée : le regroupement des PCS, « wip », « corrige le test », « oups », « wip 2 », « corrige le lint », « encore ». Au merge, GitLab les réunira en un seul commit. Mais Karim, qui relit la méthode, aimerait voir séparément le calcul et sa présentation dans le panorama. Tom a le temps de nettoyer, avant que quiconque ne relise.
+:::
+
+## Ce que fait réellement un rebase interactif
+
+`git rebase -i <base>` []{.git} fait la même chose que le [rebase]{.t} de l'étape 7, avec une étape de plus. Avant de rejouer vos commits, Git vous montre la **liste des opérations** et vous laisse la modifier : garder, renommer, fusionner, supprimer, réordonner.
+
+Comme tout rebase, il **crée de nouveaux commits**. Un commit ne change jamais : il a un [hash]{.t}, un contenu, des [parents]{.t ref="parent"}. Fusionner deux commits, c'est en fabriquer un troisième, puis déplacer la branche dessus. Les originaux restent dans le dépôt, sans nom qui les désigne.
+
+::: idee-fausse
+::: fausse
+`git rebase -i` modifie mes commits.
+:::
+::: juste
+Il en fabrique de nouveaux, puis déplace l'étiquette de la branche. Les anciens existent toujours, et le [reflog]{.t} permet de les retrouver. Mais quiconque les a déjà récupérés garde ces anciens commits : d'où la règle.
+:::
+:::
+
+## La règle : uniquement ce qui n'est pas partagé
+
+Un commit est **partagé** dès qu'une autre personne a pu construire dessus. C'est le cas de tout commit de `main`, d'une branche commune, ou d'une branche qu'un collègue a récupérée pour y travailler. Réécrire un commit partagé oblige les autres à réparer leur dépôt : c'est la règle R13.
+
+La branche d'une MR que vous êtes **seul** à modifier est une zone intermédiaire. Elle est poussée, mais personne ne construit dessus. On peut la nettoyer, tant que personne ne l'a encore relue, puis la pousser avec [`--force-with-lease`]{.t ref="force-with-lease"}. Jamais avec `git push --force`.
+
+::: {.regle ref="R13"}
+:::
+
+## La liste des opérations
+
+Pour nettoyer **sans changer de base**, Tom utilise `--keep-base` (Git ≥ 2.24) : les commits sont rejoués sur la même base, `main` n'est pas réintégré au passage.
+
+```{.bash risque="reecrit"}
+git rebase -i --keep-base origin/main
+```
+
+Git ouvre votre éditeur avec cette liste, dans l'ordre chronologique (le plus ancien en haut, à l'inverse de `git log`) :
+
+```{.text .sortie}
+pick 2b672b8 Regroupe les PCS en quatre grandes catégories
+pick 1214fcc wip
+pick dd04232 corrige le test
+pick 9969662 oups
+pick 9f4e23f wip 2
+pick cdaa28a corrige le lint
+pick d27f0d7 encore
+
+# Rebase dd0eadb..d27f0d7 onto dd0eadb (7 commands)
+#
+# Commands:
+# p, pick <commit> = use commit
+# r, reword <commit> = use commit, but edit the commit message
+# e, edit <commit> = use commit, but stop for amending
+# s, squash <commit> = use commit, but meld into previous commit
+# f, fixup [-C | -c] <commit> = like "squash" but keep only the previous
+#                    commit's log message, unless -C is used, in which case
+#                    keep only this commit's message; -c is same as -C but
+#                    opens the editor
+# x, exec <command> = run command (the rest of the line) using shell
+# b, break = stop here (continue rebase later with 'git rebase --continue')
+# d, drop <commit> = remove commit
+...
+```
+
+| Mot-clé | Effet | Usage typique |
+|---|---|---|
+| `pick` | garde le commit tel quel (rejoué, donc nouveau hash) | par défaut |
+| `reword` | garde le contenu, ouvre l'éditeur pour le message | « wip » devient un vrai message |
+| `edit` | s'arrête après ce commit pour le modifier | scinder un commit, retirer un fichier |
+| `squash` | fusionne avec le commit **précédent**, propose de combiner les messages | deux étapes d'un même sujet |
+| `fixup` | fusionne avec le précédent, **jette** son message | « oups », « corrige le lint » |
+| `drop` | supprime le commit | essai abandonné |
+
+Les lignes s'exécutent de haut en bas. Supprimer une ligne supprime le commit, comme `drop`. Tout vider annule le rebase.
+
+## Nettoyer les sept commits de Tom
+
+Tom veut deux commits : le calcul, puis sa présentation. Il regarde d'abord ce que touche chaque commit (`git log --stat --oneline origin/main..HEAD`) :
+
+| Commit | Fichiers | Groupe |
+|---|---|---|
+| Regroupe les PCS… | `R/indicateurs.R` | calcul |
+| wip | `reports/panorama.qmd`, `scripts/03_indicateurs.R` | présentation |
+| corrige le test | `R/indicateurs.R` | calcul |
+| oups | `scripts/03_indicateurs.R` | présentation |
+| wip 2 | `tests/testthat/test-indicateurs.R` | calcul |
+| corrige le lint | `R/indicateurs.R` | calcul |
+| encore | `R/indicateurs.R` | calcul |
+
+Puis il réordonne et édite la liste :
+
+```{.text .sortie}
+reword 2b672b8 Regroupe les PCS en quatre grandes catégories
+fixup dd04232 corrige le test
+fixup 9f4e23f wip 2
+fixup cdaa28a corrige le lint
+fixup d27f0d7 encore
+reword 1214fcc wip
+fixup 9969662 oups
+```
+
+Il enregistre et ferme. Git rejoue les commits, et ouvre l'éditeur à chaque `reword`. Tom écrit « Regroupe les PCS en quatre grandes catégories (#21) », puis « Présente le regroupement des PCS dans le panorama (#21) ».
+
+```{.text .sortie}
+Successfully rebased and updated refs/heads/21-regrouper-pcs.
+```
+
+```{.bash risque="sur"}
+git log --oneline origin/main..HEAD
+```
+
+```{.text .sortie}
+375df07 Présente le regroupement des PCS dans le panorama (#21)
+5e7c4fb Regroupe les PCS en quatre grandes catégories (#21)
+```
+
+**Réordonner a un prix.** Déplacer « corrige le test », « wip 2 », « corrige le lint » et « encore » avant « wip » ne pose pas de problème ici : les deux groupes touchent des fichiers différents (`R/indicateurs.R` et ses tests d'un côté, `scripts/03_indicateurs.R` et `reports/panorama.qmd` de l'autre). Vérifié sur le dépôt compagnon : le rebase se déroule sans conflit, les tests passent, et l'instantané final est identique à celui d'avant le nettoyage. Si deux commits déplacés touchaient les mêmes lignes, Git s'arrêterait sur un [conflit]{.t}. Vous le résolvez comme à l'étape 7 (`git add`, puis `git rebase --continue`), ou vous abandonnez tout avec `git rebase --abort`.
+
+Avant de pousser, relancez les tests : chaque commit réécrit est un état du code que personne n'a encore exécuté.
+
+```{.bash risque="reecrit"}
+git push --force-with-lease
+```
+
+::: {.git-graph scenario="a-rebase-interactif"}
+:::
+
+## `edit` : s'arrêter sur un commit
+
+Avec `edit`, Git applique le commit, puis vous rend la main :
+
+```{.text .sortie}
+Stopped at 2b672b8...  Regroupe les PCS en quatre grandes catégories
+You can amend the commit now, with
+
+  git commit --amend
+
+Once you are satisfied with your changes, run
+
+  git rebase --continue
+```
+
+Vous pouvez modifier des fichiers, retirer un fichier commis par erreur (`git rm --cached`), ou scinder le commit en plusieurs. Puis `git commit --amend` et `git rebase --continue`.
+
+## `--amend`, `--fixup` et `--autosquash` : corriger au fil de l'eau
+
+Pour corriger le **dernier** commit, pas besoin de rebase. `git commit --amend` le remplace par un nouveau commit ([amend]{.t}) :
+
+```{.bash risque="reecrit"}
+git add R/indicateurs.R
+git commit --amend --no-edit     # même message, contenu corrigé
+```
+
+Pour corriger un commit **plus ancien**, préparez la correction au moment où vous la faites. `--fixup` crée un commit dont le message désigne sa cible :
+
+```{.bash risque="reversible"}
+git add R/indicateurs.R
+git commit --fixup=5e7c4fb
+```
+
+```{.text .sortie}
+[21-regrouper-pcs c518aa6] fixup! Regroupe les PCS en quatre grandes catégories (#21)
+ 1 file changed, 1 insertion(+)
+```
+
+Au moment de nettoyer, `--autosquash` place chaque `fixup!` sous sa cible et le marque `fixup`. Il n'y a plus qu'à valider la liste :
+
+```{.bash risque="reecrit"}
+git rebase -i --autosquash --keep-base origin/main
+```
+
+```{.text .sortie}
+pick 5e7c4fb Regroupe les PCS en quatre grandes catégories (#21)
+fixup c518aa6 fixup! Regroupe les PCS en quatre grandes catégories (#21)
+pick 375df07 Présente le regroupement des PCS dans le panorama (#21)
+```
+
+`git config --global rebase.autoSquash true` rend `--autosquash` implicite pour tout `git rebase -i`.
+
+## Le filet de sécurité : reflog et `ORIG_HEAD`
+
+Un rebase raté ne détruit rien de ce qui a été commité. Pendant le rebase, `git rebase --abort` remet tout en l'état. Après, le reflog garde la trace de chaque position de HEAD :
+
+```{.bash risque="sur"}
+git reflog
+```
+
+```{.text .sortie}
+375df07 HEAD@{0}: rebase (finish): returning to refs/heads/21-regrouper-pcs
+375df07 HEAD@{1}: rebase (fixup): Présente le regroupement des PCS dans le panorama (#21)
+...
+dd0eadb HEAD@{10}: rebase (start): checkout origin/main...21-regrouper-pcs
+d27f0d7 HEAD@{11}: commit: encore
+cdaa28a HEAD@{12}: commit: corrige le lint
+```
+
+`d27f0d7` est l'ancienne tête de la branche, avant le rebase. Git la note aussi dans `ORIG_HEAD`, jusqu'à la prochaine commande qui le réécrit (un autre rebase, un `reset`, un `merge`). Pour revenir en arrière :
+
+```{.bash risque="dangereux"}
+git reset --hard ORIG_HEAD        # ou : git reset --hard d27f0d7
+```
+
+`reset --hard` écrase les modifications non commitées de la copie de travail : vérifiez `git status` avant. Le reflog est **local** : il n'existe que dans votre dépôt, et ses entrées expirent (90 jours par défaut).
+
+::: {.vscode titre="Éditer la liste dans VS Code"}
+Par défaut, Git ouvre la liste dans l'éditeur du terminal (souvent `nano` ou `vim`). Pour l'ouvrir dans un onglet VS Code : `git config --global core.editor "code --wait"`. Git attend alors que vous fermiez l'onglet. Sur un service VS Code en ligne (Onyxia), la commande `code` peut ne pas exister : vérifiez avec `command -v code` avant de changer ce réglage. La vue **Source Control** ne propose pas de rebase interactif : la commande et la liste restent la référence.
+:::
+
+## Rebase interactif ou squash au merge ?
+
+| | `git rebase -i` (local) []{.git} | Squash au merge []{.gitlab} |
+|---|---|---|
+| Qui le fait | l'auteur, sur sa machine | GitLab, au moment du merge |
+| Résultat dans `main` | autant de commits que vous en gardez | **un** commit par MR |
+| Réécrit une branche poussée | oui, avec `--force-with-lease` | non : la branche source est supprimée |
+| Compétence requise | élevée (conflits, reflog) | aucune : une case à cocher |
+| Intérêt | commits séparés pour la review ; projets qui fusionnent sans squash | historique de `main` lisible, sans effort |
+
+**Notre pratique par défaut est le [squash]{.t} au merge** (règle R14). Le rebase interactif est utile dans trois cas : une MR qui mérite plusieurs commits distincts dans `main` (le projet fusionne alors sans squash), un projet d'une autre équipe qui l'exige, ou une review plus facile commit par commit. Aucune de ces raisons n'en fait une obligation.
+
+Côté GitLab, un push forcé sur une MR déjà commentée n'efface pas la discussion. GitLab garde les versions précédentes du diff (**Compare … with version**), et les commentaires sur des lignes modifiées sont marqués comme obsolètes. Nettoyez plutôt **avant** de demander la review.
+
+::: {.rosette principe="tracabilite"}
+::: principe
+L'historique raconte les décisions, pas les tâtonnements.
+:::
+::: dev
+Commits atomiques, messages normalisés ([Conventional Commits]{.t}), `fixup!` pendant le travail et `--autosquash` avant la review.
+:::
+::: stat
+Séparer le changement de **méthode** (le regroupement des PCS) de sa **présentation** (le panorama) : le relecteur méthode lit le premier, et à l'étape 8 on aurait pu faire un `git cherry-pick -x` du seul calcul.
+:::
+:::
+
+::: {.mission #m-a-rebase-interactif-1 titre="Nettoyer les sept commits, sans risque" duree="20 min" mode="seul" depart="etape-7-debut"}
+::: objectif
+Transformer les sept commits de la branche d'exercice en deux commits lisibles, sur une copie locale que personne d'autre n'utilise.
+:::
+
+::: consignes
+1. Créez une branche locale d'essai à partir de la branche d'exercice : `git switch -c essai-rebase-i origin/21-regrouper-pcs-e7`.
+2. Faites d'abord le rebase de l'étape 7 : `git rebase origin/main`, en résolvant le conflit dans `reports/panorama.qmd`.
+3. Lancez `git rebase -i --keep-base origin/main` et obtenez deux commits : le calcul (#21), puis sa présentation (#21).
+4. Relancez les tests R.
+5. Retrouvez l'ancienne tête de branche dans `git reflog`, sans l'appliquer.
+:::
+
+::: reussite
+`git log --oneline origin/main..HEAD` affiche exactement deux commits, dont les messages citent #21. `git diff <ancienne-tête> HEAD` n'affiche rien (l'ancienne tête est celle d'après le rebase de la consigne 2) : le contenu final est identique, seul l'historique a changé.
+:::
+
+::: indice
+Commencez par regarder quels fichiers touche chaque commit : `git log --stat --oneline origin/main..HEAD`. C'est ce qui décide où ranger « oups » et « encore ».
+:::
+
+::: corrige
+Liste attendue (hash variables) : `reword` sur le commit du regroupement, puis `fixup` pour « corrige le test », « wip 2 » (le test de `regrouper_pcs()`), « corrige le lint » et « encore », qui touchent `R/indicateurs.R` ou ses tests ; `reword` sur « wip », puis `fixup` pour « oups », qui corrige `scripts/03_indicateurs.R`. Le premier commit touche alors `R/indicateurs.R` et `tests/testthat/test-indicateurs.R`, le second `scripts/03_indicateurs.R` et `reports/panorama.qmd`. Si un commit touchait les deux groupes de fichiers, on le laisserait à sa place en `fixup` du commit précédent, ou on l'arrêterait avec `edit` pour le scinder. Rien n'est poussé : la branche d'essai se supprime avec `git branch -D essai-rebase-i`.
+:::
+:::
+
+::: retenir
+- `git rebase -i` rejoue vos commits selon une liste que vous éditez (`pick`, `reword`, `edit`, `squash`, `fixup`, `drop`) : il crée de nouveaux commits.
+- Uniquement sur des commits que personne n'a récupérés ; ensuite `--force-with-lease`, jamais `--force` ; `git rebase --abort`, le reflog et `ORIG_HEAD` permettent de revenir en arrière.
+- Dans notre workflow, le squash au merge de GitLab suffit ; `--fixup`, `--autosquash` et `rebase -i` sont des outils en plus, pas une obligation.
+:::
+
+::: {.checkpoint titre="Avant de revenir au parcours"}
+::: {.question rappel="e7"}
+Après le `git rebase -i`, `git status` indique que la branche et `origin/21-regrouper-pcs` ont divergé. Pourquoi, et que faire ?
+
+::: reponse
+Les nouveaux commits P1 et P2 n'ont pas pour ancêtres les sept anciens, que la branche distante désigne encore. Un push normal serait refusé, car il n'est pas fast-forward. Si la branche n'est modifiée que par vous, `git push --force-with-lease` la remplace, à condition qu'elle n'ait pas bougé depuis votre dernier fetch.
+:::
+:::
+
+::: question
+Quelle différence entre `squash` et `fixup` dans la liste ?
+
+::: reponse
+Les deux fusionnent le commit avec le précédent. `squash` ouvre l'éditeur pour combiner les deux messages ; `fixup` garde seulement le message du commit précédent.
+:::
+:::
+:::

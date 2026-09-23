@@ -1,0 +1,38 @@
+titre: "Une branche par sujet"
+couleurs:
+  "12-seuil-seniors": travail
+  "13-exclure-apprentis": travail2
+commits:
+  A: {x: 0, y: 0, msg: "Teste le schéma et la cohérence des données générées"}
+  B: {x: 1, y: 0, parents: [A], msg: "Documente le champ et les sources du panel"}
+  D: {x: 2, y: 1, parents: [B], msg: "Paramètre le seuil de la part des seniors (#12)"}
+  E: {x: 3, y: 2, parents: [B], couleur: travail2, msg: "Exclut les apprentis du calcul de la part des seniors (#13)"}
+etapes:
+  - texte: "Point de départ `etape-3-debut` : `main` pointe sur **B**, et HEAD sur `main`."
+    commande: "git status"
+    commits: [A, B]
+    refs: {main: B}
+    head: main
+  - texte: "`git switch -c` crée une **nouvelle étiquette** sur le commit courant et y attache HEAD. Aucun fichier n'est copié : Git a écrit un nom et un hash."
+    commande: "git switch -c 12-seuil-seniors"
+    commits: [A, B]
+    refs: {main: B, "12-seuil-seniors": B}
+    head: "12-seuil-seniors"
+    surligne: [B]
+  - texte: "Karim commite. La branche sur laquelle se trouve HEAD avance sur **D** ; `main` n'a **pas bougé**. Le parent de **D** est **B**."
+    commande: "git commit -am \"Paramètre le seuil de la part des seniors (#12)\""
+    commits: [A, B, D]
+    refs: {main: B, "12-seuil-seniors": D}
+    head: "12-seuil-seniors"
+    surligne: [D]
+  - texte: "Retour sur `main` : HEAD change d'étiquette et vos fichiers reprennent l'état de **B**. Le commit **D** n'a pas disparu : `12-seuil-seniors` le retient."
+    commande: "git switch main"
+    commits: [A, B, D]
+    refs: {main: B, "12-seuil-seniors": D}
+    head: main
+  - texte: "Léa part elle aussi de `main` (**B**) pour le sujet #13. Pour les voir ensemble, les deux branches sont réunies ici dans un même dépôt ; en réalité, chacune est sur le poste de son auteur."
+    commande: "git switch -c 13-exclure-apprentis main   # puis git commit"
+    commits: [A, B, D, E]
+    refs: {main: B, "12-seuil-seniors": D, "13-exclure-apprentis": E}
+    head: "13-exclure-apprentis"
+    surligne: [E]

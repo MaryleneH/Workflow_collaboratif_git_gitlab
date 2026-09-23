@@ -1,0 +1,113 @@
+# ---------------------------------------------------------------------------
+# Données des composants visuels récurrents.
+# ---------------------------------------------------------------------------
+
+# Qui fournit la notion ? (badge « Git ou GitLab ? »)
+proprios:
+  - id: git
+    libelle: "Git"
+    aide: "Fonctionnalité de Git lui-même : elle existe sur votre machine, sans serveur."
+  - id: gitlab
+    libelle: "GitLab"
+    aide: "Fonctionnalité de la plateforme GitLab : elle n'existe pas dans Git."
+  - id: github
+    libelle: "GitHub"
+    aide: "Équivalent sur la plateforme GitHub."
+  - id: vscode
+    libelle: "VS Code"
+    aide: "Interface de VS Code : elle exécute des commandes Git pour vous."
+  - id: pratique
+    libelle: "Pratique"
+    aide: "Pratique ou convention d'équipe : ni Git ni GitLab ne l'imposent."
+  - id: outil
+    libelle: "Outil"
+    aide: "Outil tiers de l'écosystème (conteneurs, linters, gestionnaires de paquets)."
+
+# Niveau de risque d'une commande (```{.bash risque="reecrit"})
+risques:
+  - id: sur
+    libelle: "Sans risque"
+    aide: "Lecture seule, ou téléchargement sans effet sur votre travail."
+  - id: reversible
+    libelle: "Réversible"
+    aide: "Crée ou déplace des références ; on peut revenir en arrière simplement."
+  - id: reecrit
+    libelle: "Réécrit l'historique"
+    aide: "Remplace des commits par de nouveaux. À réserver à ce qui n'est pas partagé."
+  - id: dangereux
+    libelle: "Dangereux"
+    aide: "Peut détruire du travail non sauvegardé ou celui des autres. Réfléchir avant."
+
+# Le parcours d'une Merge Request
+parcours_mr:
+  - id: issue
+    titre: "Issue"
+    proprio: gitlab
+    texte: "Le besoin est décrit et numéroté (#18)."
+  - id: branche
+    titre: "Branche"
+    proprio: git
+    texte: "`18-taux-recrutement`, créée depuis `main` à jour."
+  - id: commits
+    titre: "Commits"
+    proprio: git
+    texte: "Petits, explicites, qui citent l'issue."
+  - id: draft
+    titre: "Draft MR"
+    proprio: gitlab
+    texte: "Ouverte tôt, non fusionnable, visible par l'équipe."
+  - id: pipeline
+    titre: "Pipeline"
+    proprio: gitlab
+    texte: "La CI relit automatiquement chaque push."
+  - id: review
+    titre: "Review"
+    proprio: gitlab
+    texte: "Un collègue relit le code et la méthode."
+  - id: approval
+    titre: "Approval"
+    proprio: gitlab
+    texte: "Le relecteur approuve ; les fils sont résolus."
+  - id: merge
+    titre: "Merge"
+    proprio: gitlab
+    texte: "Squash et fusion dans `main`, par GitLab."
+  - id: suppression
+    titre: "Suppression"
+    proprio: gitlab
+    texte: "La branche source disparaît ; l'issue se ferme."
+
+# La chaîne de confiance d'un chiffre publié
+chaine_confiance:
+  - id: code
+    titre: "Code"
+    texte: "Le calcul est écrit dans un script, pas fait à la main."
+    etape: e0
+  - id: versionne
+    titre: "Versionné"
+    texte: "Chaque état du code a un identifiant et une histoire."
+    etape: e1
+  - id: relu
+    titre: "Relu"
+    texte: "Un collègue a relu le code et la méthode dans une MR."
+    etape: e4
+  - id: teste
+    titre: "Testé"
+    texte: "La CI vérifie les règles méthodologiques à chaque modification."
+    etape: e6
+  - id: environnement
+    titre: "Environnement figé"
+    texte: "Versions de R, Python et des paquets fixées (lockfile, image)."
+    etape: e8
+  - id: donnees
+    titre: "Données identifiées"
+    texte: "Référence exacte des données d'entrée (millésime, empreinte)."
+    etape: e8
+  - id: publication
+    titre: "Publication"
+    texte: "Un tag annoté et une Release relient le chiffre publié à tout le reste."
+    etape: e8
+
+# La phrase-boussole : chaque mot se comprend à une étape précise.
+# Syntaxe : [[identifiant-du-lexique|texte affiché]]
+boussole: "J'ai ouvert une [[merge-request|MR]] sur ma [[branche-de-travail|feature branch]], mais elle a [[divergence|divergé]] de [[main|main]]. Je vais [[rebase|rebase]] avant la [[review|review]] et [[squash|squash]] mes commits au [[merge|merge]]."

@@ -1,0 +1,11 @@
+project:
+  type: default
+  output-dir: _output
+  # Seul le rapport est un document Quarto : les README restent du Markdown.
+  render:
+    - reports/panorama.qmd
+
+lang: fr
+
+# Le millésime est un paramètre du rapport (2025 par défaut) :
+#   quarto render reports/panorama.qmd -P millesime:2026

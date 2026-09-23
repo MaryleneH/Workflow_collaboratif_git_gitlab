@@ -1,0 +1,62 @@
+titre: "Le tag 2026.0 : une étiquette qui ne bouge plus"
+nom_distant: "GitLab (origin)"
+commits:
+  c21: {x: 0, y: 0, msg: "Met en place l'intégration continue (#20)"}
+  c22: {x: 1, y: 0, parents: [c21], msg: "Ajoute la répartition des établissements par région (#19)"}
+  c23: {x: 2, y: 0, parents: [c22], msg: "Regroupe les PCS en quatre grandes catégories (#21)"}
+  c24: {x: 3, y: 0, parents: [c23], msg: "Finalise le panorama 2026"}
+  c25: {x: 4, y: 0, parents: [c24], msg: "Documente le workflow de l'équipe (#27)"}
+etapes:
+  - texte: "L'édition 2026 est prête : `main` et `origin/main` pointent sur **c24**. Mais `main` est une référence **mobile** : à la prochaine fusion, elle désignera un autre commit."
+    local:
+      commits: [c21, c22, c23, c24]
+      refs: {main: c24, origin/main: c24}
+      head: main
+    distant:
+      commits: [c21, c22, c23, c24]
+      refs: {main: c24}
+  - texte: "Inès crée un tag **annoté** sur le commit courant. Le tag existe **dans son dépôt seulement**."
+    commande: "git tag -a 2026.0 -m \"Panorama 2026 : publication\""
+    local:
+      commits: [c21, c22, c23, c24]
+      refs: {main: c24, origin/main: c24}
+      tags: {"2026.0": c24}
+      head: main
+    distant:
+      commits: [c21, c22, c23, c24]
+      refs: {main: c24}
+    surligne: [c24]
+  - texte: "Un `git push` ordinaire répond `Everything up-to-date` : il envoie les branches, **pas les tags**. GitLab ne connaît toujours pas `2026.0`."
+    commande: "git push"
+    local:
+      commits: [c21, c22, c23, c24]
+      refs: {main: c24, origin/main: c24}
+      tags: {"2026.0": c24}
+      head: main
+    distant:
+      commits: [c21, c22, c23, c24]
+      refs: {main: c24}
+  - texte: "On pousse le tag explicitement, par son nom. GitLab le reçoit et lance le pipeline de tag, dont le job `publication` crée la GitLab Release."
+    commande: "git push origin 2026.0"
+    local:
+      commits: [c21, c22, c23, c24]
+      refs: {main: c24, origin/main: c24}
+      tags: {"2026.0": c24}
+      head: main
+    distant:
+      commits: [c21, c22, c23, c24]
+      refs: {main: c24}
+      tags: {"2026.0": c24}
+    surligne: [c24]
+  - texte: "Une semaine plus tard, la MR !6 est fusionnée et récupérée par `git pull` : `main` avance sur **c25**. Le tag, lui, n'a pas bougé : `2026.0` désignera **c24** pour toujours."
+    commande: "git pull"
+    local:
+      commits: [c21, c22, c23, c24, c25]
+      refs: {main: c25, origin/main: c25}
+      tags: {"2026.0": c24}
+      head: main
+    distant:
+      commits: [c21, c22, c23, c24, c25]
+      refs: {main: c25}
+      tags: {"2026.0": c24}
+    surligne: [c24]

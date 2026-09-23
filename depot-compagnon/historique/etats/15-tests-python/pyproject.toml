@@ -1,0 +1,13 @@
+# Configuration des outils Python du projet (ce n'est pas un paquet installable).
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["_output"]
+
+[tool.ruff.lint.per-file-ignores]
+# Les scripts ajoutent python/ au chemin d'import avant d'importer le projet.
+"scripts/*.py" = ["E402"]
+
+[tool.pytest.ini_options]
+pythonpath = ["python"]
+testpaths = ["tests/python"]

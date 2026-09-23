@@ -1,0 +1,70 @@
+# Étape E5 : graphe de synthèse du premier jour (clone, fetch, pull,
+# branche, MR, squash, nettoyage). Volontairement simplifié : il ne reprend
+# pas les commits c16 à c20 un à un (voir e4-mr-squash.yml pour la MR !1).
+titre: "Le premier jour en un seul graphe"
+nom_distant: "GitLab (origin)"
+couleurs:
+  "18-taux-recrutement": travail
+commits:
+  A: {x: 0, y: 0, msg: "Documente le champ et les sources du panel"}
+  B: {x: 1, y: 0, parents: [A], msg: "Paramètre le seuil de la part des seniors (#12)"}
+  T1: {x: 2, y: 1, parents: [B], couleur: travail, msg: "Calcule le taux de recrutement par métier (#18)"}
+  T2: {x: 3, y: 1, parents: [T1], couleur: travail, msg: "Exclut les non-répondants du taux de recrutement (#18)"}
+  S: {x: 4, y: 0, parents: [B], msg: "Ajoute le taux de recrutement par métier (#18)"}
+etapes:
+  - texte: "**Clone.** Votre dépôt reçoit tout l'historique. `main` et `origin/main` pointent sur **A**, comme `main` sur GitLab."
+    commande: "git clone https://gitlab.example.org/oei/observatoire-industrie.git"
+    local:
+      commits: [A]
+      refs: {main: A, origin/main: A}
+      head: main
+    distant:
+      commits: [A]
+      refs: {main: A}
+  - texte: "**Fetch.** Karim a poussé **B** sur GitLab. Le fetch le télécharge et avance `origin/main`. Votre `main` et vos fichiers n'ont pas bougé."
+    commande: "git fetch"
+    local:
+      commits: [A, B]
+      refs: {main: A, origin/main: B}
+      head: main
+    distant:
+      commits: [A, B]
+      refs: {main: B}
+    surligne: [B]
+  - texte: "**Pull.** `main` rejoint `origin/main` par fast-forward : l'étiquette avance, aucun commit n'est créé."
+    commande: "git pull"
+    local:
+      commits: [A, B]
+      refs: {main: B, origin/main: B}
+      head: main
+    distant:
+      commits: [A, B]
+      refs: {main: B}
+  - texte: "**Branche, commits, push.** Une branche née de l'issue #18, deux commits qui la citent, un push avec `-u`. La MR !1 s'ouvre sur GitLab."
+    commande: "git switch -c 18-taux-recrutement && git push -u origin 18-taux-recrutement"
+    local:
+      commits: [A, B, T1, T2]
+      refs: {main: B, 18-taux-recrutement: T2, origin/main: B, origin/18-taux-recrutement: T2}
+      head: 18-taux-recrutement
+    distant:
+      commits: [A, B, T1, T2]
+      refs: {main: B, 18-taux-recrutement: T2}
+  - texte: "**Merge en squash, par GitLab.** Un nouveau commit **S**, à un seul parent, entre dans `main` ; la branche source est supprimée sur le serveur. Votre dépôt ne le sait pas encore."
+    local:
+      commits: [A, B, T1, T2]
+      refs: {main: B, 18-taux-recrutement: T2, origin/main: B, origin/18-taux-recrutement: T2}
+      head: 18-taux-recrutement
+    distant:
+      commits: [A, B, S]
+      refs: {main: S}
+    surligne: [S]
+  - texte: "**Ménage.** Retour sur `main`, pull en fast-forward, suppression de la branche locale, élagage de la branche distante. **T1** et **T2** ne sont plus portés par aucun nom."
+    commande: "git switch main && git pull && git branch -d 18-taux-recrutement && git fetch --prune"
+    local:
+      commits: [A, B, T1, T2, S]
+      refs: {main: S, origin/main: S}
+      head: main
+    distant:
+      commits: [A, B, S]
+      refs: {main: S}
+    estompes: [T1, T2]

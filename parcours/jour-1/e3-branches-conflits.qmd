@@ -1,0 +1,565 @@
+---
+title: "Travailler à côté, puis réunir"
+etape: e3
+description: "Isoler chaque sujet dans une branche, fusionner par fast-forward ou à trois voies, et résoudre un conflit méthodologique en gardant les deux intentions."
+---
+
+::: situation
+Pour le panorama 2026, Inès a ouvert deux issues sur le même indicateur, la part des 55 ans et plus.
+
+- **#12** (Karim) : paramétrer le seuil, 55 ans par défaut, parce que la direction veut aussi la part des 50 ans et plus.
+- **#13** (Léa) : exclure les apprentis du calcul. Très jeunes, en forte hausse dans certaines sous-filières, ils font baisser mécaniquement la part des seniors et faussent les comparaisons entre sous-filières.
+
+Les deux sujets touchent la même fonction, `part_seniors()`, dans `R/indicateurs.R`. Si chacun travaille directement sur `main` comme en E2, chaque push y dépose un travail inachevé, et les deux sujets se mêlent dans les mêmes commits. Personne ne pourrait alors livrer l'un sans l'autre.
+:::
+
+Voici la fonction sur `main`, au tag `etape-3-debut` :
+
+```r
+part_seniors <- function(salaries, ...) {
+  salaries |>
+    dplyr::group_by(...) |>
+    dplyr::summarise(part_seniors = mean(age >= 55), .groups = "drop")
+}
+```
+
+## Une branche par sujet
+
+Karim crée une branche pour son sujet, puis s'y place :
+
+```{.bash risque="reversible"}
+git switch -c 12-seuil-seniors
+```
+
+```{.text .sortie}
+Switched to a new branch '12-seuil-seniors'
+```
+
+Que s'est-il passé ? Git a écrit un **nom** qui pointe vers le commit courant, et il a attaché HEAD à ce nom. C'est tout. Les commits suivants feront avancer `12-seuil-seniors`, et `main` restera où elle est.
+
+::: {.git-graph scenario="e3-branches"}
+:::
+
+::: idee-fausse
+::: fausse
+« Créer une branche, c'est faire une copie du projet pour travailler tranquille. »
+:::
+::: juste
+Une [branche]{.t} est une référence mobile : dans un dépôt fraîchement créé, c'est un petit fichier, `.git/refs/heads/12-seuil-seniors`, qui contient un hash de 40 caractères. Aucun fichier du projet n'est dupliqué. Ce qui isole le travail, ce sont les **commits** : ils s'accrochent à la nouvelle étiquette, et `main` ne les voit pas tant qu'on ne fusionne pas.
+:::
+:::
+
+Quand vous changez de branche avec `git switch`, Git remet votre copie de travail dans l'état de l'instantané visé. Dans VS Code, le contenu de `R/indicateurs.R` change sous vos yeux : c'est normal, rien n'est perdu. Les modifications **non commitées**, elles, n'appartiennent à aucune branche : elles vous suivent d'une branche à l'autre quand Git le peut, et bloquent le changement quand il ne le peut pas (voir l'incident 2).
+
+Vous croiserez encore `git checkout -b 12-seuil-seniors` dans des tutoriels : c'est l'ancienne forme de `git switch -c`. Elle fonctionne toujours, mais `git switch` ne fait qu'une chose et le fait clairement.
+
+### Nommer une branche
+
+L'équipe nomme ses branches `<issue>-<sujet-court>` : `12-seuil-seniors`, `13-exclure-apprentis`. Le numéro relie la branche au besoin qui l'a fait naître. C'est aussi la forme que produit GitLab : depuis une issue, le bouton **Create merge request** (ou **Create branch**, dans son menu déroulant) propose une branche nommée d'après le numéro et le titre de l'issue, par exemple `12-parametrer-le-seuil-de-la-part-des-seniors`, que l'on peut raccourcir.
+
+Vous lirez aussi des noms comme `feature/seuil-seniors`. C'est la convention de **Git Flow**, que vous étudierez en E9. Les développeurs parlent de [feature branch]{.t} pour une branche de travail. Attention à l'homonymie : en data science, une *feature* est une **variable** d'un modèle. Ici, *feature* veut dire « fonctionnalité », c'est-à-dire un sujet de travail.
+
+::: {.regle ref="R04"}
+:::
+
+## Réunir : deux sortes de fusion
+
+Karim et Léa ont chacun commité sur leur branche. Il faut maintenant réunir les deux sujets dans `main`. C'est le rôle du [merge]{.t} : il intègre l'historique d'une branche dans la branche **courante**. On se place donc d'abord sur la branche qui reçoit.
+
+::: {.git-graph scenario="e3-fusions"}
+:::
+
+### Premier merge : un fast-forward
+
+```{.bash risque="reversible"}
+git switch main
+git merge 12-seuil-seniors
+```
+
+```{.text .sortie}
+Updating eea207d..3b09353
+Fast-forward
+ R/indicateurs.R                   | 5 +++--
+ tests/testthat/test-indicateurs.R | 6 ++++++
+ 2 files changed, 9 insertions(+), 2 deletions(-)
+```
+
+Les hash et les chiffres de cette page sont ceux des commits de Karim et de Léa dans le dépôt compagnon ; dans la mission, vos propres commits auront d'autres hash.
+
+Depuis la création de `12-seuil-seniors`, `main` n'a pas bougé : elle est un **ancêtre** de la branche. Git n'a rien à réunir. Il avance l'étiquette `main` jusqu'au commit de Karim. Aucun commit n'est créé et aucun conflit n'est possible. C'est exactement le [fast-forward]{.t} de E2 : `git pull` et `git merge` intègrent de la même façon.
+
+### Second merge : une fusion à trois voies
+
+Cette fois, `main` a avancé (elle contient le commit de Karim), et la branche de Léa est partie **avant**. Aucune des deux n'est l'ancêtre de l'autre : c'est une divergence. Git réalise alors une [fusion à trois voies]{.t}. Il compare trois instantanés :
+
+1. la **base** : l'ancêtre commun des deux branches ;
+2. le côté **courant** (`HEAD`, ici `main`) ;
+3. le côté **entrant** (`13-exclure-apprentis`).
+
+```{.bash risque="sur"}
+git merge-base main 13-exclure-apprentis
+```
+
+```{.text .sortie}
+eea207d7a668e5ab446459b3828bb5d1e4441a5d
+```
+
+C'est le commit `etape-3-debut`, d'où les deux branches sont parties. Pour chaque zone de chaque fichier, Git applique une règle simple :
+
+| Depuis la base… | Résultat |
+|---|---|
+| seul un côté a modifié la zone | Git reprend cette modification |
+| les deux côtés l'ont modifiée **à l'identique** | Git la reprend une fois |
+| les deux côtés l'ont modifiée **différemment** | **conflit** : Git ne choisit pas |
+
+Si tout se réunit sans conflit, Git crée aussitôt un [commit de fusion]{.t} à **deux parents**. Son premier parent est la branche où vous étiez (`main`), son second, la branche fusionnée.
+
+## Le conflit : une décision qui vous revient
+
+```{.bash risque="reversible"}
+git merge 13-exclure-apprentis
+```
+
+```{.text .sortie}
+Auto-merging R/indicateurs.R
+CONFLICT (content): Merge conflict in R/indicateurs.R
+Automatic merge failed; fix conflicts and then commit the result.
+```
+
+Git s'est arrêté **au milieu** de la fusion. Aucun commit n'a été créé. `git status` décrit la situation :
+
+```{.text .sortie}
+On branch main
+You have unmerged paths.
+  (fix conflicts and run "git commit")
+  (use "git merge --abort" to abort the merge)
+
+Unmerged paths:
+  (use "git add <file>..." to mark resolution)
+	both modified:   R/indicateurs.R
+
+no changes added to commit (use "git add" and/or "git commit -a")
+```
+
+Ouvrez `R/indicateurs.R` :
+
+```r
+part_seniors <- function(salaries, ..., seuil = 55) {
+  salaries |>
+    dplyr::filter(contrat != "apprenti") |>
+    dplyr::group_by(...) |>
+<<<<<<< HEAD
+    dplyr::summarise(part_seniors = mean(age >= seuil), .groups = "drop")
+=======
+    dplyr::summarise(effectif = dplyr::n(), part_seniors = mean(age >= 55), .groups = "drop")
+>>>>>>> 13-exclure-apprentis
+}
+```
+
+Lisez d'abord ce que Git a **déjà** fait seul. La signature (`seuil = 55`, venue de Karim) et le filtre des apprentis (venu de Léa) touchent des lignes que l'autre côté n'a pas modifiées : Git les a reprises sans rien demander. Il ne reste qu'une zone, la ligne `summarise`, que les deux côtés ont réécrite différemment.
+
+- Entre `<<<<<<< HEAD` et `=======` : la version du côté **courant** (`main`, qui contient le travail de Karim).
+- Entre `=======` et `>>>>>>> 13-exclure-apprentis` : la version du côté **entrant** (Léa).
+
+::: {.recit persona="karim"}
+« Ma ligne dit : le seuil est un paramètre. Celle de Léa dit : on publie aussi l'effectif du champ. Ce ne sont pas deux versions concurrentes de la même idée. Ce sont deux idées. »
+:::
+
+### Ce que serait une mauvaise résolution
+
+Un [conflit]{.t} n'est pas une panne. C'est une question que Git vous pose : **que doit faire cette ligne, maintenant que les deux changements existent ?** Choisir un camp au hasard donne un code qui s'exécute, mais qui trahit silencieusement une des deux intentions :
+
+| Choix | Ce que devient le code | Ce qui est perdu |
+|---|---|---|
+| garder le côté courant | `mean(age >= seuil)`, sans `effectif` | la colonne `effectif` voulue par Léa ; le filtre, lui, est resté |
+| garder le côté entrant | `effectif`, mais `mean(age >= 55)` | le seuil de Karim : `seuil = 50` est accepté puis **ignoré**, sans aucune erreur |
+| garder les deux lignes | deux `summarise` à la suite | la seconde n'est plus reliée au pipeline : `Error in dplyr::n()` à l'exécution |
+
+Le deuxième cas est le plus dangereux : avec le seuil par défaut, tous les chiffres restent justes. L'erreur n'apparaîtra que le jour où quelqu'un demandera la part des 50 ans et plus.
+
+### La bonne résolution
+
+On écrit une ligne qui réalise **les deux intentions**, puis on supprime les trois lignes de marqueurs :
+
+```r
+part_seniors <- function(salaries, ..., seuil = 55) {
+  salaries |>
+    dplyr::filter(contrat != "apprenti") |>
+    dplyr::group_by(...) |>
+    dplyr::summarise(effectif = dplyr::n(), part_seniors = mean(age >= seuil), .groups = "drop")
+}
+```
+
+Puis, dans le terminal :
+
+```{.bash risque="sur"}
+git diff --check
+```
+
+Cette commande signale les marqueurs oubliés (`leftover conflict marker`). Si elle ne dit rien, marquez le conflit comme résolu et relancez les tests **avant** de valider :
+
+```{.bash risque="reversible"}
+git add R/indicateurs.R
+Rscript -e 'testthat::test_dir("tests/testthat", stop_on_failure = TRUE)'
+git commit
+```
+
+`git add` ne veut pas dire ici « ajouter un fichier » : il indique à Git que le conflit de ce fichier est résolu. `git commit` ouvre l'éditeur avec un message préparé, `Merge branch '13-exclure-apprentis'`, que vous pouvez compléter en une ligne (« garde le seuil (#12) et l'effectif (#13) »). Le commit de fusion ainsi créé a deux parents :
+
+```{.bash risque="sur"}
+git log --oneline --graph -4
+```
+
+```{.text .sortie}
+*   f478ddb (HEAD -> main) Merge branch '13-exclure-apprentis'
+|\
+| * 4591f96 (13-exclure-apprentis) Exclut les apprentis du calcul de la part des seniors (#13)
+* | 3b09353 Paramètre le seuil de la part des seniors (#12)
+|/
+* eea207d Documente le champ et les sources du panel
+```
+
+**Renoncer est toujours possible.** Tant que le commit de fusion n'est pas créé, `git merge --abort` remet la branche et les fichiers dans l'état d'avant le `git merge`. Faites-le si vous ne comprenez pas l'intention de l'autre côté : allez d'abord en parler.
+
+```{.bash risque="reversible"}
+git merge --abort
+```
+
+::: {.regle ref="R05"}
+:::
+
+::: {.rosette principe="revue"}
+::: principe
+Un conflit est une décision, pas une formalité technique.
+:::
+::: dev
+On résout avec l'auteur de l'autre côté quand l'intention n'est pas claire, puis la suite de tests et la CI confirment que rien n'a été cassé.
+:::
+::: stat
+Le conflit porte sur une **définition d'indicateur** : on relit les deux issues (#12 et #13), on écrit une ligne qui respecte les deux choix de méthode, et un test fixe la règle (« seuil respecté, apprentis exclus »).
+:::
+:::
+
+## À vous
+
+::: {.mission #m-e3-1 titre="Deux intentions sur la même ligne" duree="35 min" mode="en binôme" depart="etape-3-debut"}
+::: objectif
+Isoler chaque sujet dans une branche, fusionner une fois en fast-forward et une fois à trois voies, et résoudre un vrai conflit de méthode sans perdre aucune des deux intentions.
+:::
+
+**Rôle A** : Karim, issue #12, branche `12-seuil-seniors`. **Rôle B** : Léa, issue #13, branche `13-exclure-apprentis`. Chacun travaille sur son poste, dans le projet GitLab du binôme. Si vous enchaînez après E2, partez de votre `main` à jour : `R/indicateurs.R` n'a pas changé depuis `etape-3-debut`.
+
+::: consignes
+1. **A et B** : mettez `main` à jour et relisez la fonction.
+   ```bash
+   git switch main
+   git pull
+   git log --oneline -3
+   ```
+2. **A** : `git switch -c 12-seuil-seniors`. Dans `R/indicateurs.R`, écrivez :
+   ```r
+   part_seniors <- function(salaries, ..., seuil = 55) {
+     salaries |>
+       dplyr::group_by(...) |>
+       dplyr::summarise(part_seniors = mean(age >= seuil), .groups = "drop")
+   }
+   ```
+   `seuil` est placé **après** `...` : il doit donc toujours être nommé, et `part_seniors(salaries, sous_filiere)` continue de grouper par sous-filière. Commitez (`Paramètre le seuil de la part des seniors (#12)`), puis sauvegardez la branche sur GitLab : `git push -u origin 12-seuil-seniors`.
+3. **B**, en même temps : `git switch -c 13-exclure-apprentis`. Écrivez :
+   ```r
+   part_seniors <- function(salaries, ...) {
+     salaries |>
+       dplyr::filter(contrat != "apprenti") |>
+       dplyr::group_by(...) |>
+       dplyr::summarise(effectif = dplyr::n(), part_seniors = mean(age >= 55), .groups = "drop")
+   }
+   ```
+   Commitez (`Exclut les apprentis du calcul de la part des seniors (#13)`), puis `git push -u origin 13-exclure-apprentis`.
+4. **A** fusionne **d'abord** : `git switch main`, `git merge 12-seuil-seniors` (repérez `Fast-forward`), puis `git push`.
+5. **B** : `git switch main`, puis `git pull`. Quel type d'intégration ? Puis `git merge 13-exclure-apprentis`, et `git status`.
+6. **B, avec A à côté** : chacun explique à voix haute l'intention de sa ligne. B écrit la résolution, puis lance `git diff --check`, `git add R/indicateurs.R`, les tests (`Rscript -e 'testthat::test_dir("tests/testthat", stop_on_failure = TRUE)'`) et enfin `git commit`.
+7. **B** : `git log --oneline --graph -4`, puis `git push`. **A** : `git pull` (encore un fast-forward).
+8. **A et B** : rangez. `git branch --merged` liste les branches déjà intégrées à `main` ; supprimez les vôtres en local (`git branch -d …`) et sur GitLab (`git push origin --delete …`).
+:::
+
+::: reussite
+Sur les deux postes : `git log --oneline --graph -4` montre un commit de fusion ; `git log -1 --format=%p` affiche **deux** hash ; `grep -nE "seuil|apprenti|effectif" R/indicateurs.R` trouve les trois mots, et la ligne `summarise` contient à la fois `effectif = dplyr::n()` et `age >= seuil` ; les tests se terminent par `[ FAIL 0 | …`.
+:::
+
+::: indice
+À l'étape 5, `git pull` n'a créé aucun commit : B n'avait rien commité sur `main`. C'est au `git merge` que les historiques se rencontrent.
+:::
+
+::: {.indice titre="Indice 2 : la question à se poser"}
+Après résolution, que doit renvoyer `part_seniors(salaries, sous_filiere, seuil = 50)` ? Une colonne `effectif` qui ne compte pas les apprentis, et une part calculée avec 50 ans. Votre ligne fait-elle les deux ?
+:::
+
+::: corrige
+Étape 4 : `Updating … Fast-forward`, car `main` n'avait pas bougé depuis la création de `12-seuil-seniors`.
+
+Étape 5 : `git pull` est un fast-forward (B reçoit le commit de A). Le `git merge` donne `CONFLICT (content): Merge conflict in R/indicateurs.R` et `git status` affiche `both modified: R/indicateurs.R`.
+
+Étape 6 : la résolution attendue est la fonction de la section « La bonne résolution ». Signature (A) et filtre (B) ont été fusionnés automatiquement ; seule la ligne `summarise` demandait une décision.
+
+Pièges observés : choisir *Accept Current* ou *Accept Incoming* dans VS Code (une intention perdue sans erreur visible), *Accept Both* (deux `summarise`, erreur à l'exécution), marqueurs oubliés (`git diff --check` les signale).
+:::
+:::
+
+::: formateur
+**Timing.** 15 min de démonstration (graphes, conflit projeté), 35 min de mission, 10 min de débriefing sur le tableau des mauvaises résolutions, 15 min pour VS Code, les notebooks et le pont.
+
+**Ordre des fusions.** Si B fusionne avant A, les rôles s'inversent : A aura le conflit. Ce n'est pas grave, mais annoncez l'ordre au départ pour que chacun vive le cas prévu.
+
+**Droits GitLab.** Comme en E2, les deux membres doivent pouvoir pousser sur `main` (rôle *Maintainer*, ou `main` temporairement ouverte aux *Developers* dans **Settings › Repository › Protected branches**).
+
+**Tests.** La commande est celle du dépôt compagnon, lancée depuis la racine du projet : `tests/testthat/helper-projet.R` charge `R/*.R` avant les tests. Sur Onyxia ou sur un poste dont la locale n'est pas en UTF-8, les accents des fichiers R peuvent faire échouer le chargement (`invalid input found on input connection`) : lancez alors `export LC_ALL=C.UTF-8` avant `Rscript`.
+
+**Pour aller plus loin** (binômes rapides) : ajouter dans `tests/testthat/test-indicateurs.R` le test ci-dessous, puis vérifier qu'il échoue si l'on remet `age >= 55` dans `summarise`. C'est, au mot près, le premier test du fichier dans le dépôt compagnon après la fusion (c19) : remis à `age >= 55`, il échoue en `test-indicateurs.R:9:3` (`[1] 0.333 - 0.667 == -0.333`).
+
+```r
+test_that("part_seniors applique le seuil et exclut les apprentis", {
+  jeu <- data.frame(
+    sous_filiere = "naval",
+    age = c(52, 58, 30, 60),
+    contrat = c("CDI", "CDI", "CDI", "apprenti")
+  )
+  res <- part_seniors(jeu, sous_filiere, seuil = 50)
+  expect_equal(res$effectif, 3)
+  expect_equal(res$part_seniors, 2 / 3)
+})
+```
+:::
+
+::: {.mission #m-e3-2 titre="Un conflit dans le rapport" duree="15 min" mode="en binôme" depart="etape-3-debut"}
+::: objectif
+Résoudre un conflit dans du texte : un rapport Quarto se fusionne comme du code, ligne à ligne.
+:::
+
+Mission facultative. Dans `reports/panorama.qmd`, la phrase qui introduit les chiffres clés doit maintenant refléter les deux changements de méthode.
+
+::: consignes
+1. **A** crée `12-chiffres-cles` depuis `main` à jour et réécrit la phrase « Chiffres clés » pour dire que le seuil des seniors est paramétrable (55 ans par défaut). Commit, fusion dans `main`, push.
+2. **B** crée `13-chiffres-cles` depuis le **même** `main` que A (avant le push de A) et réécrit **la même phrase** pour préciser que la part est calculée hors apprentis. Commit.
+3. **B** : `git switch main`, `git pull`, `git merge 13-chiffres-cles`. Résolvez en une phrase qui dit les deux choses, puis `git add`, `git commit`, `git push`.
+:::
+
+::: reussite
+`git log --oneline --graph -4` montre le commit de fusion ; `grep -n "Chiffres clés" reports/panorama.qmd` affiche une seule phrase, qui mentionne le seuil **et** l'exclusion des apprentis, sans aucun marqueur de conflit.
+:::
+
+::: corrige
+Exemple de résolution : « Chiffres clés : part des salariés de 55 ans et plus (seuil paramétrable), calculée hors apprentis. » Une phrase entière modifiée des deux côtés produit un conflit sur tout le paragraphe si celui-ci tient sur une seule ligne : c'est un argument pour écrire le Markdown à raison d'une phrase par ligne.
+:::
+:::
+
+## Quand ça coince
+
+::: {.incident #inc-e3-1 titre="Le conflit est résolu, mais un test échoue"}
+Tom a résolu le même conflit dans VS Code en un clic, sur *Accept Incoming Change*. Le code s'exécute. Karim avait ajouté, avec son commit, un test du seuil dans `tests/testthat/test-indicateurs.R` ; ce fichier-là a fusionné sans conflit.
+
+::: symptome
+```{.text .sortie}
+Failure ('test-indicateurs.R:15:3'): part_seniors applique le seuil demandé
+part_seniors(jeu, seuil = 50)$part_seniors not equal to 4/5.
+1/1 mismatches
+[1] 0.4 - 0.8 == -0.4
+
+[ FAIL 1 | WARN 0 | SKIP 0 | PASS 13 ]
+```
+:::
+::: hypotheses
+- Le test de Karim est faux : il faut le corriger pour qu'il passe.
+- La fusion a perdu une partie d'une des deux intentions.
+- Les données de test ne contiennent pas d'apprentis.
+:::
+::: diagnostic
+La deuxième. Le test de Léa (« part_seniors exclut les apprentis et renvoie l'effectif ») passe, mais avec `seuil = 50` la part vaut 2/5 (les 55 ans et plus) au lieu de 4/5 (les 50 ans et plus) : le seuil a été ignoré. En gardant la ligne entrante, Tom a conservé `mean(age >= 55)`. La signature accepte `seuil`, mais la fonction ne s'en sert plus.
+
+```{.bash risque="sur"}
+git diff HEAD^1 HEAD -- R/indicateurs.R
+```
+
+Cette commande compare `main` avant la fusion (le premier parent) et après : on y voit `mean(age >= seuil)` redevenir `mean(age >= 55)`. (`git show` sur un commit de fusion n'affiche que les lignes qui diffèrent des **deux** parents : il ne montrerait rien ici.)
+:::
+::: correction
+Tant que le commit de fusion n'est **pas poussé**, corrigez la ligne (`mean(age >= seuil)`), relancez les tests, puis :
+
+```{.bash risque="reversible"}
+git add R/indicateurs.R
+git commit -m "Rétablit le seuil paramétrable perdu à la fusion (#12)"
+```
+
+Surtout, ne modifiez pas le test pour qu'il passe : il décrit une intention de méthode.
+:::
+::: prevention
+Après chaque résolution, relancez les tests avant de pousser. Et quand une règle de méthode compte (« le seuil est respecté »), écrivez-la en test : c'est lui qui a repéré la perte, pas une relecture.
+:::
+:::
+
+::: {.incident #inc-e3-2 titre="git pull refuse de mettre main à jour"}
+Léa modifie `R/indicateurs.R` sur `13-exclure-apprentis`, **sans commiter**. Elle veut voir ce que Karim a poussé et fait `git switch main`, qui réussit, puis `git pull`.
+
+::: symptome
+```{.text .sortie}
+$ git switch main
+Switched to branch 'main'
+M	R/indicateurs.R
+Your branch is up to date with 'origin/main'.
+$ git pull
+From https://gitlab.example.org/oei/observatoire-industrie
+   eea207d..3b09353  main       -> origin/main
+Updating eea207d..3b09353
+error: Your local changes to the following files would be overwritten by merge:
+	R/indicateurs.R
+Please commit your changes or stash them before you merge.
+Aborting
+```
+:::
+::: hypotheses
+- Le pull a échoué à cause d'un conflit avec Karim.
+- Les modifications de Léa ont été déplacées sur `main`.
+- Des modifications non commitées se trouvent dans la copie de travail, et le pull devrait les écraser.
+:::
+::: diagnostic
+La troisième. Une modification non commitée n'appartient à **aucune branche** : elle est dans la copie de travail. `git switch main` l'a laissée en place (la ligne `M R/indicateurs.R` le signale), car `R/indicateurs.R` était identique sur les deux branches. Mais le fast-forward veut remplacer ce fichier par la version de Karim : Git refuse plutôt que d'écraser le travail de Léa. Le fetch, lui, a bien eu lieu.
+:::
+::: correction
+Retourner sur sa branche, y commiter, puis mettre `main` à jour :
+
+```{.bash risque="reversible"}
+git switch 13-exclure-apprentis
+git commit -am "Exclut les apprentis du calcul de la part des seniors (#13)"
+git switch main
+git pull
+```
+
+Si le travail n'est pas prêt pour un commit, `git stash` le met de côté et `git stash pop` le réapplique. C'est utile, mais un stash oublié se perd facilement : sur une branche à vous, un commit reste plus sûr.
+:::
+::: prevention
+Avant tout `git switch`, `git status` : la copie de travail doit être propre. On commite sur **sa** branche avant d'aller voir ailleurs.
+:::
+:::
+
+## Dans VS Code
+
+::: {.vscode titre="Créer une branche, changer de branche"}
+Le nom de la branche courante est affiché en bas à gauche de la barre d'état. Un clic ouvre une liste : **Create new branch…** fait l'équivalent de `git switch -c`, et choisir une branche fait un `git switch`. La palette de commandes propose `Git: Create Branch…` et `Git: Checkout to…`. Vérifiez ensuite dans le terminal : `git branch -vv`.
+:::
+
+::: {.vscode titre="Les décorations de conflit"}
+Après un `git merge` en conflit, la vue **Source Control** range le fichier dans une section **Merge Changes**. En l'ouvrant, vous voyez les marqueurs colorés et, au-dessus de chaque conflit, quatre actions : **Accept Current Change** (garder le côté `HEAD`), **Accept Incoming Change** (garder la branche fusionnée), **Accept Both Changes** (garder les deux blocs, l'un après l'autre) et **Compare Changes**. Ces actions ne font que modifier le texte ; c'est à vous de juger le résultat.
+:::
+
+::: {.vscode titre="Le Merge Editor"}
+Le bouton **Resolve in Merge Editor**, en bas à droite du fichier en conflit, ouvre le [Merge Editor]{.t} : en haut à gauche, **Incoming** (la branche fusionnée, ici Léa) ; en haut à droite, **Current** (votre branche, ici `main` avec le travail de Karim) ; en bas, **Result**, le fichier que vous construisez. Cases à cocher ou édition directe dans *Result*, puis **Complete Merge**, qui marque le fichier comme résolu (l'équivalent de `git add`). Le commit reste à faire, dans le terminal ou dans la vue Source Control. La disposition exacte peut varier selon votre version de VS Code.
+:::
+
+::: idee-fausse
+::: fausse
+« *Accept Both Changes* garde les deux intentions. »
+:::
+::: juste
+*Accept Both Changes* garde les deux **blocs de texte**, l'un sous l'autre. Ici, cela donne deux lignes `summarise` : le code ne s'exécute plus. Garder deux intentions demande souvent d'écrire une **troisième** ligne, qui n'existe dans aucune des deux branches.
+:::
+:::
+
+## Notebooks, rapports et fichiers générés
+
+Git fusionne des **lignes de texte**. Tout ce qui n'est pas pensé pour être lu ligne à ligne fusionne mal.
+
+- **Notebooks Jupyter (`.ipynb`)** : ce sont des fichiers JSON qui contiennent le code, les sorties, les images encodées et des métadonnées d'exécution. Deux personnes qui exécutent le même notebook produisent un conflit illisible, même sans avoir changé une ligne de code. Préférez un document `.qmd` (Quarto sait exécuter du Python), ou associez chaque notebook à un script texte avec **jupytext** (format `py:percent`) et versionnez le script. À défaut, videz les sorties avant de commiter (par exemple avec **nbstripout**).
+- **Sorties** : `resultats/`, `_output/` et les rapports rendus ne sont pas versionnés dans le projet (voir `.gitignore`). Un conflit sur un fichier généré n'a pas de sens : on régénère.
+- **Markdown et Quarto** : une phrase par ligne rend les conflits plus petits et les diffs plus lisibles.
+- **Reformatage** : ne reformatez pas tout un fichier (`styler`, `ruff format`) dans une branche de sujet. Chaque ligne touchée devient un conflit potentiel pour les autres. Faites-le dans une branche dédiée, fusionnée vite.
+
+## Ranger après la fusion
+
+Une branche fusionnée n'a plus de raison d'exister : ses commits sont dans l'historique de `main`.
+
+```{.bash risque="sur"}
+git branch --merged
+```
+
+```{.text .sortie}
+  12-seuil-seniors
+* main
+```
+
+```{.bash risque="reversible"}
+git branch -d 12-seuil-seniors
+git push origin --delete 12-seuil-seniors
+```
+
+```{.text .sortie}
+Deleted branch 12-seuil-seniors (was 3b09353).
+```
+
+`git branch -d` refuse de supprimer une branche non fusionnée (`error: the branch '…' is not fully merged`). `git branch -D` force la suppression : les commits qui n'étaient retenus que par cette étiquette ne sont alors plus accessibles par aucun nom. La seconde commande supprime la branche sur GitLab. Chez les collègues, `git fetch --prune` retire ensuite les `origin/12-seuil-seniors` devenues orphelines.
+
+## Ce que disent les développeurs
+
+::: decodeur
+« J'ai fait une [feature branch]{.t} par [issue]{.t}. Le [merge]{.t} de la 12 était un [fast-forward]{.t} ; pour la 13, [fusion à trois voies]{.t} avec un [conflit]{.t} sur le `summarise`. Je l'ai résolu dans le [Merge Editor]{.t}, tests verts, [commit de fusion]{.t} poussé. »
+
+::: traduction
+J'ai travaillé chaque sujet sur sa propre branche. La première a été intégrée en avançant simplement `main`. La seconde avait divergé : Git a comparé les deux versions à leur ancêtre commun et m'a demandé de trancher sur une ligne modifiée des deux côtés. J'ai écrit une version qui respecte les deux changements, vérifié par les tests, puis créé et poussé le commit qui réunit les deux historiques.
+:::
+:::
+
+## En pratique statistique
+
+- **Un conflit sur une ligne de calcul est une question de méthode.** Relisez les deux issues avant de toucher au code. Si les deux choix sont incompatibles (deux définitions différentes du champ), ce n'est pas à la personne qui fusionne de trancher seule.
+- **Après la fusion, les chiffres bougent, et c'est attendu.** Exclure les apprentis augmente la part des seniors dans les sous-filières qui en emploient beaucoup. Relancez `scripts/03_indicateurs.R` et documentez l'effet dans la partie méthode du panorama.
+- **Une branche courte fait des conflits petits.** Deux jours de travail donnent une ligne en conflit. Trois semaines en donnent trente, dans des fichiers que vous ne reconnaissez plus.
+
+::: retenir
+- Une branche est une étiquette : `git switch -c` crée un nom, HEAD le suit, `main` ne bouge pas tant qu'on ne fusionne pas.
+- Si la branche qui reçoit est un ancêtre, le merge est un fast-forward ; sinon, Git fusionne à trois voies depuis l'ancêtre commun et crée un commit de fusion à deux parents.
+- Un conflit se résout en comprenant les deux intentions, en écrivant le résultat, puis en relançant les tests.
+:::
+
+::: {.checkpoint titre="Avant de passer à la suite"}
+::: {.question rappel="e2"}
+À l'étape 5 de la mission, B fait `git pull` sur `main` avant de fusionner sa branche. Pourquoi ce pull ne crée-t-il aucun commit de fusion ?
+
+::: reponse
+Parce que B n'avait aucun commit sur `main` : son `main` était un ancêtre de `origin/main`. Le pull a donc été un fast-forward, qui avance l'étiquette. La rencontre des historiques n'a lieu qu'au `git merge 13-exclure-apprentis`.
+:::
+:::
+
+::: question
+Après `git switch -c 12-seuil-seniors`, combien de fichiers du projet Git a-t-il copiés ?
+
+::: reponse
+Aucun. Il a créé une référence (un nom et un hash) et y a attaché HEAD.
+:::
+:::
+
+::: question
+Lors du merge de `13-exclure-apprentis`, quel commit sert de base, et pourquoi le filtre des apprentis n'est-il pas en conflit ?
+
+::: reponse
+La base est l'ancêtre commun, `etape-3-debut` (`git merge-base main 13-exclure-apprentis`). Depuis cette base, seul le côté de Léa a modifié la zone du filtre : Git reprend sa modification sans rien demander.
+:::
+:::
+
+::: question
+Tom choisit *Accept Current Change*. Qu'est-ce qui est perdu, et qu'est-ce qui est conservé ?
+
+::: reponse
+La colonne `effectif` de Léa est perdue ; le seuil de Karim est conservé. Le filtre des apprentis est conservé aussi, car il avait été fusionné automatiquement hors de la zone en conflit. Une intention est donc à moitié perdue, sans aucune erreur.
+:::
+:::
+
+::: question
+`git branch -d 13-exclure-apprentis` supprime-t-il le commit de Léa ?
+
+::: reponse
+Non. Il supprime l'étiquette. Le commit reste accessible comme second parent du commit de fusion.
+:::
+:::
+:::
+
+::: pont
+Les deux sujets sont dans `main`, les tests sont verts : le merge a marché. Mais personne n'a relu. Karim a fusionné seul, Léa aussi, et rien n'empêche la prochaine fusion d'apporter un calcul discutable, un chemin en dur ou un fichier de données. L'étape suivante confie l'intégration à GitLab : une Merge Request, relue avant d'entrer dans `main`.
+:::

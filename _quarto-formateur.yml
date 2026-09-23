@@ -1,0 +1,22 @@
+# Profil formateur : même site + pages formateur/ + corrigés.
+# À construire avec : quarto render --profile formateur
+# Ne jamais déployer cette sortie publiquement (elle contient les solutions).
+project:
+  output-dir: _site-formateur
+  render:
+    - index.qmd
+    - 404.qmd
+    - parcours/
+    - fil-rouge/
+    - memos/
+    - formateur/
+    - "!depot-compagnon/"
+    - "!docs/"
+    - "!tests/"
+
+website:
+  title: "Git à plusieurs · formateur"
+  navbar:
+    right:
+      - text: "Espace formateur"
+        href: formateur/index.qmd

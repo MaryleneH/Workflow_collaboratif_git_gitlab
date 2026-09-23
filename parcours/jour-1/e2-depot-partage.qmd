@@ -1,0 +1,517 @@
+---
+title: "Deux historiques qui doivent se rejoindre"
+etape: e2
+description: "Remote, origin, branches distantes, fetch, pull et push : comprendre pourquoi un push est refusé et réunir deux historiques qui ont divergé, sans rien perdre."
+---
+
+::: situation
+Lundi, 9 h 40. Karim et vous documentez `data/README.md` : lui décrit le **champ** du panel, vous décrivez les **sources**. Chacun a cloné le projet depuis GitLab vendredi soir, chacun commite de son côté. Karim pousse le premier. Dix minutes plus tard, votre `git push` est refusé.
+
+Vous n'avez rien cassé et Karim non plus. Mais vos deux dépôts ne contiennent plus le même historique, et Git refuse de choisir à votre place. Pour comprendre ce refus, il faut d'abord comprendre une chose : il n'y a pas **un** dépôt, il y en a au moins **trois**.
+:::
+
+## Trois dépôts, pas un seul
+
+Quand vous avez fait `git clone`, Git a copié **tout l'historique** du projet sur votre disque. Votre dépôt est complet et autonome : vous pouvez commiter, lire le `log`, créer des branches sans réseau. Karim a fait de même sur son poste. Le projet sur GitLab est un troisième dépôt Git, hébergé sur un serveur.
+
+Ces trois dépôts ne se synchronisent jamais tout seuls. Ils **échangent des commits** quand vous le demandez, et seulement à ce moment-là.
+
+### Un remote est un nom local pour une URL
+
+Pour votre dépôt, le projet GitLab est un [remote]{.t} : un autre dépôt, désigné par un nom et une URL.
+
+```{.bash risque="sur"}
+git remote -v
+```
+
+```{.text .sortie}
+origin	https://gitlab.example.org/oei/observatoire-industrie.git (fetch)
+origin	https://gitlab.example.org/oei/observatoire-industrie.git (push)
+```
+
+[origin]{.t} n'est qu'un **surnom**, donné par `git clone` au dépôt d'où vous avez cloné. Il est écrit en clair dans le fichier `.git/config` de **votre** dépôt :
+
+```{.text .sortie}
+[remote "origin"]
+	url = https://gitlab.example.org/oei/observatoire-industrie.git
+	fetch = +refs/heads/*:refs/remotes/origin/*
+[branch "main"]
+	remote = origin
+	merge = refs/heads/main
+```
+
+La section `[remote "origin"]` associe un nom à une URL. La ligne `fetch` dit où ranger ce que l'on télécharge : les branches du serveur (`refs/heads/*`) deviennent chez vous des références `origin/*`. La section `[branch "main"]` sera expliquée plus bas : c'est l'*upstream* de votre `main`.
+
+::: idee-fausse
+::: fausse
+« origin, c'est GitLab. »
+:::
+::: juste
+`origin` est un **alias local** : le nom que votre dépôt donne à une URL. Il pourrait désigner un serveur GitLab, GitHub, un dossier partagé ou le dépôt d'un collègue. Vous pourriez le renommer (`git remote rename origin oei`) sans que rien ne change sur le serveur. Karim a son propre `origin`, dans son propre `.git/config`. Et un dépôt peut avoir plusieurs remotes, ce que vous verrez dans l'approfondissement [Forks et upstream](../approfondissements/forks-upstream.qmd).
+:::
+:::
+
+**Git ou GitLab ?** Les remotes, `fetch`, `pull` et `push` appartiennent à **Git** []{.git} : ils fonctionneraient à l'identique avec n'importe quel serveur. GitLab []{.gitlab} fournit l'hébergement du dépôt, les droits d'accès, puis tout ce que vous verrez à partir de E4 (Merge Requests, branches protégées, pipelines).
+
+### origin/main : une photo datée
+
+Dans votre dépôt, deux références portent le mot `main` :
+
+- `main` est **votre** branche. Elle avance quand **vous** commitez.
+- `origin/main` est une [branche distante]{.t} (*remote-tracking branch*). Elle mémorise où se trouvait `main` **sur le serveur** lors de votre dernier échange avec lui.
+
+`origin/main` ne bouge qu'au `fetch`, au `pull` et au `push`. Entre deux, elle ne reflète pas ce qui se passe sur GitLab : c'est une photo, datée de votre dernière communication avec le serveur. Vous ne pouvez pas non plus commiter dessus :
+
+```{.text .sortie}
+$ git switch origin/main
+fatal: a branch is expected, got remote branch 'origin/main'
+```
+
+## Ce qui se passe réellement
+
+Rejouez la matinée étape par étape. Le panneau du haut est votre dépôt, celui du bas est le dépôt GitLab. Regardez surtout **quand** `origin/main` bouge et quand elle ne bouge pas.
+
+::: {.git-graph scenario="e2-divergence"}
+:::
+
+### Ce que fait un push
+
+Un [push]{.t} fait deux choses :
+
+1. il **envoie** au serveur les commits qu'il n'a pas ;
+2. il lui **demande de déplacer** sa branche `main` vers votre commit.
+
+Git n'accepte ce déplacement que si c'est un [fast-forward]{.t} : le `main` du serveur doit être un **ancêtre** de votre commit, pour que la branche avance sans rien perdre. À l'étape 4, le `main` de GitLab est sur **K**, et **K** n'est pas dans l'historique de **V**. Déplacer `main` sur **V** ferait sortir le commit de Karim de l'historique de `main`. Git refuse.
+
+Ce refus n'est pas un réglage de GitLab : c'est Git lui-même, par défaut, qui refuse de pousser ce qui n'est pas un fast-forward. Votre Git demande au serveur où en est son `main`, constate que la mise à jour n'en serait pas un, et n'envoie rien. Il l'affiche sous la forme `! [rejected]`. Quand c'est **le serveur** qui refuse, par exemple sur une branche protégée (E4), la sortie dit `! [remote rejected]` et les messages du serveur commencent par `remote:`.
+
+### Fetch : regarder sans toucher
+
+Un [fetch]{.t} télécharge les commits du remote que vous n'avez pas, puis met à jour les branches distantes (`origin/main`). **Il ne touche ni à vos branches, ni à vos fichiers.** C'est la commande la plus sûre de toute la formation : vous pouvez la lancer à tout moment, sans rien risquer.
+
+```{.bash risque="sur"}
+git fetch
+```
+
+```{.text .sortie}
+From https://gitlab.example.org/oei/observatoire-industrie
+   42c49f5..9c3f8a2  main       -> origin/main
+```
+
+La ligne se lit : « sur le serveur, `main` est passée de `42c49f5` à `9c3f8a2` ; j'ai mis à jour `origin/main` en conséquence ». (`42c49f5` est le commit `etape-2-debut` du dépôt compagnon ; les hash des commits créés pendant l'exercice dépendent de l'heure et de l'auteur, les vôtres seront différents.) Après le fetch, `git log --oneline --graph --all` montre enfin ce que le serveur contient :
+
+```{.text .sortie}
+* 7b2e5d1 (HEAD -> main) Documente les sources du panel
+| * 9c3f8a2 (origin/main) Décrit le champ du panel dans data/README.md
+|/
+* 42c49f5 Teste le schéma et la cohérence des données générées
+```
+
+C'est une [divergence]{.t} : votre `main` et `origin/main` ont un ancêtre commun (`42c49f5`), puis chacune contient un commit que l'autre n'a pas. Aucune des deux ne peut rejoindre l'autre par fast-forward. Il faut **intégrer** : réunir les deux historiques dans un nouveau commit.
+
+### Pull : télécharger, puis intégrer
+
+Un [pull]{.t} enchaîne deux opérations :
+
+1. un `git fetch` ;
+2. l'**intégration** de la branche suivie (ici `origin/main`) dans votre branche courante.
+
+Selon la situation et la configuration, l'intégration est :
+
+- un **fast-forward**, si vous n'avez rien commité de votre côté : l'étiquette avance, aucun commit n'est créé ;
+- une **fusion** (*merge*), si les historiques ont divergé : Git crée un commit de fusion à deux parents ;
+- un **rebase**, si vous l'avez configuré : Git recrée vos commits au-dessus de ceux du serveur (étape E7).
+
+À l'étape 6 du schéma, `git pull --no-rebase` a créé **M**. Son premier parent est **V** (la branche sur laquelle vous étiez), son second est **K**. Git lui a donné un message automatique :
+
+```{.text .sortie}
+Merge branch 'main' of https://gitlab.example.org/oei/observatoire-industrie
+```
+
+Ensuite, le `main` de GitLab (**K**) est un ancêtre de **M** : pour le serveur, le push est un fast-forward, et il l'accepte.
+
+::: idee-fausse
+::: fausse
+« `git pull` synchronise mon dépôt avec GitLab. »
+:::
+::: juste
+`pull` ne synchronise rien dans les deux sens : il **télécharge** (fetch), puis **intègre** dans votre branche courante, ce qui peut créer un commit de fusion, s'arrêter sur un conflit ou échouer. Il n'envoie rien : c'est `push` qui envoie. Et il ne concerne que la branche courante.
+:::
+:::
+
+### Le cas simple : le fast-forward
+
+Karim, lui, n'a rien commité depuis son push. Quand il récupère votre travail, il n'y a rien à réunir : son `main` est un ancêtre de `origin/main`.
+
+::: {.git-graph scenario="e2-fast-forward"}
+:::
+
+```{.text .sortie}
+$ git pull
+From https://gitlab.example.org/oei/observatoire-industrie
+   9c3f8a2..e8a41c6  main       -> origin/main
+Updating 9c3f8a2..e8a41c6
+Fast-forward
+ data/README.md | 3 +++
+ 1 file changed, 3 insertions(+)
+```
+
+`Updating 9c3f8a2..e8a41c6` puis `Fast-forward` : Git a simplement déplacé l'étiquette `main`. C'est le cas que l'on voudra rendre **systématique** sur `main` à partir de E4.
+
+## Où en suis-je par rapport à GitLab ?
+
+### La branche suivie
+
+Chaque branche locale peut **suivre** une branche distante, son [upstream]{.t} (branche amont). Après un clone, `main` suit `origin/main` : c'est la section `[branch "main"]` du `.git/config`. Cette information sert à trois choses :
+
+- `git status` se compare à l'upstream (« ahead », « behind ») ;
+- `git pull` sait quoi intégrer, et `git push` où pousser, sans argument ;
+- `git branch -vv` affiche l'upstream de chaque branche et l'écart avec elle.
+
+Pour une branche que vous créez vous-même (E3), l'upstream n'existe pas encore. Vous le définissez au **premier** push avec `-u` (`--set-upstream`) :
+
+```{.bash risque="reversible"}
+git push -u origin 13-exclure-apprentis
+```
+
+```{.text .sortie}
+branch '13-exclure-apprentis' set up to track 'origin/13-exclure-apprentis'.
+```
+
+Le mot *upstream* a un second sens, dans les workflows à base de *fork* : le nom conventionnel du dépôt d'origine, à côté d'`origin` qui désigne votre copie. Ce sens-là est traité dans l'approfondissement [Forks et upstream](../approfondissements/forks-upstream.qmd).
+
+### Lire ahead et behind
+
+| Situation | `git status` | `git branch -vv` |
+|---|---|---|
+| À jour | `Your branch is up to date with 'origin/main'.` | `[origin/main]` |
+| Vous avez des commits non poussés | `Your branch is ahead of 'origin/main' by 1 commit.` | `[origin/main: ahead 1]` |
+| Le serveur a des commits que vous n'avez pas intégrés | `Your branch is behind 'origin/main' by 2 commits, and can be fast-forwarded.` | `[origin/main: behind 2]` |
+| Divergence | `Your branch and 'origin/main' have diverged, and have 1 and 1 different commits each, respectively.` | `[origin/main: ahead 1, behind 1]` |
+
+**Attention au piège :** `git status` ne contacte **jamais** le serveur. Il compare votre branche à `origin/main`, c'est-à-dire à la photo du dernier fetch. « Up to date » signifie « à jour par rapport à ce que je savais du serveur la dernière fois que je lui ai parlé ». D'où l'habitude : `git fetch`, **puis** `git status`.
+
+## À vous
+
+::: {.mission #m-e2-1 titre="Provoquer, puis comprendre, un push refusé" duree="30 min" mode="en binôme" depart="etape-2-debut"}
+::: objectif
+Vivre un push refusé, le diagnostiquer avec `fetch` et `log --graph`, puis réunir les deux historiques sans rien perdre.
+:::
+
+Votre binôme dispose d'un projet GitLab à l'état `etape-2-debut`, sur lequel vous pouvez tous les deux pousser sur `main`. **A** joue Karim et documente le champ du panel. **B** documente les sources. Chacun travaille dans le terminal intégré de VS Code, sur son propre clone.
+
+::: consignes
+1. **A et B** : clonez le projet, puis vérifiez l'état de départ.
+   ```bash
+   git clone <URL du projet de votre binôme>
+   cd observatoire-industrie
+   git remote -v
+   git status
+   git log --oneline --graph --all -5
+   ```
+2. **A** : dans `data/README.md`, sous le titre `## Champ`, décrivez le champ en deux ou trois lignes (panel synthétique d'environ 300 entreprises et 800 établissements industriels, six sous-filières, salariés présents au 31 décembre). Commitez avec un message qui dit pourquoi (règle R01), puis poussez : `git push`.
+3. **B** : **sans faire de fetch**, sous le titre `## Sources`, décrivez les sources (générateur `scripts/01_generer_donnees.py`, déterministe, graine dérivée du millésime ; empreintes dans `MANIFEST.json` ; nomenclatures publiques dans `data/reference/`). Commitez, puis `git push`. Lisez **tout** le message de refus.
+4. **B** : diagnostiquez **sans rien modifier** : `git fetch`, `git status`, puis `git log --oneline --graph --all -5`. Expliquez à A, graphe à l'appui, pourquoi le push a été refusé.
+5. **B** : relancez `git push` **avant** d'intégrer. Comparez le nouveau message avec le premier : qu'est-ce qui a changé, et pourquoi ?
+6. **B** : tentez `git pull`. Si Git s'arrête sur `fatal: Need to specify how to reconcile divergent branches.`, lisez l'incident 2 plus bas, puis lancez `git pull --no-rebase`.
+7. **B** : vérifiez le graphe et le fichier (les deux sections doivent être présentes), puis `git push`.
+8. **A** : `git pull`. Repérez le mot `Fast-forward`. Puis, chacun de votre côté : `git log --oneline -3`. Les hash doivent être **identiques** sur les deux postes.
+:::
+
+::: reussite
+Sur les deux postes, `git log --oneline --graph --all -4` montre les deux commits de documentation réunis par un commit de fusion ; `git log -1 --format=%p` affiche **deux** hash (les deux parents) ; après un `git fetch`, `git status` indique `Your branch is up to date with 'origin/main'.`
+:::
+
+::: indice
+À l'étape 5, le message ne dit plus `fetch first` mais `non-fast-forward`. Qu'est-ce que votre dépôt sait maintenant qu'il ne savait pas avant le fetch ?
+:::
+
+::: {.indice titre="Indice 2 : un éditeur s'ouvre"}
+`git pull --no-rebase` crée un commit de fusion ; Git ouvre donc l'éditeur configuré (`core.editor`) pour que vous validiez son message. Acceptez le message proposé et fermez l'éditeur. Pour l'accepter sans éditeur : `git pull --no-rebase --no-edit`.
+:::
+
+::: corrige
+Étape 3, sortie attendue : `! [rejected] main -> main (fetch first)`. Le serveur a un commit (celui de A) que le dépôt de B ne possède pas.
+
+Étape 4 : après `git fetch`, `git status` dit `Your branch and 'origin/main' have diverged, and have 1 and 1 different commits each, respectively.` Le graphe montre deux commits frères partant du même parent.
+
+Étape 5 : `! [rejected] main -> main (non-fast-forward)`. B connaît maintenant le commit de A (il est dans `origin/main`), mais `main` n'en descend pas : pousser déplacerait `main` du serveur hors de l'historique qui contient le commit de A.
+
+Étapes 6 et 7 :
+
+```bash
+git pull --no-rebase --no-edit
+git log --oneline --graph --all -4
+git push
+```
+
+Aucun conflit : A et B ont modifié des zones différentes du fichier, séparées par des lignes inchangées. S'ils avaient modifié la même zone, Git se serait arrêté sur un conflit : c'est le sujet de E3.
+:::
+:::
+
+::: formateur
+**Préparation des projets GitLab.** Sur GitLab, la branche par défaut d'un nouveau projet est **protégée** : seuls les *Maintainers* peuvent y pousser, et le force-push est interdit. Pour E2 et E3, les deux membres du binôme doivent pouvoir pousser sur `main` : donnez-leur le rôle *Maintainer* sur le projet d'exercice, ou autorisez temporairement *Developers + Maintainers* dans **Settings › Repository › Protected branches**. Sinon, le premier push échoue avec `remote: GitLab: You are not allowed to push code to protected branches on this project.`, ce qui brouille la leçon. On protège `main` pour de bon en E4.
+
+**Pièges fréquents.** (1) Un stagiaire a déjà `pull.rebase` ou `pull.ff` dans sa configuration globale : l'incident 2 ne se produit pas. Vérifiez avec `git config --get pull.rebase` et `git config --get pull.ff`. (2) A et B modifient des lignes **adjacentes** : conflit prématuré. Rappelez de rester sous son propre titre. (3) L'éditeur par défaut est `vim` ou `nano` : montrez `--no-edit` ou `:wq`.
+
+**Variante seul.** Le formateur joue Karim : il pousse un commit sur `data/README.md` dans le projet de chaque stagiaire, par script, pendant que les stagiaires rédigent la section `## Sources`. Le script du dépôt compagnon, lancé dans le clone du formateur (`python3 depot-compagnon/outils/simuler_collegue.py --depot <clone>`, `--dry-run` pour voir sans rien faire), commite au nom de Karim Haddad « Décrit le champ du panel dans data/README.md » : trois lignes ajoutées sous `## Champ`, rien sous `## Sources`. Le push du stagiaire est refusé (`fetch first`), puis `git pull --no-rebase` fusionne sans conflit.
+:::
+
+::: {.mission #m-e2-2 titre="Lire l'écart avec le serveur avant d'agir" duree="15 min" mode="en binôme" depart="etape-2-debut"}
+::: objectif
+Savoir lire « ahead / behind » dans le terminal et dans la barre d'état de VS Code, et prédire ce que fera le bouton *Sync Changes* avant de cliquer.
+:::
+
+Vous repartez de l'état final de la mission précédente (deux postes à jour).
+
+::: consignes
+1. **A** : ajoutez sous `## Champ` une ligne sur le millésime couvert (2026). Commitez et poussez.
+2. **B** : lancez `git status`. Que dit-il ? Est-ce vrai ? Lancez ensuite `git fetch`, puis de nouveau `git status` et `git branch -vv`.
+3. **B** : ajoutez sous `## Sources` une ligne qui explique comment citer les données d'une publication (l'empreinte du `MANIFEST.json`). Commitez **sans** pousser.
+4. **B** : notez ce qu'affichent `git status`, `git branch -vv` et l'indicateur de synchronisation, en bas à gauche de VS Code, à côté du nom de la branche.
+5. **B** : avant de cliquer sur quoi que ce soit, écrivez en une phrase ce que ferait le bouton **Sync Changes** de la vue Source Control. Puis intégrez **dans le terminal** : `git pull --no-rebase --no-edit`, et enfin `git push`.
+6. **A** : `git fetch`, puis `git status` : lisez « behind … and can be fast-forwarded », puis `git pull`.
+:::
+
+::: reussite
+À l'étape 4, B lit `[origin/main: ahead 1, behind 1]` dans `git branch -vv` et `1↓ 1↑` dans la barre d'état. À la fin, `git branch -vv` affiche `[origin/main]` sans écart sur les deux postes.
+:::
+
+::: indice
+À l'étape 2, avant le fetch, `git status` affirme que tout est à jour. À quoi se compare-t-il exactement ?
+:::
+
+::: corrige
+Étape 2 : avant le fetch, `Your branch is up to date with 'origin/main'.` C'est faux vis-à-vis du serveur, mais vrai vis-à-vis de la photo `origin/main`. Après le fetch : `Your branch is behind 'origin/main' by 1 commit, and can be fast-forwarded.`
+
+Étape 5 : *Sync Changes* fait un **pull, puis un push**. Ici, le pull doit intégrer une divergence : selon la configuration, il crée un commit de fusion, recrée les commits de B (rebase) ou échoue. Le bouton masque cette décision : on préfère donc le terminal tant qu'on ne sait pas ce que le pull va faire.
+:::
+:::
+
+## Quand ça coince
+
+::: {.incident #inc-e2-1 titre="Le push est refusé"}
+::: symptome
+```{.text .sortie}
+$ git push
+To https://gitlab.example.org/oei/observatoire-industrie.git
+ ! [rejected]        main -> main (fetch first)
+error: failed to push some refs to 'https://gitlab.example.org/oei/observatoire-industrie.git'
+hint: Updates were rejected because the remote contains work that you do not
+hint: have locally. This is usually caused by another repository pushing to
+hint: the same ref. If you want to integrate the remote changes, use
+hint: 'git pull' before pushing again.
+hint: See the 'Note about fast-forwards' in 'git push --help' for details.
+```
+
+Variante, si vous aviez déjà fait un fetch sans intégrer :
+
+```{.text .sortie}
+ ! [rejected]        main -> main (non-fast-forward)
+error: failed to push some refs to 'https://gitlab.example.org/oei/observatoire-industrie.git'
+hint: Updates were rejected because the tip of your current branch is behind
+hint: its remote counterpart. If you want to integrate the remote changes,
+hint: use 'git pull' before pushing again.
+```
+:::
+::: hypotheses
+- Mes identifiants GitLab ont expiré.
+- Je n'ai pas le droit de pousser sur `main`.
+- Quelqu'un a poussé sur `main` depuis mon dernier échange avec le serveur.
+- Mon commit est corrompu, il faut le refaire.
+:::
+::: diagnostic
+C'est la troisième hypothèse. Le mot-clé est `[rejected]` (refus décidé par Git, avant tout envoi), suivi de la raison entre parenthèses :
+
+- `fetch first` : le `main` du serveur pointe vers un commit que votre dépôt **ne possède même pas**. Quelqu'un a poussé et vous ne l'avez pas encore téléchargé.
+- `non-fast-forward` : vous possédez ce commit (il est dans `origin/main` après un fetch), mais votre `main` n'en descend pas. Les historiques ont divergé.
+
+Les autres hypothèses produiraient d'autres messages. Un problème d'identifiants donne `Authentication failed` ou une erreur HTTP 401/403 (le texte exact dépend de votre méthode d'authentification). Un refus de droits sur une branche protégée donne `! [remote rejected]` et `remote: GitLab: You are not allowed to push code to protected branches on this project.`
+
+Pour le prouver :
+
+```{.bash risque="sur"}
+git fetch
+git status
+git log --oneline --graph --all -6
+```
+:::
+::: correction
+Intégrer d'abord, pousser ensuite :
+
+```{.bash risque="reversible"}
+git pull --no-rebase
+git push
+```
+
+N'utilisez **jamais** `git push --force` pour « passer » ce refus : vous déplaceriez `main` sur le serveur en faisant sortir de son historique le commit de Karim. Son travail ne serait plus sur `main`, et le prochain `pull` de chacun ferait des dégâts en cascade.
+:::
+::: prevention
+Avant d'intégrer ou de pousser, faites `git fetch` et regardez où est `origin/main`. Le refus devient alors une information attendue, pas une surprise.
+:::
+:::
+
+::: {.regle ref="R02"}
+:::
+
+::: {.incident #inc-e2-2 titre="Le pull s'arrête sans rien faire"}
+::: symptome
+```{.text .sortie}
+$ git pull
+hint: You have divergent branches and need to specify how to reconcile them.
+hint: You can do so by running one of the following commands sometime before
+hint: your next pull:
+hint:
+hint:   git config pull.rebase false  # merge
+hint:   git config pull.rebase true   # rebase
+hint:   git config pull.ff only       # fast-forward only
+hint:
+hint: You can replace "git config" with "git config --global" to set a default
+hint: preference for all repositories. You can also pass --rebase, --no-rebase,
+hint: or --ff-only on the command line to override the configured default per
+hint: invocation.
+fatal: Need to specify how to reconcile divergent branches.
+```
+:::
+::: hypotheses
+- Il y a un conflit entre mon travail et celui de Karim.
+- Ma version de Git est trop ancienne.
+- Git ne sait pas **comment** intégrer deux historiques qui ont divergé, et me demande de choisir.
+:::
+::: diagnostic
+Troisième hypothèse. Le fetch a bien eu lieu (`origin/main` est à jour), mais pour la seconde moitié du pull, Git a besoin d'une décision. Depuis Git 2.33, il ne fusionne plus d'office quand les historiques ont divergé et que rien n'est configuré. Aucun conflit n'est encore en jeu : Git n'a même pas essayé d'intégrer.
+
+Les trois options du message correspondent aux trois intégrations possibles :
+
+| Option | Effet en cas de divergence | Où on la retrouve |
+|---|---|---|
+| `pull.rebase false` (`--no-rebase`) | fusion : un commit de fusion à deux parents | maintenant |
+| `pull.rebase true` (`--rebase`) | vos commits sont **recréés** au-dessus de `origin/main` | E7 |
+| `pull.ff only` (`--ff-only`) | refus : le pull n'accepte que le fast-forward | E4, règle R07 |
+:::
+::: correction
+Pour aujourd'hui, choisissez la fusion **pour cette fois**, sans rien configurer :
+
+```{.bash risque="reversible"}
+git pull --no-rebase
+```
+
+Si vous voulez renoncer à la fusion, et tant que vous n'avez pas validé le commit de fusion : `git merge --abort` remet tout dans l'état d'avant.
+:::
+::: prevention
+Ne configurez pas encore de réglage global : ce choix n'est pas anodin. En E4, l'équipe décidera qu'un pull sur `main` doit toujours être un fast-forward (R07) ; en E7, vous apprendrez à mettre à jour une branche de travail par rebase.
+:::
+:::
+
+## Dans VS Code
+
+Le terminal reste la référence. Voici où retrouver, dans l'interface, ce que vous venez de faire en ligne de commande.
+
+::: {.vscode titre="L'indicateur de branche et de synchronisation"}
+En bas à gauche, la **barre d'état** affiche le nom de la branche courante (`main`), puis un indicateur de synchronisation avec l'upstream : `1↓ 1↑` signifie « 1 commit à recevoir, 1 commit à envoyer ». C'est l'équivalent de `[origin/main: ahead 1, behind 1]` dans `git branch -vv`. Comme `git status`, cet indicateur se calcule à partir de `origin/main` : il n'est à jour qu'après un fetch.
+:::
+
+::: {.vscode titre="Fetch, Pull, Push"}
+Dans la vue **Source Control** (<kbd>Ctrl</kbd>+<kbd>Maj</kbd>+<kbd>G</kbd>), le menu **…** (*Views and More Actions*) › **Pull, Push** propose **Fetch**, **Pull** et **Push**. La palette de commandes (<kbd>Ctrl</kbd>+<kbd>Maj</kbd>+<kbd>P</kbd>) donne les mêmes actions : `Git: Fetch`, `Git: Pull`, `Git: Push`. VS Code peut aussi proposer de lancer des fetch périodiques (réglage `git.autofetch`) : c'est sans risque, puisque fetch ne touche pas à votre travail. Selon votre version, une section **Graph** de la vue Source Control montre les commits entrants et sortants.
+:::
+
+::: {.vscode titre="Le bouton Sync Changes : pull, puis push"}
+Après un commit, la vue Source Control affiche un grand bouton **Sync Changes** (Synchroniser les modifications), avec des flèches et des nombres ; un clic sur l'indicateur de la barre d'état fait la même chose. Ce bouton lance **un pull, puis un push**. Si les historiques ont divergé, le pull doit intégrer : selon votre configuration Git et celle de VS Code, il crée un commit de fusion, recrée vos commits par rebase, ou échoue. Par défaut, VS Code demande une confirmation avant de synchroniser (réglage `git.confirmSync`).
+
+Tant que vous ne savez pas prédire ce que fera le pull, faites `git fetch`, lisez le graphe, puis intégrez dans le terminal.
+:::
+
+## Un service éphémère : ce qui n'est pas poussé n'existe pas
+
+Sur Onyxia, votre VS Code tourne dans un **service** lancé sur un cluster Kubernetes. Ce service est **éphémère** : quand vous le supprimez, ou quand il est supprimé à son expiration, le disque qui porte votre clone disparaît avec lui. Vos commits locaux sont dans le dossier `.git` de ce clone : s'ils ne sont pas poussés, ils disparaissent aussi.
+
+Git ne sauvegarde rien tout seul. Un commit est enregistré dans **votre** dépôt ; seul un push le copie ailleurs. En fin de session, `git status` doit donc dire `up to date` **après un fetch**, pour chaque branche sur laquelle vous avez travaillé (`git branch -vv` les montre toutes d'un coup).
+
+::: {.recit persona="tom"}
+« Vendredi, j'ai supprimé mon service pour en relancer un plus puissant. Mes deux jours de travail sur les pyramides des âges étaient commités… mais pas poussés. »
+:::
+
+::: {.regle ref="R03"}
+:::
+
+Pousser un travail inachevé ne veut pas dire le mettre dans `main` : dès E3, vous pousserez votre **branche**, avec son propre upstream (`git push -u`).
+
+## Ce que disent les développeurs
+
+::: decodeur
+« Ta [main]{.t} est sûrement en retard sur [origin/main]{.t ref="branche-distante"} : fais un [fetch]{.t} avant de [pousser]{.t ref="push"}. Si vous avez [divergé]{.t ref="divergence"}, un [pull]{.t} ne sera pas un [fast-forward]{.t}. Et pense au `-u` au premier push, sinon ta branche n'aura pas d'[upstream]{.t}. »
+
+::: traduction
+Ta branche `main` n'a peut-être pas les derniers commits du serveur, et ta photo du serveur date peut-être : télécharge d'abord (sans risque). Si chacun a des commits que l'autre n'a pas, l'intégration créera un commit de fusion (ou demandera un rebase). Quand tu pousses une nouvelle branche pour la première fois, ajoute `-u` pour que Git retienne quelle branche distante elle suit.
+:::
+:::
+
+::: {.rosette principe="integrite"}
+::: principe
+Personne ne perd le travail d'un autre.
+:::
+::: dev
+Push refusé si ce n'est pas un fast-forward ; jamais de `--force` sur une branche partagée ; intégration fréquente pour que les divergences restent petites.
+:::
+::: stat
+Avant de relancer la production des indicateurs, on fait `git fetch` pour savoir si `R/indicateurs.R` a changé sur le serveur ; on pousse chaque soir, parce qu'un service Onyxia supprimé emporte ce qui n'est pas poussé.
+:::
+:::
+
+## En pratique statistique
+
+- **Un pull peut changer le code que vous alliez exécuter.** Après un pull qui modifie `R/indicateurs.R` ou `scripts/02_preparer.py`, vos résultats de la veille ne correspondent plus au code. Relancez la chaîne concernée avant de commenter un chiffre.
+- **Un pull ne ramène pas les données.** `data/brut/` et `data/prepare/` sont dans le `.gitignore` : Git ne les échange pas. Si un collègue a modifié la préparation, vos fichiers `data/prepare/*.parquet` sont périmés : régénérez-les.
+- **Regarder avant d'intégrer.** `git fetch` puis `git log --oneline main..origin/main` liste les commits que vous allez recevoir. Si l'un d'eux touche une méthode (`git log --stat main..origin/main`), lisez-le avant de continuer votre propre calcul.
+
+::: retenir
+- `origin` est le nom local d'un dépôt distant ; `origin/main` est la photo de son `main` lors du dernier fetch, pull ou push.
+- `fetch` télécharge sans rien toucher ; `pull` = `fetch` + intégration ; `push` envoie des commits et demande de déplacer une branche, ce que Git refuse si ce n'est pas un fast-forward.
+- Deux historiques qui ont divergé se rejoignent par une intégration : aujourd'hui, un commit de fusion à deux parents.
+:::
+
+::: {.checkpoint titre="Avant de passer à la suite"}
+::: {.question rappel="e1"}
+Après le commit de fusion **M**, un collègue affirme : « M contient uniquement les lignes de Karim, c'est un diff ». Qu'en pensez-vous ?
+
+::: reponse
+Un commit est un **instantané complet** des fichiers suivis, pas un diff. **M** contient l'état entier du projet après réunion des deux historiques, et il a **deux parents** (V et K). Le diff « de M » n'existe qu'à la demande, en comparant M à l'un de ses parents.
+:::
+:::
+
+::: question
+Vous venez de faire `git fetch`. Vos fichiers dans VS Code ont-ils changé ? Et votre branche `main` ?
+
+::: reponse
+Non, ni l'un ni l'autre. Seules les branches distantes (`origin/main`) ont avancé. C'est pourquoi le fetch est toujours sans risque.
+:::
+:::
+
+::: question
+`git status` affiche `Your branch is up to date with 'origin/main'.` et pourtant votre push est refusé. Comment est-ce possible ?
+
+::: reponse
+`git status` ne contacte pas le serveur : il compare `main` à `origin/main`, telle qu'elle était au dernier échange. Quelqu'un a poussé depuis. Un `git fetch` suivi de `git status` montrera l'écart.
+:::
+:::
+
+::: question
+Vous faites `git pull` sur `main` sans avoir rien commité. Combien de commits sont créés ?
+
+::: reponse
+Aucun. C'est un fast-forward : Git avance l'étiquette `main` jusqu'à `origin/main`.
+:::
+:::
+
+::: question
+Que fait exactement le bouton **Sync Changes** de VS Code ?
+
+::: reponse
+Un pull (fetch + intégration), puis un push. En cas de divergence, il peut donc créer un commit de fusion, rebaser vos commits ou échouer, selon la configuration.
+:::
+:::
+:::
+
+::: pont
+Vous savez maintenant réunir deux historiques qui ont divergé. Mais Karim et vous aviez de la chance : vous aviez modifié des zones différentes, et vous travailliez tous les deux directement sur `main`, sans pouvoir isoler un travail inachevé. L'étape suivante place chaque sujet sur sa propre branche, puis affronte le cas difficile : deux intentions différentes sur la même ligne de calcul.
+:::

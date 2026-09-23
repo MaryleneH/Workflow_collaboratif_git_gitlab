@@ -1,0 +1,54 @@
+# Approfondissement a-bisect : la dichotomie de git bisect sur l'historique
+# de main entre le tag 2025.0 (c10) et etape-1-debut (c15). Voir la bible, §4.
+titre: "git bisect : couper l'historique en deux, puis encore en deux"
+commits:
+  c09: {x: 0, y: 0, label: "9", msg: "c09 · Ajoute la pyramide des âges et la répartition des métiers"}
+  c10: {x: 1, y: 0, parents: [c09], label: "10", msg: "c10 · Finalise le panorama 2025 pour publication"}
+  c11: {x: 2, y: 0, parents: [c10], label: "11", msg: "c11 · Corrige le calcul de l'âge : âge au 31 décembre de l'année de référence"}
+  c12: {x: 3, y: 0, parents: [c11], label: "12", msg: "c12 · Harmonise les figures avec une charte commune"}
+  c13: {x: 4, y: 0, parents: [c12], label: "13", msg: "c13 · Paramètre le millésime du panorama"}
+  c14: {x: 5, y: 0, parents: [c13], label: "14", msg: "c14 · Ajoute la répartition par PCS et ses tests de cohérence"}
+  c15: {x: 6, y: 0, parents: [c14], label: "15", msg: "c15 · Teste le schéma et la cohérence des données générées"}
+etapes:
+  - texte: "Au tag `2025.0`, le code donne la part des 55 ans et plus **publiée**. Sur `main`, il donne une autre valeur. Le changement est dans l'un des cinq commits **11** à **15**."
+    commande: "git log --oneline 2025.0..main"
+    local:
+      commits: [c09, c10, c11, c12, c13, c14, c15]
+      refs: {main: c15}
+      tags: {"2025.0": c10}
+      head: main
+    surligne: [c11, c12, c13, c14, c15]
+  - texte: "Vous déclarez les deux bornes. Git crée deux références de travail (`bisect/new`, `bisect/old-…`) et place HEAD, **détachée**, au milieu des candidats : sur **12**."
+    commande: "git bisect start && git bisect new main && git bisect old 2025.0"
+    local:
+      commits: [c09, c10, c11, c12, c13, c14, c15]
+      refs: {main: c15, "bisect/new": c15, "bisect/old": c10}
+      tags: {"2025.0": c10}
+      head: c12
+    surligne: [c12]
+  - texte: "Sur **12**, le calcul donne déjà la nouvelle valeur : `git bisect new`. Les commits **12** à **15** sont hors de cause, il ne reste qu'un candidat : **11**."
+    commande: "git bisect new"
+    local:
+      commits: [c09, c10, c11, c12, c13, c14, c15]
+      refs: {main: c15, "bisect/new": c12, "bisect/old": c10}
+      tags: {"2025.0": c10}
+      head: c11
+    surligne: [c11]
+    estompes: [c12, c13, c14, c15]
+  - texte: "Sur **11**, la valeur a changé aussi : c'est le **premier commit « new »**. Deux tests ont suffi pour cinq commits ; il en faudrait une dizaine pour mille."
+    commande: "git bisect new"
+    local:
+      commits: [c09, c10, c11, c12, c13, c14, c15]
+      refs: {main: c15, "bisect/new": c11, "bisect/old": c10}
+      tags: {"2025.0": c10}
+      head: c11
+    surligne: [c11]
+    estompes: [c09, c10, c12, c13, c14, c15]
+  - texte: "`git bisect reset` supprime les références de travail et ramène HEAD sur `main`. L'historique n'a pas changé : bisect ne fait que **lire** et **extraire**."
+    commande: "git bisect reset"
+    local:
+      commits: [c09, c10, c11, c12, c13, c14, c15]
+      refs: {main: c15}
+      tags: {"2025.0": c10}
+      head: main
+    surligne: [c11]

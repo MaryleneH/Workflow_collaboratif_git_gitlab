@@ -1,0 +1,231 @@
+---
+title: "Journal d'hier"
+etape: e5
+description: "Vingt minutes de récupération active : redessiner de mémoire le modèle local/distant et le parcours d'une MR, diagnostiquer un incident mixte et relire le carnet de règles."
+---
+
+::: situation
+Mardi matin. Jules, ingénieur plateforme à la DSI, rejoint les échanges : c'est lui qui administre le GitLab de l'entreprise et ses runners. Avant de lui expliquer ce que l'équipe a changé hier, Inès propose un exercice simple : que chacun reconstitue la journée **sans ses notes**.
+
+Ce qui revient sans effort est acquis. Ce qui ne revient pas, c'est maintenant qu'il faut le retravailler, pas au milieu d'un incident.
+:::
+
+::: {.recit persona="jules"}
+« Protected branch, Draft MR, squash au merge… Vous parlez déjà comme nous. Montrez-moi que vous savez aussi ce que fait chaque commande. »
+:::
+
+Cette étape n'introduit aucune notion nouvelle. Répondez **avant** d'ouvrir les réponses : l'effort de rappel est ce qui fixe le souvenir.
+
+## De mémoire
+
+::: {.mission #m-e5-1 titre="Redessiner le premier jour" duree="7 min" mode="seul, puis en binôme"}
+::: objectif
+Reconstituer sur papier le modèle local/distant et le parcours d'une Merge Request, puis le confronter au graphe.
+:::
+
+::: consignes
+1. Sur une feuille, dessinez deux cadres : **votre dépôt** et **GitLab**. Placez-y trois commits, `main`, `origin/main`, une branche `18-taux-recrutement` et HEAD. Indiquez par des flèches ce que déplacent `git fetch`, `git pull` et `git push`.
+2. En dessous, écrivez dans l'ordre les stations du parcours d'une MR, de l'issue à la suppression de la branche. Marquez chaque station **Git** ou **GitLab**.
+3. Échangez votre feuille avec votre voisin. Entourez ce qui diffère entre vos deux dessins.
+4. Déroulez le graphe ci-dessous étape par étape, puis comparez avec le parcours affiché dessous.
+:::
+
+::: reussite
+Sur votre feuille, `origin/main` est dans **votre** dépôt (et non sur GitLab), `git fetch` ne déplace que `origin/main`, et seules les stations « branche » et « commits » sont marquées Git.
+:::
+:::
+
+::: {.git-graph scenario="e5-rappel"}
+:::
+
+::: {.parcours-mr}
+:::
+
+## Huit questions
+
+::: {.checkpoint titre="Ce qui est resté d'hier"}
+::: {.question rappel="e1"}
+Un collègue affirme : « un commit, c'est la liste des lignes modifiées ». Que lui répondez-vous ?
+
+::: reponse
+Un commit est un **instantané complet** des fichiers suivis, avec un auteur, une date, un message et un lien vers son ou ses parents. Le diff n'est pas stocké : Git le calcule à la demande en comparant deux instantanés.
+:::
+:::
+
+::: {.question rappel="e1"}
+Que fait exactement `git switch -c 18-taux-recrutement` ? Combien de fichiers sont copiés ?
+
+::: reponse
+Aucun. Git crée une référence, `18-taux-recrutement`, qui pointe sur le commit courant, et y attache HEAD. Une branche est une étiquette mobile, pas une copie du projet.
+:::
+:::
+
+::: {.question rappel="e2"}
+Quelle différence entre `git fetch` et `git pull` ? Lequel peut modifier vos fichiers ?
+
+::: reponse
+`git fetch` télécharge les commits manquants et met à jour les branches distantes (`origin/main`) : il ne touche ni à vos branches ni à vos fichiers. `git pull` fait un fetch **puis intègre** la branche suivie dans la branche courante (fast-forward, fusion ou rebase) : c'est lui qui peut modifier vos fichiers et créer un commit.
+:::
+:::
+
+::: {.question rappel="e2"}
+Votre push affiche `! [rejected] main -> main (fetch first)`. Que s'est-il passé, et que faites-vous d'abord ?
+
+::: reponse
+Le serveur contient des commits que vous n'avez pas : accepter votre push les ferait disparaître de `main`. Git refuse. On commence par `git fetch` et `git log --oneline --graph --all` pour voir la divergence, avant d'intégrer.
+:::
+:::
+
+::: {.question rappel="e3"}
+Pourquoi la fusion de #12 a-t-elle été un fast-forward, et celle de #13 un commit de fusion ?
+
+::: reponse
+Quand #12 a été fusionnée, `main` n'avait pas bougé depuis la création de la branche : Git a simplement avancé l'étiquette. Quand #13 est arrivée, `main` contenait déjà #12 : les deux lignes avaient divergé, et il a fallu une fusion à trois voies, qui crée un commit à deux parents.
+:::
+:::
+
+::: {.question rappel="e3"}
+Dans le conflit sur la ligne `summarise`, pourquoi « garder ma version » était-il une mauvaise résolution ?
+
+::: reponse
+Parce que chaque côté portait une intention : le paramètre `seuil` (#12) et l'exclusion des apprentis avec l'effectif (#13). Choisir un camp supprime silencieusement le travail de l'autre. On garde les deux intentions, puis on relance les tests.
+:::
+:::
+
+::: {.question rappel="e4"}
+Git ou GitLab ? Classez : commit, Merge Request, branche protégée, merge, approval, push, issue, suggestion.
+
+::: reponse
+**Git** : commit, merge, push. **GitLab** : Merge Request, branche protégée, approval, issue, suggestion. Le squash est des deux côtés : Git sait le faire, mais dans notre workflow c'est GitLab qui le fait au merge.
+:::
+:::
+
+::: {.question rappel="e4"}
+La MR de Léa vient d'être fusionnée en squash, avec suppression de la branche source. Quelles commandes tape-t-elle, dans quel ordre, et pourquoi `git branch -d` avertit-il ?
+
+::: reponse
+`git switch main`, `git pull` (fast-forward), `git branch -d <branche>`, `git fetch --prune`. Le squash a créé un **nouveau** commit : ceux de la branche ne sont pas des ancêtres de `main`, donc Git ne les considère pas comme fusionnés dans HEAD. Il supprime quand même la branche parce qu'elle est identique à la branche distante qu'elle suit, et le signale.
+:::
+:::
+:::
+
+## Un incident mixte
+
+Hier, Tom est parti avant la fin de l'étape 4 : il n'a pas configuré `pull.ff only`. En attendant la fusion de sa MR, il a corrigé une formulation de la note de méthode de `reports/panorama.qmd` (la ligne sur l'âge), directement sur `main`, et l'a commitée sans la pousser. Ce matin, il met son dépôt à jour.
+
+::: {.incident #inc-e5-1 titre="Un pull du matin qui tourne au conflit"}
+::: symptome
+```{.text .sortie}
+$ git pull
+From https://gitlab.example.org/oei/observatoire-industrie
+   f478ddb..432145a  main       -> origin/main
+hint: You have divergent branches and need to specify how to reconcile them.
+...
+fatal: Need to specify how to reconcile divergent branches.
+$ git pull --no-rebase
+Auto-merging reports/panorama.qmd
+CONFLICT (content): Merge conflict in reports/panorama.qmd
+Automatic merge failed; fix conflicts and then commit the result.
+```
+:::
+::: hypotheses
+- Karim a modifié la même ligne : c'est un conflit ordinaire, Tom le résout et pousse `main`.
+- La `main` de Tom contient un commit qui n'existe pas sur GitLab : elle a divergé de `origin/main`.
+- Le premier pull a abîmé le dépôt ; il vaut mieux recloner.
+:::
+::: diagnostic
+Deux étapes d'hier se superposent. Il faut regarder avant d'agir :
+
+```{.bash risque="sur"}
+git status
+git log --oneline --graph --all -4
+```
+
+```{.text .sortie}
+On branch main
+Your branch and 'origin/main' have diverged,
+and have 1 and 1 different commits each, respectively.
+
+You have unmerged paths.
+  (fix conflicts and run "git commit")
+  (use "git merge --abort" to abort the merge)
+
+Unmerged paths:
+  (use "git add <file>..." to mark resolution)
+	both modified:   reports/panorama.qmd
+
+* 432145a (origin/main, origin/HEAD) Ajoute le taux de recrutement par métier (#18)
+| * e19a7c2 (HEAD -> main) Corrige une coquille dans la note de méthode
+|/
+* f478ddb Merge branch '13-exclure-apprentis'
+```
+
+- **Étape 2 : la divergence.** La `main` de Tom et `origin/main` ont chacune un commit que l'autre n'a pas. Le premier pull, sans réglage, a refusé de choisir ; le second a demandé une fusion.
+- **Étape 3 : le conflit.** Le squash de la MR !1 (c20) a ajouté à la note de méthode une ligne « Recrutements », juste sous la ligne sur l'âge corrigée par Tom. Les deux côtés ont modifié la même zone depuis l'ancêtre commun `f478ddb` (c19) : pour Git, deux modifications de lignes adjacentes forment un conflit.
+- **Étape 4 : la vraie cause.** Tom a commité sur `main`. Même s'il résolvait le conflit, le push de sa `main` serait refusé : elle est protégée. Le dépôt n'est pas abîmé, et le reclonage ferait perdre la correction.
+:::
+::: correction
+On annule la fusion, on range la correction sur une branche, et on remet `main` à sa place.
+
+```{.bash risque="reversible"}
+git merge --abort                            # revenir à l'état d'avant le pull
+git switch -c <n>-coquille-methode          # <n> : numéro de l'issue ouverte pour la coquille
+git branch -f main origin/main               # main rejoint GitLab ; aucun commit n'est perdu
+```
+
+La correction vit désormais sur sa branche, qui a toujours divergé de `main`. On y intègre `main`, comme à l'étape 3, en gardant les deux intentions (la formulation corrigée **et** la nouvelle ligne sur les recrutements) :
+
+```{.bash risque="reversible"}
+git merge origin/main
+# résoudre reports/panorama.qmd, relancer le rendu, puis :
+git add reports/panorama.qmd
+git commit --no-edit                         # garde le message de fusion proposé par Git
+git push -u origin <n>-coquille-methode
+```
+
+Puis une MR, comme pour tout changement. L'étape 7 montrera une autre façon de remettre une branche à jour : le rebase.
+:::
+::: prevention
+Avec `git config --global pull.ff only`, le premier pull se serait arrêté net sur `fatal: Not possible to fast-forward, aborting.`, avant tout conflit. C'est le signal : « j'ai commité sur `main` ».
+:::
+:::
+
+::: {.vscode titre="Reconnaître la situation d'un coup d'œil"}
+Après le premier `git pull`, la barre d'état affiche, à côté de `main`, un indicateur de synchronisation `1↓ 1↑` : un commit à recevoir, un à envoyer. C'est la divergence de l'étape 2. Pendant la fusion, la vue **Source Control** range `reports/panorama.qmd` sous **Merge Changes** : c'est le conflit de l'étape 3, que le Merge Editor permet de résoudre.
+:::
+
+## Le carnet, règle par règle
+
+Le premier jour a produit dix règles. Ouvrez le [carnet de règles](../../memos/carnet-de-regles.qmd), masquez la colonne « Née de » avec la main, et pour chaque règle, de R01 à R10, dites à voix haute **l'incident qui l'a fait naître** et l'étape où il s'est produit.
+
+Une règle dont vous ne retrouvez pas l'origine est une règle que vous appliquerez mal. C'est l'incident qui dit quand elle s'applique, et pourquoi elle n'est pas négociable.
+
+## La phrase-boussole
+
+::: boussole
+Survolez chaque mot : l'étape indiquée est celle où il a pris son sens.
+:::
+
+Hier matin, cette phrase était du jargon. Relisez-la : *MR*, *feature branch*, *divergé*, *main*, *review* et *merge* désignent maintenant des choses que vous avez faites. Deux mots restent à conquérir. Vous avez vu le **squash** à l'œuvre au merge de la MR !1, mais pas encore ce qu'il remplace ni quand le choisir. Le **rebase**, lui, est entièrement nouveau. Ils arrivent à l'étape 7.
+
+::: retenir
+- Votre dépôt et GitLab sont deux dépôts distincts : `origin/main` est la photo, dans **votre** dépôt, de `main` sur GitLab au dernier fetch.
+- Git fournit les commits, les branches et le merge ; GitLab fournit l'issue, la MR, la review, l'approbation et la protection de `main`.
+- On ne commite pas sur `main` : on y fait seulement `git pull`, qui doit être un fast-forward.
+:::
+
+::: formateur
+**Animation (20 min).**
+
+- 0–7 min : mission m-e5-1. Circuler et repérer les erreurs de dessin les plus fréquentes : `origin/main` placé sur GitLab, `git fetch` qui déplace `main`, « branche » dessinée comme une copie des fichiers. Les corriger au tableau en déroulant le graphe.
+- 7–13 min : checkpoint en binôme, questions tirées au hasard. Chacun répond à voix haute avant d'ouvrir la réponse. Noter au tableau les questions ratées par plus d'un tiers du groupe : ce sont elles qu'il faut reprendre, en deux minutes, avant E6.
+- 13–17 min : incident mixte, à diagnostiquer en groupe. Insister sur l'ordre : `git status` et `git log --graph` avant toute commande qui modifie.
+- 17–19 min : carnet R01–R10, à la volée.
+- 19–20 min : boussole et pont vers E6.
+
+**Présenter Jules** : il apporte la culture DSI, et le vocabulaire de la CI qui arrive à l'étape suivante. Le laisser poser la question qui ouvre E6 : « qui relance les tests à chaque push ? ».
+:::
+
+::: pont
+Le premier jour a construit une porte d'entrée pour `main` : une MR relue par un collègue. Mais un relecteur ne relance pas les tests à chaque push, et ne vérifie pas que les parts somment à 100 % sur chaque modification. L'étape suivante confie cette relecture à une machine qui ne se fatigue jamais.
+:::

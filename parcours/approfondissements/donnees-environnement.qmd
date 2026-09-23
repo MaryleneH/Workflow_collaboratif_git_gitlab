@@ -1,0 +1,296 @@
+---
+title: "Ce que Git ne versionne pas : données et environnement"
+approfondissement: a-donnees-environnement
+description: "Pourquoi les données restent hors de Git, comment les référencer (MANIFEST.json, empreinte SHA-256 du contenu), ce que font Git LFS et DVC, comment figer l'environnement (renv.lock, requirements.txt, uv.lock, image de conteneur) et où ranger les secrets."
+chapeau: "Un tag fige le code. Pour qu'une publication soit reproductible, il faut aussi une référence exacte des données et un environnement figé, qui ne vivent pas dans Git."
+---
+
+::: situation
+À l'étape 8, Inès a posé le tag `2026.0` et régénéré les données 2025 pour l'erratum. Le `MANIFEST.json` a redonné la même empreinte : c'était la preuve que l'on refaisait bien le même calcul. Tom demande : « Pourquoi ne pas simplement commiter les fichiers Parquet avec le code ? On serait sûrs d'avoir les bonnes données. » La question est légitime. La réponse tient en quatre raisons, et en quelques fichiers bien choisis.
+:::
+
+## Pourquoi les données ne vont pas dans Git
+
+Un [commit]{.t} est un instantané **complet** des fichiers suivis. Git ne stocke pas deux fois un fichier identique, mais chaque version différente d'un fichier Parquet est conservée **pour toujours**, dans chaque [clone]{.t}.
+
+1. **La taille.** Chaque millésime ajoute des centaines de mégaoctets à l'historique. Un `git clone` télécharge **tout** l'historique : ce qu'on a commité un jour, chacun le retélécharge ensuite. Les instances GitLab limitent aussi la taille des dépôts et des push, selon leur configuration.
+2. **Le binaire.** Un fichier Parquet est compressé : une petite modification de contenu change tout le fichier. Git ne sait ni afficher un [diff]{.t} utile, ni fusionner deux versions en conflit.
+3. **La confidentialité.** Des données individuelles d'entreprises ou de salariés relèvent du secret statistique. Un dépôt Git est fait pour être copié : par chaque `fetch`, sur chaque poste, dans chaque [runner]{.t}.
+4. **L'historique est indélébile.** Supprimer le fichier dans un nouveau commit ne le retire pas des commits précédents. Pour le purger, il faut réécrire tout l'historique (`git filter-repo`), forcer le push et faire recloner toute l'équipe. Et les copies déjà récupérées ne disparaissent pas.
+
+::: {.regle ref="R09"}
+:::
+
+Ce qui va dans Git : le **code** qui produit et lit les données, les **petites nomenclatures publiques** (`data/reference/naf_filiere.csv`, `pcs.csv`, `regions.csv`), la **documentation** (`data/README.md`), et une **référence** précise aux données.
+
+## Où vivent les données
+
+- **Sur Onyxia**, dans le stockage objet S3 (MinIO) associé à votre compte ou à votre projet. Les services VS Code d'Onyxia reçoivent en général des identifiants temporaires en variables d'environnement (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN`, `AWS_S3_ENDPOINT`), et le client `mc` est souvent préconfiguré. Vérifiez selon votre instance.
+- **Pour des données confidentielles**, dans l'espace sécurisé prévu par votre organisation, avec ses propres règles d'accès. Git n'y entre pas.
+- **Dans la formation**, les données sont synthétiques et **régénérées** : `scripts/01_generer_donnees.py --millesime 2026` produit toujours le même contenu.
+
+```{.bash risque="sur"}
+mc ls s3/oei-panel/2026/brut/
+```
+
+```{.bash risque="reversible"}
+mc cp --recursive s3/oei-panel/2026/brut/ data/brut/
+```
+
+## Référencer les données : `MANIFEST.json`
+
+Les données ne sont pas dans Git, mais leur **identité** doit l'être. Le générateur écrit, à côté des tables, un `data/brut/<millésime>/MANIFEST.json`. Ce fichier est dans `data/brut/`, donc ignoré par Git comme les données qu'il décrit ; son **contenu** est conservé de deux façons : le job `donnees` le transmet en artefact et le job `publication` le joint à la [GitLab Release]{.t} du tag, et le message du tag annoté cite les empreintes (`git show 2026.0`). Voici celui du millésime 2026 :
+
+```json
+{
+  "millesime": 2026,
+  "graine": 236492200501070,
+  "graine_panel": 20250113,
+  "version_generateur": "1.0.0",
+  "tables": {
+    "etablissements": {
+      "fichier": "etablissements.parquet",
+      "lignes": 800,
+      "sha256_contenu": "d010fd1bac4c6d2d8fd7c5da04b606a5d3ce137f463bb9cdb31be4fb2cf5bc47"
+    },
+    "recrutements": {
+      "fichier": "recrutements.parquet",
+      "lignes": 6571,
+      "sha256_contenu": "1f4c949386f24ec4118ed27a6dbd64f2fdf988a6bf77e5bb1228c22031717b6a"
+    },
+    "salaries": {
+      "fichier": "salaries.parquet",
+      "lignes": 86771,
+      "sha256_contenu": "4b25597872f4e131fdb473d42178d0b34429cc591cb64f9861aa4f8660f543b6"
+    }
+  }
+}
+```
+
+Il ne contient ni date de génération ni chemin absolu : deux générations du même millésime, sur deux machines, écrivent le **même** fichier.
+
+Pourquoi l'empreinte du **contenu**, et pas celle du fichier ? Deux fichiers Parquet contenant exactement les mêmes lignes peuvent différer octet par octet : compression, taille des blocs, version de la bibliothèque qui les a écrits. L'empreinte du fichier changerait alors sans que les données changent. On calcule donc le SHA-256 d'une représentation **canonique** des lignes : noms de colonnes, puis lignes triées par leur clé, chacune écrite en JSON. C'est ce que fait le générateur du projet (`python/observatoire/generation.py`) :
+
+```python
+def empreinte_table(table: pa.Table, nom: str) -> str:
+    """SHA-256 du contenu canonique d'une table (indépendant du fichier)."""
+    colonnes = table.column_names
+    lignes = table.to_pylist()
+    lignes.sort(key=lambda ligne: tuple(ligne[c] for c in CLES[nom]))
+    h = hashlib.sha256()
+    h.update((json.dumps(colonnes, ensure_ascii=False) + "\n").encode("utf-8"))
+    for ligne in lignes:
+        valeurs = [_valeur_canonique(ligne[c]) for c in colonnes]
+        h.update((json.dumps(valeurs, ensure_ascii=False, separators=(",", ":")) + "\n").encode("utf-8"))
+    return h.hexdigest()
+```
+
+`CLES` donne la clé de tri de chaque table (par exemple `id_salarie` pour `salaries`), et `_valeur_canonique()` écrit les dates et les valeurs manquantes toujours de la même façon.
+
+Une publication est reproductible si, au tag, on retrouve la même empreinte, que les données soient régénérées ou relues depuis S3. C'est ce qu'Inès a vérifié à l'étape 8.
+
+## Git LFS et DVC : ils existent, avec des limites
+
+Deux outils répondent au besoin « des gros fichiers suivis avec le code ». Ils sont utiles dans certains cas, mais ils ne remplacent ni la séparation des données, ni les règles de confidentialité.
+
+**Git LFS** (*Large File Storage*) est une extension de Git, que GitLab sait héberger. Après `git lfs install`, puis `git lfs track "*.parquet"` (qui écrit `.gitattributes`), Git commite un petit **fichier pointeur** à la place du fichier. Le contenu part dans le stockage LFS du projet GitLab :
+
+```{.text .sortie}
+version https://git-lfs.github.com/spec/v1
+oid sha256:4d7a214614ab2935c943f9e0ff69d22eadbb8f32b1258daaa5e2ca24d17e2393
+size 48213377
+```
+
+- **Cas d'usage** : des fichiers binaires non confidentiels qui doivent suivre le code, comme des images de référence pour les tests de figures ou un petit jeu de données public.
+- **Limites** : les fichiers sont **sur le serveur GitLab** (exclu pour des données confidentielles) ; chaque version est gardée, dans la limite du quota de stockage ; chaque poste et chaque image de CI doit avoir `git-lfs` installé.
+
+**DVC** (*Data Version Control*) est un outil tiers, écrit en Python. `dvc add data/brut/salaries.parquet` crée un fichier `salaries.parquet.dvc` (empreinte et taille) que l'on commite, et ajoute le fichier de données au `.gitignore`. Le contenu part vers un stockage que vous choisissez (`dvc remote add`, par exemple un bucket S3), avec `dvc push`. On le récupère avec `dvc pull`.
+
+- **Cas d'usage** : des données volumineuses qui évoluent souvent, avec des pipelines qu'on veut relancer seulement en partie.
+- **Limites** : un outil de plus à installer et à apprendre ; l'empreinte porte sur le **fichier** (MD5 par défaut), pas sur le contenu ; les droits d'accès restent ceux du stockage.
+
+À l'Observatoire, les données sont régénérables et le `MANIFEST.json` suffit. Aucun des deux outils n'est nécessaire.
+
+## Figer l'environnement
+
+Le même code, avec les mêmes données, peut donner un autre chiffre si une version de dplyr ou de DuckDB change un comportement. Il faut donc versionner **la liste exacte** des versions : un [lockfile]{.t}.
+
+**R : renv.** Sur un service Onyxia ou en local, dans le projet :
+
+```r
+renv::init()       # une fois : bibliothèque propre au projet
+renv::snapshot()   # écrit renv.lock : version de R, dépôt, version de chaque paquet
+renv::status()     # le lockfile correspond-il à ce qui est installé et utilisé ?
+renv::restore()    # sur un autre poste, ou au tag 2025.0 : réinstalle ces versions
+```
+
+On versionne `renv.lock`, `.Rprofile`, `renv/activate.R` et `renv/settings.json`. La bibliothèque installée (`renv/library/`) est exclue par le fichier `renv/.gitignore` que renv crée lui-même.
+
+**Python : versions épinglées.** Un `requirements.txt` épinglé fixe chaque version avec `==` :
+
+```{.text filename="requirements.txt"}
+# Versions épinglées : le même code doit produire les mêmes données partout.
+pyarrow==25.0.1
+duckdb==1.5.5
+matplotlib==3.11.2
+pytest==9.1.1
+ruff==0.16.8
+```
+
+C'est le fichier du projet à partir de c15 : la CI l'installe dans chaque job Python (E6), et ruff y est épinglé comme les autres outils.
+
+Épingler les paquets directs ne suffit pas : leurs dépendances (numpy, par exemple) peuvent encore varier. Deux solutions : `uv pip compile requirements.in -o requirements.txt` produit une liste complète et épinglée ; dans un projet décrit par `pyproject.toml`, `uv lock` écrit `uv.lock`, et `uv sync --locked` le respecte strictement.
+
+**L'image de conteneur.** La CI (étape 6) tourne dans des images : `rocker/r-ver:4.4.1`, `python:3.12-slim`. L'image `rocker/r-ver:4.4.1` fixe la version de R, et configure un dépôt CRAN **daté** : `install.packages()` y installe les versions de cette date, et non les dernières. Vérifiez-le dans le conteneur avec `Rscript -e 'getOption("repos")'`.
+
+Un tag d'image peut toutefois être republié (mises à jour du système). Pour une publication, on peut épingler l'image par son **empreinte** :
+
+```yaml
+tests-r:
+  image: rocker/r-ver:4.4.1@sha256:<empreinte lue dans le registre>
+```
+
+::: {.chaine-confiance jusqua="publication"}
+:::
+
+::: {.regle ref="R15"}
+:::
+
+## Les secrets : jamais dans Git
+
+Un jeton d'API, un mot de passe de base de données ou une clé S3 n'ont rien à faire dans le code. À l'étape 4, Tom avait écrit `API_TOKEN = "oei-9f3b2c71e4d84a0b-fictif"` dans un script : un secret commité est compromis, il se révoque.
+
+- **Sur votre poste ou votre service**, R lit au démarrage un fichier `.Renviron` (celui du répertoire de travail, sinon celui de votre dossier personnel) : `OEI_API_TOKEN=...`. Dans le code : `Sys.getenv("OEI_API_TOKEN")`. En Python : `os.environ["OEI_API_TOKEN"]`. Ce fichier est **ignoré** par Git.
+- **Sur Onyxia**, les identifiants S3 sont injectés par la plateforme. D'autres secrets peuvent l'être aussi, selon votre instance.
+- **Dans la CI**, **Settings › CI/CD › Variables** : une variable *Masked* n'apparaît pas dans les journaux des jobs ; une variable *Protected* n'est transmise qu'aux pipelines des branches et tags protégés. Le masquage impose des contraintes sur la valeur (longueur minimale, une seule ligne), qui varient selon la version de GitLab.
+
+## Le `.gitignore` du projet
+
+```{.text filename=".gitignore"}
+# Données individuelles : jamais dans Git (voir data/README.md)
+data/brut/
+data/prepare/
+
+# Résultats et rendus : ils se régénèrent à partir du code
+resultats/
+_output/
+.quarto/
+*_files/
+
+# R
+.Rhistory
+.RData
+.Rproj.user/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.ruff_cache/
+```
+
+Il manque une section : les secrets locaux. Avant de créer un `.Renviron` ou un `.env` dans le projet, ajoutez-les au `.gitignore`, dans une MR comme tout changement :
+
+```text
+# Secrets locaux
+.Renviron
+.env
+```
+
+Pour savoir quelle règle ignore un fichier :
+
+```{.bash risque="sur"}
+git check-ignore -v data/brut/2026/salaries.parquet
+```
+
+```{.text .sortie}
+.gitignore:2:data/brut/	data/brut/2026/salaries.parquet
+```
+
+::: {.incident #inc-a-donnees-1 titre="Le fichier est dans .gitignore, mais Git le suit toujours"}
+::: symptome
+Tom a ajouté `data/prepare/` au `.gitignore`. Pourtant, après avoir relancé la préparation :
+
+```{.text .sortie}
+$ git status --short
+ M data/prepare/salaries_champ.csv
+```
+:::
+::: hypotheses
+- La ligne du `.gitignore` est mal écrite.
+- Le fichier avait été commité avant l'ajout de la règle.
+- VS Code n'a pas rechargé le `.gitignore`.
+:::
+::: diagnostic
+`.gitignore` ne concerne que les fichiers **non suivis**. Un fichier déjà commité reste suivi, quelles que soient les règles. `git check-ignore -v data/prepare/salaries_champ.csv` ne répond rien, car le fichier est suivi. Avec `--no-index`, il affiche bien la règle `.gitignore:3:data/prepare/` : la ligne est correcte.
+:::
+::: correction
+Retirer le fichier de l'index, sans le supprimer du disque, et commiter ce retrait :
+
+```{.bash risque="reversible"}
+git rm --cached data/prepare/salaries_champ.csv
+git commit -m "Retire la table d'analyse préparée du suivi Git : elle est régénérée par 02_preparer.py"
+```
+
+Le fichier reste dans les commits précédents. S'il s'agit de données confidentielles ou d'un secret, cela ne suffit pas : prévenez la responsable du projet (R09).
+:::
+::: prevention
+Écrire le `.gitignore` **au premier commit** du projet, et relire `git status` avant chaque `git add`. Préférez `git add <fichier>` à `git add .`.
+:::
+:::
+
+::: {.mission #m-a-donnees-environnement-1 titre="Auditer ce qui est versionné, et ce qui ne l'est pas" duree="20 min" mode="seul" depart="etape-8-debut"}
+::: objectif
+Vérifier que le dépôt contient le code, les références et les lockfiles, et rien d'autre.
+:::
+
+::: consignes
+1. Listez les fichiers suivis : `git ls-files`. Aucun fichier de `data/brut/`, `data/prepare/` ou `resultats/` ne doit apparaître.
+2. Générez les données 2026, puis vérifiez avec `git check-ignore -v` qu'elles sont bien ignorées.
+3. Comparez les empreintes de `data/brut/2026/MANIFEST.json` avec celles de la publication `2026.0` : `git show 2026.0` les cite dans le message du tag.
+4. Cherchez dans l'historique une trace de secret : `git log -p -S "API_TOKEN" --all`.
+:::
+
+::: reussite
+`git ls-files data/` ne liste que `data/README.md` et les trois nomenclatures de `data/reference/` (`naf_filiere.csv`, `pcs.csv`, `regions.csv`) ; les empreintes du `MANIFEST.json` régénéré sont identiques à celles du tag (pour `salaries` : `4b255978…`).
+:::
+
+::: indice
+`git log -S` cherche les commits qui ajoutent ou retirent une chaîne : vous l'avez utilisé à l'étape 1 pour retrouver le calcul de l'âge.
+:::
+
+::: corrige
+La recherche de `API_TOKEN` retrouve le commit « maj » (`805fa9a`) de la branche `18-taux-recrutement` de l'étape 4 si elle existe encore dans votre dépôt : c'est l'illustration d'un historique indélébile. Le jeton (fictif) doit être considéré comme compromis, même si la MR !1 l'a retiré avant le merge.
+:::
+:::
+
+## En pratique statistique
+
+Le tag dit **quel code**. Le `MANIFEST.json` dit **quelles données**. `renv.lock`, `requirements.txt` et l'image disent **quel environnement**. La Release GitLab réunit les trois, avec le rapport publié. Si l'un manque, « refaire le chiffre de l'an dernier » redevient une enquête.
+
+C'est la différence entre `main` et une publication. `main` est toujours exécutable, relue, avec une CI verte, mais elle évolue chaque jour. Une publication est un point fixe, **destiné à être reproduit** : code, données, environnement.
+
+::: retenir
+- Pas de données dans Git : trop grosses, binaires, parfois confidentielles, et indélébiles une fois commitées. On versionne leur **référence** : chemin, millésime, empreinte SHA-256 du contenu.
+- L'environnement se fige par un lockfile (`renv.lock`, `requirements.txt` épinglé ou `uv.lock`) et une image de version précise ; les secrets passent par des variables d'environnement ou des variables CI masquées.
+- Git LFS et DVC existent pour les gros fichiers, avec leurs limites ; aucun ne rend acceptable la présence de données confidentielles dans un dépôt.
+:::
+
+::: {.checkpoint titre="Avant de revenir au parcours"}
+::: {.question rappel="e8"}
+Le tag `2025.0` suffit-il, seul, à refaire le chiffre publié en 2025 ? Que faut-il d'autre ?
+
+::: reponse
+Non. Le tag fige le code. Il faut aussi la référence exacte des données (le `MANIFEST.json` et ses empreintes) et l'environnement (lockfiles et image), présents au tag ou joints à la Release. C'est la règle R15.
+:::
+:::
+
+::: question
+Pourquoi l'empreinte porte-t-elle sur le contenu des tables plutôt que sur les fichiers Parquet ?
+
+::: reponse
+Parce que deux fichiers Parquet aux lignes identiques peuvent différer octet par octet (compression, version de la bibliothèque). L'empreinte du contenu ne change que si les données changent.
+:::
+:::
+:::

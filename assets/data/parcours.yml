@@ -1,0 +1,217 @@
+# ---------------------------------------------------------------------------
+# Source unique du parcours pédagogique.
+# Lue au rendu par _extensions/formation (navigation-graphe, en-têtes d'étape,
+# ponts entre étapes, page d'accueil, carte du parcours).
+# Ne recopiez jamais ces informations à la main dans les pages.
+# ---------------------------------------------------------------------------
+
+promesse: >-
+  À l'issue des deux jours, vous comprenez les workflows Git professionnels,
+  vous maîtrisez leur vocabulaire et vous savez collaborer avec GitLab. Vous
+  savez aussi appliquer un workflow adapté aux projets statistiques : plus simple
+  que le Git Flow classique, mais fondé sur les mêmes principes d'intégrité, de
+  traçabilité, de revue et de reproductibilité.
+
+question: "Comment tenir la promesse de main quand une équipe grandit ?"
+
+jours:
+  - id: j1
+    numero: 1
+    titre: "Travailler à plusieurs sans se marcher dessus"
+  - id: j2
+    numero: 2
+    titre: "Industrialiser et choisir son workflow"
+
+mouvements:
+  - id: partager
+    titre: "Partager"
+    verbes: "observer, comprendre, expérimenter"
+  - id: collaborer
+    titre: "Collaborer"
+    verbes: "se tromper, corriger, collaborer"
+  - id: industrialiser
+    titre: "Industrialiser"
+    verbes: "automatiser, nettoyer, publier"
+  - id: choisir
+    titre: "Choisir"
+    verbes: "comparer, adapter, décider"
+
+etapes:
+  - id: e0
+    numero: 0
+    jour: j1
+    mouvement: partager
+    court: "Ouverture"
+    titre: "Ce que vous ne comprenez pas encore"
+    fichier: parcours/jour-1/e0-ouverture.qmd
+    duree: 45
+    equipe: [ines]
+    probleme: "Vous savez utiliser Git seul. L'Observatoire vous confie un projet partagé : seul, cela ne suffit plus."
+    outil: "Une phrase de jargon à décoder, un diagnostic de départ, un environnement VS Code prêt."
+    capacite: "situer votre niveau et vérifier que Git, VS Code et GitLab fonctionnent ensemble."
+
+  - id: e1
+    numero: 1
+    jour: j1
+    mouvement: partager
+    court: "Modèle mental"
+    titre: "Un historique, des étiquettes, un curseur"
+    fichier: parcours/jour-1/e1-modele-mental.qmd
+    duree: 60
+    equipe: [ines, karim]
+    probleme: "La part des 55 ans et plus a changé entre deux versions du rapport. Personne ne sait pourquoi."
+    outil: "Le commit comme instantané, le graphe des parents, la branche comme référence mobile, HEAD."
+    capacite: "lire un historique avec git log --graph et retrouver qui a changé une méthode, quand et pourquoi."
+
+  - id: e2
+    numero: 2
+    jour: j1
+    mouvement: partager
+    court: "Dépôt partagé"
+    titre: "Deux historiques qui doivent se rejoindre"
+    fichier: parcours/jour-1/e2-depot-partage.qmd
+    duree: 75
+    equipe: [ines, karim, tom]
+    probleme: "Karim a poussé pendant que vous travailliez : votre push est refusé."
+    outil: "remote, origin, branches distantes, fetch, pull, push, divergence, fast-forward."
+    capacite: "synchroniser votre dépôt avec GitLab en sachant à chaque instant ce que fait chaque commande."
+
+  - id: e3
+    numero: 3
+    jour: j1
+    mouvement: collaborer
+    court: "Branches et conflits"
+    titre: "Travailler à côté, puis réunir"
+    fichier: parcours/jour-1/e3-branches-conflits.qmd
+    duree: 75
+    equipe: [ines, karim, lea, tom]
+    probleme: "Deux personnes modifient la même fonction de calcul d'indicateur, avec deux intentions différentes."
+    outil: "Branches de travail, fusion fast-forward et fusion à trois voies, conflits, Merge Editor de VS Code."
+    capacite: "isoler votre travail dans une branche, fusionner et résoudre un conflit en comprenant les deux intentions."
+
+  - id: e4
+    numero: 4
+    jour: j1
+    mouvement: collaborer
+    court: "Merge Request"
+    titre: "Personne ne merge seul"
+    fichier: parcours/jour-1/e4-merge-request.qmd
+    duree: 90
+    equipe: [ines, karim, lea, tom]
+    probleme: "Un calcul discutable, un chemin en dur et un fichier de données sont arrivés dans main sans relecture."
+    outil: "Issue, Draft MR, diff, commentaires, suggestions, review, approval, branche protégée."
+    capacite: "ouvrir une Merge Request, relire le travail d'un collègue (code et méthode) et le faire aboutir."
+
+  - id: e5
+    numero: 5
+    jour: j2
+    mouvement: industrialiser
+    court: "Rappel"
+    titre: "Journal d'hier"
+    fichier: parcours/jour-2/e5-rappel.qmd
+    duree: 20
+    equipe: [ines, karim, lea, tom]
+    probleme: "Une nuit a passé. Qu'est-ce qui est resté ?"
+    outil: "Récupération active : questions, incident mixte, relecture du carnet de règles."
+    capacite: "reformuler sans notes le modèle local/distant et le parcours d'une Merge Request."
+
+  - id: e6
+    numero: 6
+    jour: j2
+    mouvement: industrialiser
+    court: "Intégration continue"
+    titre: "Une relecture automatique qui ne se fatigue jamais"
+    fichier: parcours/jour-2/e6-ci.qmd
+    duree: 75
+    equipe: [ines, karim, lea, tom, jules]
+    probleme: "Une relecture humaine ne vérifie pas que les parts somment à 100 % à chaque modification."
+    outil: "Pipeline, stage, job, runner, image, .gitlab-ci.yml, tests écrits comme des assertions méthodologiques."
+    capacite: "lire un pipeline, diagnostiquer un job en échec, corriger, et ajouter un contrôle simple."
+
+  - id: e7
+    numero: 7
+    jour: j2
+    mouvement: industrialiser
+    court: "Rebase et squash"
+    titre: "Remettre son travail à jour sans réécrire celui des autres"
+    fichier: parcours/jour-2/e7-rebase-squash.qmd
+    duree: 75
+    equipe: [ines, karim, lea, tom, jules]
+    probleme: "Pendant que Tom corrigeait, main a avancé : sa branche a divergé et contient sept commits « wip »."
+    outil: "rebase (qui crée de nouveaux commits), --force-with-lease, squash au merge, amend, reflog."
+    capacite: "mettre votre branche à jour avant la review et livrer un historique lisible, sans danger pour les autres."
+
+  - id: e8
+    numero: 8
+    jour: j2
+    mouvement: industrialiser
+    court: "Tags, releases, hotfix"
+    titre: "Publier, puis corriger une publication"
+    fichier: parcours/jour-2/e8-tags-releases-hotfix.qmd
+    duree: 50
+    equipe: [ines, karim, lea, tom, jules]
+    probleme: "Le panorama 2025 publié contient une erreur, alors que l'édition 2026 est en cours."
+    outil: "Tag annoté, GitLab Release, versions calendaires, branche de hotfix, detached HEAD, cherry-pick."
+    capacite: "publier une version reproductible et produire un erratum sans embarquer le travail en cours."
+
+  - id: e9
+    numero: 9
+    jour: j2
+    mouvement: choisir
+    court: "Workflows pros"
+    titre: "Même problème, plusieurs réponses"
+    fichier: parcours/jour-2/e9-workflows-pros.qmd
+    duree: 60
+    equipe: [ines, karim, lea, tom, jules]
+    probleme: "Jules propose d'adopter Git Flow « comme à la DSI ». Est-ce la bonne réponse pour l'Observatoire ?"
+    outil: "Git Flow, GitHub Flow, GitLab Flow, trunk-based development : les mêmes briques, assemblées autrement."
+    capacite: "lire, expliquer et critiquer Git Flow, et le situer parmi les pratiques modernes."
+
+  - id: e10
+    numero: 10
+    jour: j2
+    mouvement: choisir
+    court: "Notre workflow"
+    titre: "Déduire notre workflow"
+    fichier: parcours/jour-2/e10-workflow-statistique.qmd
+    duree: 60
+    equipe: [ines, karim, lea, tom, jules]
+    probleme: "Les règles du carnet sont éparses. Il faut en faire une pratique d'équipe écrite et outillée."
+    outil: "Carnet de règles, cartes-options, CONTRIBUTING.md, réglages GitLab du projet."
+    capacite: "justifier chaque règle du workflow de l'équipe et configurer GitLab pour la faire respecter."
+
+  - id: e11
+    numero: 11
+    jour: j2
+    mouvement: choisir
+    court: "Simulation finale"
+    titre: "Une édition complète"
+    fichier: parcours/jour-2/e11-simulation-finale.qmd
+    duree: 40
+    equipe: [ines, karim, lea, tom, jules]
+    probleme: "Préparer l'édition 2027, avec les incidents qui arrivent toujours au mauvais moment."
+    outil: "Tout le workflow, de l'issue au tag, sous contrainte."
+    capacite: "mener un cycle complet de contribution en équipe et réagir correctement aux incidents."
+
+# Branches latérales : elles partent d'une étape et y reviennent.
+approfondissements:
+  - id: a-bisect
+    depuis: e1
+    court: "git bisect"
+    titre: "Retrouver le commit qui a changé un chiffre"
+    fichier: parcours/approfondissements/bisect.qmd
+  - id: a-forks
+    depuis: e2
+    court: "Forks et upstream"
+    titre: "Contribuer à un projet qui n'est pas le vôtre"
+    fichier: parcours/approfondissements/forks-upstream.qmd
+  - id: a-rebase-interactif
+    depuis: e7
+    court: "rebase -i"
+    titre: "Réécrire son propre historique avant de le partager"
+    fichier: parcours/approfondissements/rebase-interactif.qmd
+  - id: a-donnees-environnement
+    depuis: e8
+    court: "Données et environnement"
+    titre: "Ce que Git ne versionne pas : données et environnement"
+    fichier: parcours/approfondissements/donnees-environnement.qmd

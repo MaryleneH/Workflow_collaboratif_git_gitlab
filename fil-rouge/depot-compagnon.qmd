@@ -1,0 +1,272 @@
+---
+title: "Le dépôt compagnon"
+surtitre: "Fil rouge"
+chapeau: "Le vrai dépôt Git de l'Observatoire, sur lequel vous faites toutes les missions : où le trouver, comment l'installer, et comment repartir d'un état propre à n'importe quelle étape."
+description: "Cloner, installer et exécuter le dépôt compagnon de la formation Git à plusieurs, et utiliser ses tags de reprise pour repartir d'un état propre."
+---
+
+## À quoi il sert
+
+Le site explique ; le dépôt compagnon fait **pratiquer**. C'est un vrai projet Git,
+hébergé sur un vrai GitLab : celui de l'[Observatoire](index.qmd), avec son code R et
+Python, son rapport Quarto, ses tests et, à partir de E6, son pipeline.
+
+Il a trois particularités qui en font un outil de formation :
+
+- **Son historique est scénarisé.** Les 25 commits de `main` ont des auteurs, des dates
+  et des messages fixes (y compris quelques mauvais messages, volontairement). Tous
+  les groupes voient le même graphe, avec **les mêmes hash** : le dépôt est reconstruit
+  à l'identique à partir d'un scénario, et les missions peuvent s'y référer. L'équipe y
+  signe de son nom complet : Inès Moreau, Karim Haddad, Léa Fontaine, Tom Mercier et
+  Jules Perrin, avec des adresses `prenom.nom@oei.example.org`.
+- **Il contient des branches d'exercice** : des branches préparées avec un problème
+  à trouver (une MR à relire, un pipeline qui échoue, une branche qui a divergé).
+- **Il porte des tags de reprise** : `etape-3-debut` désigne l'état exact du projet au
+  début de E3. Vous pouvez donc reprendre n'importe quelle mission, même si vous avez
+  manqué la précédente ou si votre dépôt est dans un état inextricable.
+
+## Où le trouver
+
+Le formateur vous donne l'adresse du projet sur **votre** instance GitLab. Dans ce site,
+les exemples utilisent une adresse fictive :
+
+```text
+https://gitlab.example.org/oei/observatoire-industrie
+```
+
+`gitlab.example.org` est un domaine réservé aux exemples : remplacez-le par l'adresse
+réelle. Selon l'organisation choisie, vous travaillez sur le projet commun du groupe, ou
+sur une copie par binôme ou par équipe ; le formateur vous le précise.
+
+## Cloner le dépôt dans VS Code
+
+Ouvrez le [terminal intégré]{.t} de VS Code (<kbd>Ctrl</kbd>+<kbd>ù</kbd> sur un clavier
+français, ou menu **Terminal › New Terminal**), placez-vous dans votre dossier de travail,
+puis :
+
+```{.bash risque="sur"}
+git clone https://gitlab.example.org/oei/observatoire-industrie.git
+cd observatoire-industrie
+code .
+```
+
+`git clone` copie **tout l'historique** : tous les commits, toutes les branches
+(sous la forme de [branches distantes]{.t ref="branche-distante"} `origin/…`) et tous les
+tags. La dernière ligne rouvre VS Code sur le dossier du projet ; vous pouvez aussi
+passer par **File › Open Folder**.
+
+Vérifiez ensuite ce que vous avez récupéré :
+
+```{.bash risque="sur"}
+git log --oneline --graph --all
+git branch -a
+git tag
+```
+
+::: {.vscode titre="Le même dépôt, vu par l'interface"}
+La vue **Source Control** (<kbd>Ctrl</kbd>+<kbd>Maj</kbd>+<kbd>G</kbd>) reconnaît le
+dépôt dès l'ouverture du dossier. La barre d'état, en bas à gauche, affiche la branche
+courante (`main`). Cliquer dessus propose de changer de branche : c'est un `git switch`.
+:::
+
+Sur Onyxia, le service VS Code est **éphémère** : ce que vous n'avez pas poussé
+disparaît avec lui (règle [R03](../memos/carnet-de-regles.qmd#R03)). Si l'instance
+GitLab demande une authentification, utilisez un jeton d'accès personnel (*Personal
+access token*) plutôt que votre mot de passe, et ne l'écrivez **jamais** dans un fichier
+du dépôt.
+
+## Installer les dépendances
+
+Python (3.12 conseillé) : créez un environnement virtuel, puis installez les versions
+épinglées.
+
+```{.bash risque="sur"}
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+R (4.4 conseillé ; la CI utilise R 4.4.1) : la chaîne n'utilise que cinq paquets, listés
+dans `dependances-r.txt`.
+
+```{.bash risque="sur"}
+Rscript -e 'install.packages(c("dplyr", "testthat", "lintr", "knitr", "rmarkdown"))'
+```
+
+Quarto doit aussi être installé ; il l'est déjà sur les services VS Code d'Onyxia
+prévus pour la formation.
+
+## Exécuter la chaîne
+
+Depuis la racine du dépôt, dans cet ordre :
+
+```{.bash risque="sur"}
+python scripts/01_generer_donnees.py --millesime 2026
+python scripts/02_preparer.py --millesime 2026
+Rscript scripts/03_indicateurs.R 2026
+python scripts/04_figures.py --millesime 2026
+quarto render reports/panorama.qmd -P millesime:2026
+```
+
+1. La génération écrit les tables Parquet dans `data/brut/2026/`, avec leur `MANIFEST.json`
+   (option `--sortie` pour écrire ailleurs que dans `data/brut/`).
+2. La préparation interroge ces tables avec DuckDB et écrit les tables d'analyse dans
+   `data/prepare/`.
+3. R calcule les indicateurs dans `resultats/indicateurs_2026.csv`.
+4. Python produit les figures dans `resultats/figures/`.
+5. Quarto assemble le panorama, pour le millésime passé en paramètre, dans
+   `_output/reports/panorama.html`.
+
+Après une exécution, `git status` ne doit montrer **aucun** fichier nouveau : les données
+et les résultats sont exclus par le `.gitignore`. Si un fichier de données apparaît comme
+« Untracked », ne l'ajoutez pas : signalez-le. C'est exactement ce que la règle
+[R09](../memos/carnet-de-regles.qmd#R09) cherche à éviter.
+
+::: {.idee-fausse}
+::: fausse
+Puisque le code est dans Git, les chiffres du panorama le sont aussi.
+:::
+::: juste
+Git versionne le **code** qui produit les chiffres. Les données sont régénérées (ici)
+ou lues sur un stockage à part (en production), et leur référence exacte est
+l'empreinte du `MANIFEST.json`. Refaire un chiffre publié demande le commit, cette
+référence **et** l'environnement : c'est tout l'objet de E8.
+:::
+:::
+
+## Lancer les tests
+
+```{.bash risque="sur"}
+pytest
+Rscript -e 'testthat::test_dir("tests/testthat", stop_on_failure = TRUE)'
+```
+
+Lancez-les depuis la racine du dépôt : `pytest` y trouve sa configuration
+(`pyproject.toml`), et `tests/testthat/helper-projet.R` charge les fonctions de `R/`.
+Si R signale `invalid input found on input connection` au chargement, votre terminal
+n'est pas en UTF-8 : `export LC_ALL=C.UTF-8`, puis relancez.
+
+Les tests Python vérifient le schéma et la cohérence des données générées, sur un
+petit panel qu'ils fabriquent eux-mêmes ; les tests R vérifient les indicateurs (par
+exemple, que les parts par PCS somment à 1 dans chaque établissement). Les lints se
+lancent de même : `ruff check python/ scripts/ tests/python/` et
+`Rscript -e 'print(lintr::lint_dir("."))'` (lignes de 100 caractères au plus, réglage
+du fichier `.lintr`). À partir de E6, le pipeline GitLab lance ces mêmes commandes à chaque
+push : ce qui passe chez vous doit passer dans la CI.
+
+## Les tags de reprise
+
+Chaque étape à partir de E1 a un **tag** qui marque son point de départ. C'est
+l'attribut `depart` des missions : « point de départ `etape-4-debut` ».
+
+| Tag | Où il pointe | État du projet |
+|---|---|---|
+| `etape-1-debut` | c15 | Historique de 2025 et début 2026 : le tag `2025.0` et la correction #7 sont là |
+| `etape-2-debut` | c15 | Même état : vous allez travailler à plusieurs dessus |
+| `etape-3-debut` | c16 | Juste avant les sujets #12 et #13 |
+| `etape-4-debut` | c19 | #12 et #13 fusionnés ; la branche `18-taux-recrutement` attend sa review |
+| `etape-5-debut` | c20 | La MR !1 est fusionnée par squash |
+| `etape-6-debut` | c21 | L'intégration continue est en place |
+| `etape-7-debut` | c22 | `main` contient le travail de Léa (#19) |
+| `etape-8-debut` | c24 | Le panorama 2026 est finalisé, pas encore publié |
+| `etape-9-debut` | c24 | Après E8 : tags `2026.0` et `2025.1`, branche `maintenance/2025` |
+| `etape-10-debut` | c24 | Même état, avant l'écriture du workflow |
+| `etape-11-debut` | c25 | `CONTRIBUTING.md` est écrit : départ de la simulation finale |
+
+Un tag ne bouge jamais : `etape-4-debut` désignera toujours le même commit, quoi que
+vous fassiez sur vos branches.
+
+### Récupérer les tags
+
+`git clone` récupère les tags. Si votre dépôt est plus ancien que ceux-ci, ou si vous
+voulez vous assurer d'avoir la liste complète :
+
+```{.bash risque="sur"}
+git fetch --tags
+git tag --list "etape-*"
+```
+
+### Regarder un état, sans rien modifier
+
+```{.bash risque="reversible"}
+git switch --detach etape-3-debut
+```
+
+Vous êtes en [detached HEAD]{.t} : HEAD désigne directement un commit, pas une branche.
+C'est parfait pour lire le code, lancer les tests ou regénérer un chiffre. Si vous
+commitez dans cet état, vos commits ne sont portés par aucune branche : ils deviendront
+difficiles à retrouver dès que vous changerez de place. Pour revenir :
+`git switch main`.
+
+### Travailler à partir d'un état
+
+```{.bash risque="reversible"}
+git switch -c reprise-e3 etape-3-debut
+```
+
+Cette commande crée une **nouvelle branche** `reprise-e3` qui part du commit désigné par
+le tag, et vous place dessus. Vous pouvez y commiter normalement ; `main` n'est pas
+touchée.
+
+Si vous avez des modifications non commitées qui entrent en conflit avec l'état visé,
+Git refuse de changer de place plutôt que de les écraser :
+
+```{.text .sortie}
+error: Your local changes to the following files would be overwritten by checkout:
+	R/indicateurs.R
+Please commit your changes or stash them before you switch branches.
+Aborting
+```
+
+Commitez-les sur votre branche, ou mettez-les de côté avec `git stash`, puis recommencez.
+
+### Ce qu'il ne faut pas faire
+
+- **Ne remettez pas `main` sur un tag de reprise** (`git reset --hard etape-3-debut` sur
+  `main`, puis `git push --force`). Sur un dépôt partagé, vous effaceriez le travail de
+  tout le groupe. `main` est d'ailleurs protégée à partir de E4 : GitLab refuserait le
+  push.
+- **Ne déplacez pas et ne supprimez pas les tags** de reprise : les missions des autres
+  s'y réfèrent.
+- **Ne poussez pas vos branches `reprise-…`** sauf si le formateur le demande : elles
+  sont personnelles.
+
+## Les branches d'exercice
+
+Le dépôt contient quelques branches préparées, visibles après un `git fetch` sous la
+forme `origin/…`. Pour travailler sur l'une d'elles, `git switch` suffit : Git crée la
+branche locale et la relie à la branche distante du même nom.
+
+```{.bash risque="reversible"}
+git switch 21-regrouper-pcs
+```
+
+| Branche | Part de | Sert en | Ce qu'elle contient |
+|---|---|---|---|
+| `18-taux-recrutement` | `etape-4-debut` | E4 | La MR de Tom à relire : un seul commit, et plusieurs problèmes à trouver |
+| `21-regrouper-pcs` | `etape-6-debut` | E6 | Un sujet de Tom dont le pipeline échoue |
+| `21-regrouper-pcs-e7` | `etape-6-debut` | E7 | Le même sujet, sept commits plus tard, alors que `main` a avancé |
+| `maintenance/2025` | `2025.0` | E9 et suivantes | La branche de maintenance de l'édition 2025, dans son état de référence après l'erratum |
+| `hotfix/25-erratum-age` | `maintenance/2025` | E9 et suivantes | L'état de référence du correctif de l'erratum 2025 |
+
+En E8, c'est **vous** qui créez `maintenance/2025` et la branche de hotfix. Les versions
+de référence ci-dessus servent à reprendre le parcours à partir de E9 avec un état
+complet et identique pour tous.
+
+Les problèmes contenus dans ces branches ne sont pas décrits ici : les trouver est
+l'objet des missions.
+
+## Côté formateur
+
+Le formateur dispose d'un espace dédié, qui n'apparaît pas dans ce site : préparation de
+l'instance GitLab, création des copies par équipe, remise à zéro du dépôt entre deux
+sessions, injection des incidents de la simulation finale. Si votre dépôt est dans un
+état que ni un tag de reprise ni le [mémo de dépannage](../memos/depannage.qmd) ne
+permettent de rattraper, demandez-lui.
+
+::: formateur
+Voir l'[espace formateur](../formateur/index.qmd), en particulier
+[la préparation](../formateur/preparation.qmd) (instance, comptes, copies du projet) et
+[la remise à zéro](../formateur/remise-a-zero.qmd) (reconstruction de l'historique et
+des tags de reprise).
+:::

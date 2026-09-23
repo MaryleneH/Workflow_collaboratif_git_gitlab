@@ -1,0 +1,91 @@
+---
+title: "Git ou GitLab ?"
+surtitre: "Mémo"
+chapeau: "Git est un logiciel installé sur votre machine ; GitLab est un serveur qui héberge des dépôts Git et y ajoute la collaboration. Savoir dire qui fait quoi évite la moitié des malentendus."
+description: "Ce que fait Git en local, sans réseau, et ce qu'ajoute GitLab côté serveur : tableau des notions, cas trompeurs (tag et Release, squash, bouton Merge, branche protégée) et quiz."
+---
+
+## Deux mondes, une frontière nette
+
+**Git** fonctionne entièrement sur votre machine. Débranchez le réseau : vous pouvez toujours commiter, créer des branches, fusionner, rebaser, poser des tags, lire tout l'historique. Git ne connaît que des objets (commits, arbres, fichiers) et des références (branches, tags, HEAD). Il ne parle au réseau que pour trois commandes : `git fetch`, `git pull` (qui commence par un fetch) et `git push`, plus `git clone` au départ.
+
+**GitLab** est un serveur. Il héberge un dépôt Git, le même que le vôtre, et ajoute tout ce qui concerne **les personnes** : qui a le droit de pousser, qui doit relire, ce qui doit être vérifié avant d'entrer dans `main`, où l'on discute d'un besoin. Rien de tout cela n'est stocké dans les commits.
+
+Un test simple : **si la notion survit à un `git clone` sur une autre machine, elle appartient à Git.** Les commits, les branches, les tags et `.gitignore` voyagent avec le clone. Les issues, les MR, les commentaires, les approbations, les pipelines et les réglages de protection restent sur le serveur.
+
+::: {.git-ou-gitlab}
+:::
+
+## Les cas trompeurs
+
+Certaines notions sont à cheval sur la frontière, ou portent un nom qui trompe. Ce sont elles qui provoquent les malentendus en réunion.
+
+| On dit… | Ce qui appartient à Git | Ce qu'ajoute GitLab (ou GitHub) |
+|---|---|---|
+| « On a tagué la version 2026.0 » | Le [tag]{.t} annoté : une référence fixe vers un commit, créée par `git tag -a`, qui voyage avec le dépôt. | La [GitLab Release]{.t} : notes de version, liens, rapport joint, **attachés** à un tag. Supprimer la Release ne supprime pas le tag. |
+| « On squashe les commits » | `git merge --squash` ou `git rebase -i` : regrouper des commits, en local. | L'option *Squash commits* d'une MR : GitLab crée lui-même, au moment du merge, un commit unique sur `main`. C'est la pratique de notre workflow. |
+| « J'ai mergé dans GitLab » | La fusion elle-même : GitLab exécute une opération **Git** côté serveur et produit des commits ordinaires, que vous récupérez par `git fetch`. | Le bouton *Merge*, les conditions à remplir (pipeline, fils résolus, approbations) et la méthode choisie dans les réglages du projet. |
+| « main est protégée » | Rien : Git ignore totalement cette notion. Votre `git push` part normalement… | …et c'est le **serveur** qui le refuse : `remote: GitLab: You are not allowed to push code to protected branches on this project.` |
+| « Le fichier est ignoré » | `.gitignore` est lu par **Git**, sur votre machine, au moment du `git add` et de `git status`. | GitLab n'en fait rien : il affiche le fichier comme n'importe quel autre. |
+| « La CI a planté » | `.gitlab-ci.yml` est, pour Git, un fichier texte ordinaire, versionné et relu comme le reste. | Le [pipeline]{.t}, ses jobs et ses runners : seul GitLab lit ce fichier et l'exécute. |
+| « J'ai ouvert une PR » | Rien : ni la PR ni la MR ne sont des objets Git. | [Pull Request]{.t} est le nom **GitHub** ; sur GitLab, on dit Merge Request (MR). |
+| « Je pousse sur origin » | `origin` est un nom **local** que `git clone` a donné à une URL. | Cette URL désigne ici le projet GitLab, mais `origin` pourrait pointer vers un autre serveur, ou vers un dossier. |
+| « Closes #30 » | Pour Git, c'est du texte dans un message de commit. | GitLab lit ce texte et **ferme l'issue** #30 quand la MR est fusionnée dans la branche par défaut. |
+| « La branche a été supprimée » | Votre branche **locale** existe toujours, et `origin/30-…` aussi jusqu'au prochain `git fetch --prune`. | L'option *Delete source branch* supprime la branche **sur le serveur** après le merge. |
+
+::: idee-fausse
+::: fausse
+GitLab, c'est Git avec une interface web.
+:::
+::: juste
+GitLab **héberge** un dépôt Git et l'affiche, mais l'essentiel de sa valeur est ailleurs : droits, Merge Requests, review, pipelines, Releases. À l'inverse, tout ce que fait Git fonctionne sans GitLab. Les deux se complètent ; aucun ne remplace l'autre.
+:::
+:::
+
+## Et VS Code dans tout ça ?
+
+VS Code n'est ni Git ni GitLab : c'est une **interface**. Sa vue [Source Control]{.t} exécute des commandes Git à votre place (le bouton *Commit* lance `git commit`, *Sync Changes* lance un pull puis un push). L'extension *GitLab Workflow*, facultative, interroge l'API de GitLab pour afficher MR, issues et pipelines dans l'éditeur. Dans les deux cas, la vérité est ailleurs : dans votre dépôt pour Git, sur le serveur pour GitLab. Voir le mémo [Git dans VS Code](vscode.qmd).
+
+## Quiz : Git ou GitLab ?
+
+::: {.checkpoint titre="Qui fournit quoi ?"}
+::: {.question rappel="e2"}
+`git fetch` met à jour `origin/main`. `origin/main` est-il une information de GitLab ?
+
+::: reponse
+Non. `origin/main` est une **branche distante**, une référence **locale** de Git qui mémorise où était `main` sur le remote lors de votre dernier échange avec lui. Elle vit dans votre dépôt et peut être en retard sur le serveur.
+:::
+:::
+
+::: question
+Une MR a été fusionnée avec l'option *Squash commits*. Le commit unique qui apparaît dans `main` est-il un commit Git ordinaire ?
+
+::: reponse
+Oui. C'est **GitLab** qui l'a créé, sur le serveur, mais c'est un commit Git comme un autre : un instantané, un parent, un auteur, un message. `git fetch` le rapatrie et `git log` l'affiche. Ce qui reste propre à GitLab, c'est la MR, sa discussion et ses approbations.
+:::
+:::
+
+::: {.question rappel="e4"}
+Tom tape `git push origin main` et reçoit `! [remote rejected] main -> main (pre-receive hook declined)`. Est-ce Git qui l'empêche de pousser ?
+
+::: reponse
+Non. Git a bien envoyé les commits ; c'est le **serveur GitLab** qui a refusé la mise à jour, parce que `main` est une branche protégée (ligne `remote: GitLab: You are not allowed to push code to protected branches on this project.` juste au-dessus). La protection est un réglage GitLab ; Git l'ignore.
+:::
+:::
+
+::: question
+Draft, HEAD, runner, reflog, approval, fast-forward : rangez chaque mot dans la bonne colonne.
+
+::: reponse
+**Git** : HEAD, reflog, fast-forward. **GitLab** : Draft, runner, approval. Piège : GitLab propose une *méthode de merge* appelée *Fast-forward merge* ; le fast-forward lui-même reste une opération Git, que GitLab exécute côté serveur.
+:::
+:::
+
+::: question
+Vous supprimez une GitLab Release par erreur. Le tag `2026.0` a-t-il disparu ?
+
+::: reponse
+Non. La Release est un objet GitLab **attaché** au tag ; la supprimer laisse le tag intact dans le dépôt, et dans tous les clones qui l'ont récupéré. On peut recréer la Release à partir du même tag.
+:::
+:::
+:::

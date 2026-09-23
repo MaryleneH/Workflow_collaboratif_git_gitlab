@@ -1,0 +1,40 @@
+# Étape E1 : aperçu de la HEAD détachée (développée en E8).
+# X est le commit d'essai de l'incident inc-e1-1 : aucune branche ne le retient.
+titre: "HEAD détachée : visiter la publication 2025"
+commits:
+  c09: {x: 0, y: 0, msg: "Ajoute la pyramide des âges et la répartition des métiers"}
+  c10: {x: 1, y: 0, parents: [c09], msg: "Finalise le panorama 2025 pour publication"}
+  c11: {x: 2, y: 0, parents: [c10], msg: "Corrige le calcul de l'âge : âge au 31 décembre de l'année de référence"}
+  c12: {x: 3, y: 0, parents: [c11], msg: "Harmonise les figures avec une charte commune"}
+  c13: {x: 4, y: 0, parents: [c12], msg: "Paramètre le millésime du panorama"}
+  c14: {x: 5, y: 0, parents: [c13], msg: "Ajoute la répartition par PCS et ses tests de cohérence"}
+  c15: {x: 6, y: 0, parents: [c14], msg: "Teste le schéma et la cohérence des données générées"}
+  X: {x: 2, y: 1, parents: [c10], couleur: travail, msg: "essai sur l'âge"}
+etapes:
+  - texte: "Sur `main`, HEAD désigne une **branche**, qui désigne un commit. `cat .git/HEAD` affiche `ref: refs/heads/main`."
+    commande: "git switch main"
+    commits: [c09, c10, c11, c12, c13, c14, c15]
+    refs: {main: c15}
+    tags: {"2025.0": c10}
+    head: main
+  - texte: "HEAD désigne **directement** le commit **c10** : c'est la HEAD détachée. Vos fichiers redeviennent ceux de la publication 2025 ; `main` n'a pas bougé."
+    commande: "git switch --detach 2025.0"
+    commits: [c09, c10, c11, c12, c13, c14, c15]
+    refs: {main: c15}
+    tags: {"2025.0": c10}
+    head: c10
+    surligne: [c10]
+  - texte: "Un commit dans cet état crée **X**, de parent **c10**. HEAD avance avec lui, mais **aucune branche** ne le désigne."
+    commande: "git commit -am \"essai sur l'âge\""
+    commits: [c09, c10, c11, c12, c13, c14, c15, X]
+    refs: {main: c15}
+    tags: {"2025.0": c10}
+    head: X
+    surligne: [X]
+  - texte: "Retour sur `main` : plus aucun nom ne mène à **X**. Git vous prévient ; le commit reste retrouvable un temps par `git reflog` (étape 7), puis le ménage automatique de Git le supprime."
+    commande: "git switch main"
+    commits: [c09, c10, c11, c12, c13, c14, c15, X]
+    refs: {main: c15}
+    tags: {"2025.0": c10}
+    head: main
+    estompes: [X]

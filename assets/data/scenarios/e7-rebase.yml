@@ -1,0 +1,80 @@
+titre: "git rebase origin/main : sept commits rejoués, sept nouveaux hash"
+nom_distant: "GitLab (origin)"
+couleurs:
+  "21-regrouper-pcs": travail
+commits:
+  C: {x: 0, y: 0, msg: "c21 · Met en place l'intégration continue (#20)"}
+  L: {x: 2, y: 0, parents: [C], msg: "c22 · Ajoute la répartition des établissements par région (#19)"}
+  D: {x: 1, y: 1, parents: [C], msg: "Regroupe les PCS en quatre grandes catégories"}
+  E: {x: 2, y: 1, parents: [D], msg: "wip"}
+  F: {x: 3, y: 1, parents: [E], msg: "corrige le test"}
+  G: {x: 4, y: 1, parents: [F], msg: "oups"}
+  H: {x: 5, y: 1, parents: [G], msg: "wip 2"}
+  I: {x: 6, y: 1, parents: [H], msg: "corrige le lint"}
+  J: {x: 7, y: 1, parents: [I], msg: "encore"}
+  "D'": {x: 3, y: 2, parents: [L], label: "D′", msg: "Regroupe les PCS en quatre grandes catégories (copie rejouée sur L)"}
+  "E'": {x: 4, y: 2, parents: ["D'"], label: "E′", msg: "wip (copie : le conflit a été résolu ici)"}
+  "F'": {x: 5, y: 2, parents: ["E'"], label: "F′", msg: "corrige le test (copie)"}
+  "G'": {x: 6, y: 2, parents: ["F'"], label: "G′", msg: "oups (copie)"}
+  "H'": {x: 7, y: 2, parents: ["G'"], label: "H′", msg: "wip 2 (copie)"}
+  "I'": {x: 8, y: 2, parents: ["H'"], label: "I′", msg: "corrige le lint (copie)"}
+  "J'": {x: 9, y: 2, parents: ["I'"], label: "J′", msg: "encore (copie)"}
+etapes:
+  - texte: "Tom a poussé ses sept commits (**D** à **J**) sur `21-regrouper-pcs`. Entre-temps, la MR !4 de Léa a été fusionnée : sur GitLab, `main` est sur **L**. Le dépôt de Tom ne le sait pas encore : son `origin/main` est toujours sur **C**."
+    local:
+      commits: [C, D, E, F, G, H, I, J]
+      refs: {main: C, origin/main: C, 21-regrouper-pcs: J, origin/21-regrouper-pcs: J}
+      head: 21-regrouper-pcs
+    distant:
+      commits: [C, L, D, E, F, G, H, I, J]
+      refs: {main: L, 21-regrouper-pcs: J}
+  - texte: "`git fetch` télécharge **L** et avance `origin/main`. La divergence devient visible : **L** d'un côté, **D** à **J** de l'autre, avec **C** pour ancêtre commun. Aucune branche locale n'a bougé."
+    commande: "git fetch"
+    local:
+      commits: [C, L, D, E, F, G, H, I, J]
+      refs: {main: C, origin/main: L, 21-regrouper-pcs: J, origin/21-regrouper-pcs: J}
+      head: 21-regrouper-pcs
+    distant:
+      commits: [C, L, D, E, F, G, H, I, J]
+      refs: {main: L, 21-regrouper-pcs: J}
+    surligne: [L]
+  - texte: "`git rebase origin/main` rejoue la modification de **D**, puis celle de **E**, et ainsi de suite, au-dessus de **L**. Chaque rejeu crée un **nouveau** commit (**D′** à **J′**) : même message, même modification, mais un autre parent, donc un autre hash. Git place ensuite la branche sur **J′**. Les originaux existent toujours : `origin/21-regrouper-pcs` les désigne encore."
+    commande: "git rebase origin/main"
+    local:
+      commits: [C, L, D, E, F, G, H, I, J, "D'", "E'", "F'", "G'", "H'", "I'", "J'"]
+      refs: {main: C, origin/main: L, 21-regrouper-pcs: "J'", origin/21-regrouper-pcs: J}
+      head: 21-regrouper-pcs
+    distant:
+      commits: [C, L, D, E, F, G, H, I, J]
+      refs: {main: L, 21-regrouper-pcs: J}
+    estompes: [D, E, F, G, H, I, J]
+    surligne: ["D'", "E'", "F'", "G'", "H'", "I'", "J'"]
+  - texte: "`git push` est **refusé** (*non-fast-forward*) : sur GitLab, `21-regrouper-pcs` pointe sur **J**, qui n'est pas un ancêtre de **J′**. Accepter ce push retirerait **D** à **J** de la branche distante. Rien n'a changé, ni chez vous ni sur le serveur."
+    commande: "git push"
+    local:
+      commits: [C, L, D, E, F, G, H, I, J, "D'", "E'", "F'", "G'", "H'", "I'", "J'"]
+      refs: {main: C, origin/main: L, 21-regrouper-pcs: "J'", origin/21-regrouper-pcs: J}
+      head: 21-regrouper-pcs
+    distant:
+      commits: [C, L, D, E, F, G, H, I, J]
+      refs: {main: L, 21-regrouper-pcs: J}
+    estompes: [D, E, F, G, H, I, J]
+    surligne: [J, "J'"]
+  - texte: "`git push --force-with-lease` vérifie d'abord que la branche distante est **encore sur J**, là où votre dernier fetch l'a vue. C'est le cas : GitLab remplace **J** par **J′**. Chez vous, plus aucune branche ne désigne les originaux ; le reflog, lui, s'en souvient encore."
+    commande: "git push --force-with-lease"
+    local:
+      commits: [C, L, D, E, F, G, H, I, J, "D'", "E'", "F'", "G'", "H'", "I'", "J'"]
+      refs: {main: C, origin/main: L, 21-regrouper-pcs: "J'", origin/21-regrouper-pcs: "J'"}
+      head: 21-regrouper-pcs
+    distant:
+      commits: [C, L, "D'", "E'", "F'", "G'", "H'", "I'", "J'"]
+      refs: {main: L, 21-regrouper-pcs: "J'"}
+    estompes: [D, E, F, G, H, I, J]
+  - texte: "Quelques semaines plus tard, les entrées du reflog ont expiré et le nettoyage automatique de Git (`git gc`) a supprimé les originaux. Il reste une branche **linéaire**, posée sur le `main` actuel : c'est elle que la review va relire."
+    local:
+      commits: [C, L, "D'", "E'", "F'", "G'", "H'", "I'", "J'"]
+      refs: {main: C, origin/main: L, 21-regrouper-pcs: "J'", origin/21-regrouper-pcs: "J'"}
+      head: 21-regrouper-pcs
+    distant:
+      commits: [C, L, "D'", "E'", "F'", "G'", "H'", "I'", "J'"]
+      refs: {main: L, 21-regrouper-pcs: "J'"}

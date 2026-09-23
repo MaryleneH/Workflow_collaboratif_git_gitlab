@@ -1,0 +1,513 @@
+---
+title: "Publier, puis corriger une publication"
+etape: e8
+description: "Marquer une publication par un tag annoté et une GitLab Release, rendre un chiffre publié reproductible, puis produire un erratum depuis le tag publié grâce à une branche de maintenance et un cherry-pick."
+---
+
+::: situation
+Lundi 2 mars 2026. Le panorama 2026 est prêt : la MR d'Inès (c24, « Finalise le panorama 2026 ») est fusionnée, le pipeline de `main` est vert. Il faut maintenant **publier**, c'est-à-dire désigner pour toujours l'état exact du code qui a produit les chiffres diffusés.
+
+Le même jour, un lecteur écrit à l'Observatoire. Selon lui, la part des 55 ans et plus du panorama **2025** est trop élevée d'environ un point et demi. Karim reconnaît le bug #7 : l'âge était calculé à la date d'extraction des données. Il l'a corrigé dans `main` en septembre (c11), mais l'édition 2025 n'a jamais été republiée.
+
+Or `main` contient désormais tout le travail 2026 : nouvelle charte graphique, regroupement des PCS, répartition par région. Comment corriger 2025 sans publier 2026 par accident ?
+:::
+
+::: {.recit persona="ines"}
+« Le chiffre de 2025 est faux, et il est cité. Je veux un erratum, pas une nouvelle édition. »
+:::
+
+## Un nom qui ne bouge pas
+
+Une [branche]{.t} est une référence **mobile** : `main` désigne c24 aujourd'hui, c25 la semaine prochaine. Pour une publication, il faut l'inverse : un nom qui désignera **toujours** le même commit. C'est un [tag]{.t}.
+
+::: {.git-graph scenario="e8-tag"}
+:::
+
+Git connaît deux sortes de tags.
+
+- Le **tag léger** (`git tag 2026.0`) n'est qu'un nom posé sur un commit, comme une branche qui n'avancerait jamais. Il ne dit ni qui l'a posé, ni quand, ni pourquoi.
+- Le **tag annoté** (`git tag -a`) est un objet Git à part entière : il contient l'auteur du tag, sa date et un message, et il désigne un commit. C'est lui qui convient à une publication.
+
+```{.bash risque="reversible"}
+git switch main
+git pull
+git tag -a 2026.0 -m "Panorama 2026 : publication"
+git show 2026.0
+```
+
+```{.text .sortie}
+tag 2026.0
+Tagger: Inès Moreau <ines.moreau@oei.example.org>
+Date:   Mon Mar 2 15:30:00 2026 +0100
+
+Panorama 2026 : publication
+
+commit 15385ef02c9a86fbff242173674bc21e837a53f8
+Author: Inès Moreau <ines.moreau@oei.example.org>
+Date:   Mon Mar 2 10:00:00 2026 +0100
+
+    Finalise le panorama 2026
+...
+```
+
+Deux dates, deux auteurs possibles : celui du commit (qui a écrit le code) et celui du tag (qui a décidé de publier). Chez vous, la ligne `Tagger:` portera votre nom et l'heure de la commande ; le commit, lui, est celui du dépôt compagnon. Dans le dépôt compagnon construit jusqu'au bout, le message du tag `2026.0` va plus loin : il cite la commande de génération des données et l'empreinte de chaque table (`git show 2026.0`). Vous verrez plus bas pourquoi. `git cat-file -t 2026.0` répond `tag` pour un tag annoté, `commit` pour un tag léger.
+
+### Les tags ne partent pas tout seuls
+
+```{.bash risque="sur"}
+git push
+```
+
+```{.text .sortie}
+Everything up-to-date
+```
+
+`git push` envoie les branches, **pas les tags**. GitLab ne connaît pas encore `2026.0`. On pousse un tag explicitement, par son nom :
+
+```{.bash risque="reversible"}
+git push origin 2026.0
+```
+
+```{.text .sortie}
+To https://gitlab.example.org/oei/observatoire-industrie.git
+ * [new tag]         2026.0 -> 2026.0
+```
+
+Autre possibilité : `git push --follow-tags` pousse, avec les branches, les tags **annotés** qui désignent des commits poussés. Évitez en revanche `git push --tags`, qui envoie **tous** vos tags locaux, y compris ceux posés pour un essai. Dans l'autre sens, `git fetch` récupère automatiquement les tags qui désignent des commits téléchargés.
+
+Un tag publié ne se déplace **jamais**. Si une publication doit être corrigée, on crée un **nouveau** tag (`2025.1`) : c'est tout l'objet de la seconde moitié de cette étape. Pour s'en assurer, GitLab permet de **protéger** les tags : **Settings › Repository › Protected tags**, avec un motif comme `20*` et *Allowed to create* réservé aux Maintainers. Seuls les rôles autorisés peuvent alors créer ces tags, et personne ne peut les déplacer ou les supprimer par un simple push ; selon votre version, la suppression reste possible pour les Maintainers, depuis l'interface.
+
+::: {.vscode titre="Créer et pousser un tag"}
+La palette de commandes (<kbd>Ctrl</kbd>+<kbd>Maj</kbd>+<kbd>P</kbd>) propose **Git: Create Tag**, qui demande un nom puis un message (tag annoté). Attention à **Git: Push Tags** : c'est l'équivalent de `git push --tags`, qui pousse tous vos tags locaux. Préférez le terminal et `git push origin 2026.0`, qui ne pousse que ce que vous nommez.
+:::
+
+## Publier 2026.0 : tag, pipeline, Release
+
+Le tag appartient à Git. La **publication** proprement dite, avec ses notes et ses fichiers, est un objet GitLab : la [GitLab Release]{.t}.
+
+- Une Release est **attachée à un tag**. Elle porte un titre, des notes de version et des liens : le rapport HTML, le `MANIFEST.json` des données, les figures.
+- Elle se consulte dans **Deploy › Releases** (GitLab 16 et 17 ; l'emplacement du menu varie selon les versions).
+- Supprimer une Release ne supprime pas le tag, et inversement : ce sont deux objets distincts, l'un dans Git, l'autre dans GitLab.
+
+À l'Observatoire, personne ne crée la Release à la main : le push du tag déclenche un [pipeline]{.t} de tag, et le job `publication` du stage `publier` (E6) s'en charge. Extrait du `.gitlab-ci.yml` (le fichier complet est en E6) :
+
+```yaml
+publication:                   # crée la GitLab Release d'un tag de publication (E8)
+  stage: publier
+  image: registry.gitlab.com/gitlab-org/release-cli:v0.18.0
+  needs: [donnees, rapport]
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^\d{4}\.\d+$/
+  script:
+    - echo "Publication du panorama $CI_COMMIT_TAG (millésime $MILLESIME)"
+  release:
+    tag_name: $CI_COMMIT_TAG
+    name: "Panorama $CI_COMMIT_TAG"
+    description: >-
+      Panorama de l'emploi dans la filière industrielle stratégique, version
+      $CI_COMMIT_TAG. Code : ce tag. Données : MANIFEST.json (empreintes SHA-256
+      du contenu de chaque table). Environnement : requirements.txt et images
+      python:3.12-slim, rocker/r-ver:4.4.1, rocker/verse:4.4.1.
+    assets:
+      links:
+        - name: "Rapport HTML"
+          url: "$CI_PROJECT_URL/-/jobs/artifacts/$CI_COMMIT_TAG/raw/_output/reports/panorama.html?job=rapport"
+        - name: "MANIFEST.json des données"
+          url: "$CI_PROJECT_URL/-/jobs/artifacts/$CI_COMMIT_TAG/raw/data/brut/$MILLESIME/MANIFEST.json?job=donnees"
+```
+
+La règle ne retient que les tags de la forme `AAAA.N` (`2026.0`, `2025.1`) : les tags de reprise de la formation (`etape-8-debut`…) ne déclenchent rien. Le mot-clé `release:` s'appuie sur l'outil `release-cli`, présent dans l'image du job ; les liens pointent vers les artefacts des jobs `rapport` et `donnees` du même pipeline.
+
+### Pourquoi `2026.0` et pas `v1.3.0` ?
+
+Les numéros suivent une [version calendaire]{.t} (CalVer), au format `AAAA.N`. `2026.0` est la publication de l'édition 2026 ; `2026.1` en serait le premier erratum. Le numéro dit au lecteur **de quelle édition** il s'agit, ce qu'un numéro technique ne dirait pas.
+
+Le [SemVer]{.t} (`MAJEUR.MINEUR.CORRECTIF`) convient aux **logiciels et packages** : si l'équipe diffusait un package R `observatoire`, il passerait de `1.4.2` à `2.0.0` le jour où une fonction changerait de signature. Pour un rapport annuel, cette information n'a pas de sens.
+
+::: {.mission #m-e8-1 titre="Publier l'édition 2026" duree="10 min" mode="en binôme" depart="etape-8-debut"}
+::: objectif
+Créer le tag annoté `2026.0`, le pousser, et vérifier que GitLab a produit la Release.
+:::
+
+Un tag `2026.0` ne peut exister qu'une fois par projet GitLab : si plusieurs binômes partagent le même projet d'exercice, le formateur désigne celui qui publie.
+
+::: consignes
+1. `git fetch`, `git switch main`, `git pull`. Vérifiez avec `git log --oneline -1` que vous êtes sur « Finalise le panorama 2026 ».
+2. Créez le tag annoté `2026.0` avec le message « Panorama 2026 : publication ». Lisez `git show 2026.0`.
+3. Faites `git push`, puis `git ls-remote --tags origin` : le tag est-il sur GitLab ?
+4. Poussez le tag par son nom.
+5. Sur GitLab, ouvrez **Build › Pipelines** : suivez le pipeline du tag jusqu'au job `publication`. Ouvrez ensuite **Deploy › Releases**.
+:::
+
+::: reussite
+`git ls-remote --tags origin` affiche deux lignes, `refs/tags/2026.0` et `refs/tags/2026.0^{}`, et le hash de la seconde est celui de `git rev-parse main` ; la Release « Panorama 2026.0 » apparaît dans **Deploy › Releases**.
+:::
+
+::: indice
+La ligne qui se termine par `^{}` donne le commit désigné par le tag annoté ; l'autre donne l'objet tag lui-même.
+:::
+
+::: corrige
+```bash
+git fetch && git switch main && git pull
+git log --oneline -1                          # Finalise le panorama 2026
+git tag -a 2026.0 -m "Panorama 2026 : publication"
+git show 2026.0                               # Tagger, date, message, puis le commit
+git push                                      # Everything up-to-date
+git ls-remote --tags origin                   # rien pour 2026.0
+git push origin 2026.0                        # * [new tag] 2026.0 -> 2026.0
+git ls-remote --tags origin                   # refs/tags/2026.0 et refs/tags/2026.0^{}
+git rev-parse main                            # identique à la ligne ^{}
+```
+:::
+:::
+
+## Ce que le tag rend reproductible
+
+Un tag désigne un commit, donc un état exact du **code**. Est-ce suffisant pour refaire, dans trois ans, le chiffre publié ? Non. Il faut aussi savoir **sur quelles données** et **dans quel environnement** ce code a tourné.
+
+Il faut donc distinguer deux niveaux d'exigence.
+
+- **`main`** est toujours exécutable, relue et testée (CI verte). Elle n'est pas pour autant reproductible au sens fort : les données d'entrée peuvent être régénérées ou remplacées, et une dépendance non épinglée peut changer de version.
+- **Une publication** est destinée à être reproductible. Le tag relie quatre éléments :
+  1. **le code** : le commit désigné par le tag ;
+  2. **les données** : le `MANIFEST.json` écrit par `scripts/01_generer_donnees.py`, qui donne le millésime, la graine et l'**empreinte SHA-256 du contenu** de chaque table, joint à la Release ;
+  3. **l'environnement** : les [lockfiles]{.t ref="lockfile"} (le `requirements.txt` épinglé, versionné avec le code, et le `renv.lock` généré sur Onyxia) et les images épinglées du `.gitlab-ci.yml` (`rocker/r-ver:4.4.1`, `python:3.12-slim`) ;
+  4. **le rapport** : le HTML produit par le pipeline de tag, attaché à la Release.
+
+Pourquoi une empreinte du **contenu** plutôt que du fichier ? Deux fichiers Parquet aux données identiques peuvent différer octet par octet : métadonnées, compression, version de la bibliothèque qui les a écrits. L'empreinte du contenu ne change que si une valeur change.
+
+::: {.chaine-confiance jusqua="publication"}
+:::
+
+::: {.regle ref="R15"}
+:::
+
+L'approfondissement [Ce que Git ne versionne pas : données et environnement](../approfondissements/donnees-environnement.qmd) détaille le `MANIFEST.json`, `renv` et le choix des images.
+
+## Revenir en 2025 : la HEAD détachée
+
+Avant de corriger, Karim veut voir **exactement** ce qui a été publié en 2025, et vérifier qu'il sait le refaire. Il se place sur le tag :
+
+```{.bash risque="reversible"}
+git switch --detach 2025.0
+```
+
+```{.text .sortie}
+HEAD is now at 2990990 Finalise le panorama 2025 pour publication
+```
+
+`git switch 2025.0`, sans l'option, est refusé :
+
+```{.text .sortie}
+fatal: a branch is expected, got tag '2025.0'
+hint: If you want to detach HEAD at the commit, try again with the --detach option.
+```
+
+`git switch` exige une branche, parce qu'un tag ne peut pas avancer. Avec `--detach`, HEAD pointe **directement sur un commit** : c'est la [detached HEAD]{.t}. L'ancienne commande `git checkout 2025.0` y mène aussi, avec un long avertissement qui commence par *You are in 'detached HEAD' state*.
+
+::: {.git-graph scenario="e8-detached"}
+:::
+
+En HEAD détachée, tout fonctionne : lire, exécuter, régénérer. Karim recrée l'environnement de l'époque et régénère les données 2025 :
+
+```{.bash risque="sur"}
+git status
+```
+
+```{.text .sortie}
+HEAD detached at 2025.0
+nothing to commit, working tree clean
+```
+
+```{.bash risque="sur"}
+python -m venv .venv-2025
+source .venv-2025/bin/activate
+pip install -r requirements.txt
+python scripts/01_generer_donnees.py --millesime 2025
+```
+
+Le fichier `data/brut/2025/MANIFEST.json` produit donne **la même empreinte** que celle que cite le message du tag (`git show 2025.0`) : pour la table `salaries`, `e19fc21a…`. Mêmes données, au bit près. Relancer le calcul avec le code de 2025.0 redonne le chiffre publié (24,16 %), et le code corrigé donne 22,60 % : un point et demi de moins. L'écart vient donc du code, et non des données : c'est la preuve dont Inès a besoin pour écrire l'erratum.
+
+::: {.incident #inc-e8-1 titre="Le commit a disparu"}
+::: symptome
+Pendant son exploration, Tom a ajouté une note au rapport et l'a commitée, puis il est revenu sur `main` :
+
+```{.text .sortie}
+Warning: you are leaving 1 commit behind, not connected to
+any of your branches:
+
+  de4d0d4 Ajoute une note d'erratum
+
+If you want to keep it by creating a new branch, this may be a good time
+to do so with:
+
+ git branch <new-branch-name> de4d0d4
+
+Switched to branch 'main'
+```
+
+`git log --oneline --all` ne montre plus son commit.
+:::
+::: hypotheses
+- Git a supprimé le commit, parce qu'on ne peut pas commiter sur un tag.
+- Le commit existe, mais plus aucune branche ni aucun tag ne le désigne.
+- Le commit a été ajouté au tag `2025.0`, qui a bougé.
+:::
+::: diagnostic
+Le commit a bien été créé, avec `2025.0` pour parent. Pendant la HEAD détachée, **seul HEAD** le désignait. En revenant sur `main`, HEAD l'a quitté : le commit n'est plus accessible depuis aucune référence, d'où son absence dans `git log --all`. Il existe toujours dans le dépôt, et le reflog garde la trace du passage :
+
+```{.bash risque="sur"}
+git reflog -n 3
+```
+
+```{.text .sortie}
+15385ef HEAD@{0}: checkout: moving from de4d0d4fa3c2b61e0b9d7a4c1f2e8a9b6c5d4e3f to main
+de4d0d4 HEAD@{1}: commit: Ajoute une note d'erratum
+2990990 HEAD@{2}: checkout: moving from main to 2025.0
+```
+
+Le tag n'a pas bougé : un tag n'avance jamais.
+:::
+::: correction
+Posez une branche sur le commit, en recopiant le hash donné par l'avertissement ou par le reflog :
+
+```{.bash risque="reversible"}
+git branch sauvetage de4d0d4
+```
+
+Le commit est de nouveau visible et durable. Ce travail relève en réalité de la correction de l'édition 2025 : il sera repris dans la branche de hotfix.
+:::
+::: prevention
+La HEAD détachée sert à **regarder**. Pour y travailler, créez d'abord une branche : `git switch -c <nom>` crée une branche à l'endroit où vous êtes, et vos commits y seront attachés.
+:::
+:::
+
+## L'erratum 2025.1
+
+Pourquoi ne pas corriger depuis `main` ? Parce que `main` contient quatorze commits postérieurs à 2025.0, dont tout le travail 2026. Un erratum tagué sur `main` publierait la nouvelle charte, les PCS regroupées et la répartition par région sous l'étiquette « 2025 ». Il faut partir **du tag publié** et n'y ajouter **que** la correction.
+
+::: {.git-graph scenario="e8-hotfix"}
+:::
+
+**1. Inès crée la branche de maintenance** de l'édition 2025, sur le tag, et la publie :
+
+```{.bash risque="reversible"}
+git switch -c maintenance/2025 2025.0
+git push -u origin maintenance/2025
+```
+
+Elle la protège aussitôt dans **Settings › Repository › Protected branches** (*Allowed to push and merge* : No one, *Allowed to merge* : Maintainers). Comme `main`, cette branche ne reçoit plus rien que par MR.
+
+**2. Karim crée la branche de hotfix** depuis la branche de maintenance :
+
+```{.bash risque="reversible"}
+git fetch
+git switch -c hotfix/25-erratum-age origin/maintenance/2025
+```
+
+Le préfixe `hotfix/` signale une correction urgente d'une version publiée ([hotfix]{.t}). Le numéro est celui de l'issue #25.
+
+**3. Il reporte la correction de `main`.** Pas question de la réécrire : elle existe, elle est relue et testée depuis six mois. Il retrouve son hash, puis la reporte avec un [cherry-pick]{.t} :
+
+```{.bash risque="sur"}
+git log --oneline --grep "Closes #7" main
+```
+
+```{.bash risque="reversible"}
+git cherry-pick -x 42931da
+```
+
+```{.text .sortie}
+[hotfix/25-erratum-age 5952335] Corrige le calcul de l'âge : âge au 31 décembre de l'année de référence
+ Date: Mon Sep 15 10:12:40 2025 +0200
+ 3 files changed, 10 insertions(+), 4 deletions(-)
+```
+
+`42931da` est c11 dans le dépôt compagnon ; le hash du nouveau commit dépend de la date à laquelle vous faites le cherry-pick. La ligne `Date:` rappelle que la date d'**auteur** d'origine est conservée.
+
+Comme le rebase en E7, le cherry-pick **crée un nouveau commit**, qui applique la même modification que c11. Ici, c11 suit directement 2025.0 : le nouveau commit a donc le même parent (c10) et le même instantané. Son hash est pourtant différent, parce que le hash couvre aussi l'auteur du commit, la date et le message. L'option `-x` ajoute justement au message une ligne qui relie les deux commits :
+
+```{.text .sortie}
+Corrige le calcul de l'âge : âge au 31 décembre de l'année de référence
+
+...
+Closes #7
+
+(cherry picked from commit 42931da60b26ceb1fe0156248fea57d9825b4915)
+```
+
+Dans l'historique de la maintenance, on sait ainsi que ce commit est le **même correctif** que celui de `main`. C'est un *backport* : le report d'une correction vers une version antérieure. D'ordinaire, le correctif se trouve plus loin dans `main`, après d'autres commits, et le cherry-pick peut produire un conflit : la résolution est celle de E3, et `git cherry-pick --abort` annule l'opération.
+
+**4. Il ajoute la note d'erratum** dans `reports/panorama.qmd`, qui annonce la correction au lecteur :
+
+```markdown
+::: {.callout-note}
+## Erratum (version 2025.1)
+La part des salariés de 55 ans et plus publiée dans la version 2025.0
+était surestimée d'environ 1,5 point (24,2 % au lieu de 22,6 %) : l'âge
+était calculé à la date d'extraction des données, et non au 31 décembre de
+l'année de référence. Les chiffres de cette version sont corrigés. Les
+données sont inchangées (même `MANIFEST.json`).
+:::
+```
+
+Il relance les tests (`test-age.R` existe depuis c08), commite en citant #25, pousse et ouvre la **MR !5**.
+
+**5. La MR !5 vise `maintenance/2025`, pas `main`.** Le lien proposé par GitLab au moment du push crée une MR vers la branche par défaut, donc vers `main`. Changez la branche cible (*Change branches*) avant de créer la MR. Fusionnée dans `main`, elle y ferait entrer la note d'erratum 2025 et un doublon de c11, sans rien corriger de la publication 2025.
+
+Point d'attention : `2025.0` est antérieur à l'arrivée de la CI (c21). Tant que `maintenance/2025` ne contient pas de `.gitlab-ci.yml`, GitLab n'y lance **aucun pipeline**. Les tests sont alors lancés en local, et la review le mentionne. C'est une limite réelle des vieilles versions, pas une exception à R11.
+
+Léa relit le correctif, Inès la note d'erratum. La MR est fusionnée **sans squash** : les deux commits ont chacun un sens, et le squash effacerait la mention *cherry picked from*. R14 vise les commits de travail « wip », pas un backport. Avec la méthode *Fast-forward merge* du projet, `maintenance/2025` avance simplement jusqu'au commit de la note : aucun commit de fusion, et `2025.1` se trouve deux commits au-dessus de `2025.0`.
+
+**6. Inès tague l'erratum** sur la branche de maintenance :
+
+```{.bash risque="reversible"}
+git switch maintenance/2025
+git pull
+git tag -a 2025.1 -m "Panorama 2025 : erratum sur la part des 55 ans et plus (#25)"
+git push origin 2025.1
+```
+
+Elle crée la Release `2025.1` (à la main, faute de pipeline sur cette branche) et ajoute dans les notes de la Release `2025.0` un lien vers l'erratum. `2025.1` combine le code corrigé, **les mêmes données** (même empreinte) et le même environnement que `2025.0`. La seule différence entre les deux publications est la correction : c'est exactement ce qu'un erratum doit garantir.
+
+**7. Et `main` ?** Rien à faire ici : la correction y est depuis c11. C'est l'exception. En général, un hotfix est fait **d'abord** sur la version publiée, et il doit **aussi** rejoindre `main`, par une MR ou un cherry-pick, sinon le bug réapparaît à l'édition suivante. La note d'erratum, elle, ne concerne que 2025 et n'a pas sa place dans `main`.
+
+::: {.regle ref="R16"}
+:::
+
+`maintenance/2025` est une branche de **version maintenue**, qui vit à côté de `main` et ne reçoit que des corrections. Vous retrouverez cette brique en E9 : elle appartient à la famille du GitLab Flow.
+
+::: {.mission #m-e8-2 titre="Produire l'erratum 2025.1" duree="25 min" mode="en binôme" depart="etape-8-debut"}
+::: objectif
+Corriger une publication à partir de son tag, sans rien embarquer de `main`, et publier `2025.1`.
+:::
+
+Rôle A joue Inès (maintenance, protection, tag), rôle B joue Karim (hotfix, cherry-pick, MR).
+
+::: consignes
+1. **B** : `git switch --detach 2025.0`, régénérez les données 2025 et notez l'empreinte de `salaries` dans `data/brut/2025/MANIFEST.json`. Comparez-la à l'empreinte de référence de l'édition 2025, citée dans le message du tag (`git show 2025.0`). Revenez sur `main`.
+2. **A** : créez `maintenance/2025` sur `2025.0`, poussez-la et protégez-la sur GitLab.
+3. **B** : créez `hotfix/25-erratum-age` depuis `origin/maintenance/2025`. Retrouvez c11 avec `git log --grep`, puis `git cherry-pick -x`.
+4. **B** : ajoutez la note d'erratum au rapport, lancez les tests R, commitez (message citant #25), poussez, ouvrez la MR !5 **vers `maintenance/2025`**.
+5. **A** : relisez, fusionnez sans squash, avec suppression de la branche source.
+6. **A** : taguez `2025.1` sur `maintenance/2025` à jour et poussez le tag.
+:::
+
+::: reussite
+`git log --oneline --graph --decorate main maintenance/2025` montre `2025.1` deux commits au-dessus de `2025.0`, sur une ligne séparée de `main` ; `git log -1 --format=%B 2025.1~1` se termine par `(cherry picked from commit …)` ; `git rev-parse main` n'a pas changé depuis la mission précédente.
+:::
+
+::: indice
+Pour la MR, vérifiez la ligne « From `hotfix/25-erratum-age` into … » en haut du formulaire.
+:::
+
+::: {.indice titre="Indice 2 : retrouver c11"}
+`git log --oneline --grep "#7" main -- R/age.R`
+:::
+
+::: corrige
+```bash
+# B : vérifier la reproductibilité de 2025.0
+git switch --detach 2025.0
+python -m venv .venv-2025 && source .venv-2025/bin/activate
+pip install -r requirements.txt
+python scripts/01_generer_donnees.py --millesime 2025   # salaries : e19fc21a…, comme dans git show 2025.0
+deactivate && git switch main
+# A : branche de maintenance (puis Settings › Repository › Protected branches)
+git switch -c maintenance/2025 2025.0
+git push -u origin maintenance/2025
+# B : hotfix
+git fetch
+git switch -c hotfix/25-erratum-age origin/maintenance/2025
+git log --oneline --grep "Closes #7" main            # 42931da
+git cherry-pick -x 42931da
+# éditer reports/panorama.qmd (note d'erratum)
+Rscript -e 'testthat::test_dir("tests/testthat", stop_on_failure = TRUE)'
+git commit -am "Ajoute la note d'erratum du panorama 2025 (#25)"
+git push -u origin hotfix/25-erratum-age
+# MR !5 : cible maintenance/2025, sans squash (fast-forward), Delete source branch
+# A : tag
+git switch maintenance/2025 && git pull
+git tag -a 2025.1 -m "Panorama 2025 : erratum sur la part des 55 ans et plus (#25)"
+git push origin 2025.1
+```
+:::
+:::
+
+::: formateur
+Dans le dépôt compagnon, l'empreinte de référence de l'édition 2025 est dans le message du tag `2025.0` (et dans `depot-compagnon/README.md`) ; `maintenance/2025` n'a **pas** de `.gitlab-ci.yml` (le fichier n'arrive qu'en c21) : ni la MR !5 ni le tag `2025.1` n'ont de pipeline. Insister sur la limite plutôt que la masquer. Piège le plus fréquent : la MR !5 créée vers `main` par le lien du push ; faire relire la ligne « into … » du formulaire avant de créer la MR. Si un stagiaire remarque que `maintenance/2025` aurait pu simplement avancer en fast-forward sur c11 (qui suit directement c10), le féliciter : le cherry-pick reste la méthode générale, car d'ordinaire le correctif est précédé d'autres commits dans `main`. Timing : 10 min pour m-e8-1, 25 min pour m-e8-2, 5 min de débriefing sur R16.
+:::
+
+## Ce que disent les développeurs
+
+::: decodeur
+« On [backporte]{.t ref="cherry-pick"} le fix sur la branche de maintenance, on [tague]{.t ref="tag"} une [patch release]{.t ref="semver"} et on met à jour les [release notes]{.t ref="gitlab-release"}. »
+
+::: traduction
+On reporte la correction, déjà présente dans la branche principale, vers la branche qui représente la version publiée (`git cherry-pick -x`). On pose un nouveau tag annoté, qui n'incrémente que le dernier numéro : en SemVer, `1.4.2` devient `1.4.3` ; chez nous, `2025.0` devient `2025.1`. Puis on complète les notes de la Release sur GitLab pour expliquer ce qui a changé.
+:::
+:::
+
+::: {.rosette principe="reproductibilite"}
+::: principe
+Une publication peut être reconstruite à l'identique, et corrigée sans rien embarquer d'autre.
+:::
+::: dev
+Release versionnée (tag annoté + GitLab Release), artefacts construits par la CI à partir du tag, lockfiles, images épinglées ; branches de versions maintenues et backports.
+:::
+::: stat
+Tag annoté, données identifiées par leur empreinte (`MANIFEST.json`), environnement figé (`requirements.txt`, image rocker, `renv.lock`), rapport attaché à la Release. Un erratum est une nouvelle version (`2025.1`) : mêmes données, code corrigé, note au lecteur.
+:::
+:::
+
+## En pratique statistique
+
+- **Publier, c'est taguer.** Un chiffre diffusé sans tag est un chiffre dont on ne pourra pas prouver l'origine.
+- **Un erratum ne réécrit pas l'histoire.** `2025.0` reste disponible : c'est la version citée par ceux qui ont repris le chiffre. `2025.1` s'y ajoute, avec une note qui explique l'écart.
+- **Vérifier avant de corriger.** Régénérer les données au tag et retrouver la même empreinte, c'est établir que l'écart vient du code et non des données. Sans cette vérification, l'erratum reste une hypothèse.
+- **CalVer pour les éditions, SemVer pour les outils.** Si l'équipe publie un jour ses fonctions en package, ce package aura sa propre numérotation, indépendante des éditions du panorama.
+
+::: retenir
+- Un **tag annoté** est une référence fixe, avec auteur, date et message ; il se pousse explicitement (`git push origin 2026.0`). La **GitLab Release** s'y attache : le tag appartient à Git, la Release à GitLab.
+- `main` est exécutable, relue et testée ; une **publication** est reproductible : le tag relie le code, l'empreinte des données, l'environnement figé et le rapport.
+- Un **erratum** part du tag publié (branche de maintenance, hotfix, `cherry-pick -x`), passe par une MR, devient un nouveau tag (`2025.1`) ; la correction doit aussi exister dans `main`.
+:::
+
+::: {.checkpoint titre="Avant de passer à la suite"}
+::: {.question rappel="e1"}
+En temps normal, HEAD désigne une branche. Que désigne-t-elle après `git switch --detach 2025.0`, et pourquoi un commit fait à cet endroit risque-t-il de se « perdre » ?
+
+::: reponse
+HEAD désigne directement le commit c10, sans passer par une branche. Un commit fait là fait avancer HEAD, et HEAD seule. En revenant sur une branche, plus aucune référence ne le désigne : il n'apparaît plus dans `git log --all`, et seul le reflog permet de le retrouver.
+:::
+:::
+
+::: {.question rappel="e7"}
+Le commit reporté par `git cherry-pick -x` sur `hotfix/25-erratum-age` a-t-il le même hash que c11 ? Pourquoi ?
+
+::: reponse
+Non. Comme le rebase, le cherry-pick crée un **nouveau** commit. Même avec le même parent et le même instantané, le hash couvre aussi l'auteur du commit, sa date et son message (ici enrichi par `-x`) : il change. La ligne `(cherry picked from commit …)` conserve le lien avec c11.
+:::
+:::
+
+::: question
+Inès a fait `git tag -a 2026.0 …` puis `git push`. Le pipeline de publication ne démarre pas. Pourquoi ?
+
+::: reponse
+`git push` n'envoie pas les tags : GitLab ne connaît pas `2026.0`, donc aucun pipeline de tag n'est créé. Il faut `git push origin 2026.0` (ou `git push --follow-tags`).
+:::
+:::
+
+::: question
+Pourquoi l'erratum 2025.1 n'est-il pas tagué sur `main`, alors que la correction y est déjà ?
+
+::: reponse
+Parce que `main` contient aussi tout le travail 2026 (charte, PCS regroupées, répartition par région). Un tag `2025.1` sur `main` publierait ces changements sous l'étiquette de l'édition 2025. L'erratum part de `2025.0` et n'ajoute que la correction (R16).
+:::
+:::
+:::
+
+::: pont
+Vous savez maintenant publier une version reproductible et la corriger proprement. Au passage, vous avez assemblé des branches courtes, des MR, une CI, un squash, des tags et une branche de maintenance. Jules y reconnaît les briques d'un modèle célèbre, et propose de l'adopter « comme à la DSI ». Est-ce la bonne réponse pour l'Observatoire ?
+:::

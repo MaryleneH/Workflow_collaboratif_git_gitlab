@@ -1,0 +1,749 @@
+---
+title: "Une relecture automatique qui ne se fatigue jamais"
+etape: e6
+description: "Lire un pipeline GitLab CI, diagnostiquer un job rouge, reproduire l'échec dans le terminal de VS Code, et écrire les règles méthodologiques d'un projet statistique sous forme de tests automatiques."
+---
+
+::: situation
+Jeudi. Tom a ouvert la MR !3 (issue #21) : regrouper les cinq codes PCS en quatre grandes catégories. Le diff est court et propre, Léa l'a relu et approuvé. Avant de fusionner, Inès calcule la répartition par PCS sur les données 2026 : les parts d'aucun établissement ne totalisent 100 %. Pour `ETB-00444`, le plus gros site du panel, elles font 2,0 %.
+
+Personne n'a été négligent. Une relecture humaine lit un diff ; elle ne recalcule pas tous les indicateurs à chaque modification. Inès décide que la promesse de `main` ne reposera plus sur la vigilance de quelqu'un. Avec Jules, elle ajoute au projet une intégration continue (issue #20, MR !2, commit c21).
+
+Question de cette étape : cette machine aurait-elle arrêté la MR de Tom ? Vous allez le vérifier.
+:::
+
+::: formateur
+**Minutage indicatif (75 min).** Situation et définitions : 10 min. Lecture du `.gitlab-ci.yml` et mission m-e6-1 : 15 min. Pipeline rouge, incident, mission m-e6-2 : 30 min. Tests comme assertions méthodologiques et mission m-e6-3 : 15 min. Mises en garde, checkpoint, pont : 5 min.
+
+**Avant la séance.** Vérifiez qu'un runner accepte les jobs du projet de chaque groupe (Settings › CI/CD › Runners) et que les images `python:3.12-slim`, `rocker/r-ver:4.4.1`, `rocker/verse:4.4.1` sont accessibles depuis ce runner (miroir ou proxy d'images selon votre DSI). Lancez un pipeline sur `main` à `etape-6-debut` : le premier téléchargement d'image peut prendre plusieurs minutes.
+
+**Chronologie.** Dans le récit, Tom a écrit son commit avant l'arrivée de la CI. Pour l'exercice, la branche livrée `21-regrouper-pcs` part de `etape-6-debut` (c21), afin que son pipeline existe. Inutile de s'y attarder avec le groupe.
+:::
+
+## Intégration continue : les mots exacts
+
+L'[intégration continue]{.t ref="ci"} (CI, *continuous integration*) est une **pratique** : intégrer souvent son travail dans la ligne principale, et faire vérifier **automatiquement** chaque modification avant qu'elle n'y entre. Ce n'est ni une commande ni un bouton.
+
+Le sigle [CI/CD]{.t} ajoute la livraison continue (*continuous delivery*) : ce qui passe les contrôles est prêt à être publié, et l'est automatiquement si l'équipe le décide. On parle alors de déploiement continu (*continuous deployment*).
+
+Dans GitLab, cette pratique prend la forme d'un [pipeline]{.t} :
+
+- un [pipeline]{.t} est l'exécution, pour **un commit donné**, d'une série de [jobs]{.t ref="job"} regroupés en [stages]{.t ref="stage"} ;
+- ce qu'il faut exécuter est décrit dans un fichier, [.gitlab-ci.yml]{.t}, à la racine du dépôt ;
+- les jobs tournent sur un [runner]{.t}, une machine (souvent un pod Kubernetes) qui travaille pour GitLab.
+
+**Git ou GitLab ?** Git ne connaît ni pipeline, ni job, ni runner : ce sont des notions fournies par GitLab []{.gitlab}. Pour Git, `.gitlab-ci.yml` est un fichier comme un autre : il est versionné, il a une histoire (`git log -- .gitlab-ci.yml`), il se relit en MR. C'est GitLab qui le lit à chaque push et qui décide quoi lancer. Sur GitHub, le même rôle est tenu par les *GitHub Actions* (fichiers `.github/workflows/*.yml`).
+
+::: {.chaine-confiance jusqua="teste"}
+:::
+
+Un chiffre publié était jusqu'ici *écrit en code*, *versionné* et *relu*. Il devient **testé** : une machine vérifie les règles de méthode à chaque modification, sans jamais se lasser.
+
+## Ce que fait réellement le pipeline
+
+### Le fichier, ligne à ligne
+
+Voici le `.gitlab-ci.yml` entré dans `main` avec c21, tel qu'il est dans le dépôt compagnon. Vous ne l'écrivez pas : vous apprenez à le **lire**. Ses commentaires expliquent les mots-clés principaux ; quatre autres méritent une ligne :
+
+- un **job** est une clé de premier niveau (`lint-python`, `tests-r`…) ; son `script` liste des commandes shell, exécutées dans l'ordre, et la première qui renvoie un code différent de 0 fait échouer le job ;
+- `extends: .python` recopie dans le job le modèle `.python` : l'image, le `cache` et le `before_script` ;
+- `before_script` s'exécute avant `script` : ici, `pip install -r requirements.txt` installe les versions **épinglées** de pyarrow, DuckDB, matplotlib, pytest et ruff ;
+- `cache` garde les paquets téléchargés d'un pipeline à l'autre, pour aller plus vite ; contrairement à un artefact, il ne transmet rien d'un job à l'autre de façon garantie.
+
+```{.yaml filename=".gitlab-ci.yml"}
+# ---------------------------------------------------------------------------
+# Pipeline de l'Observatoire (issue #20, MR !2).
+# Ce fichier est versionné par Git ; c'est GitLab qui le lit et l'exécute.
+# ---------------------------------------------------------------------------
+
+# workflow:rules : QUAND GitLab crée-t-il un pipeline ?
+# Les règles sont lues dans l'ordre ; la première qui correspond l'emporte.
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"  # push sur une branche qui a une MR ouverte
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH       # nouveau commit sur main
+    - if: $CI_COMMIT_TAG =~ /^\d{4}\.\d+$/              # tag de publication (2026.0, 2025.1…)
+    # Aucune règle ne correspond (branche sans MR, tag etape-N-debut) : pas de
+    # pipeline. On évite ainsi deux pipelines identiques (branche + MR).
+
+# stages : l'ordre des étapes. Un stage ne commence que lorsque tous les jobs
+# du stage précédent ont réussi (sauf pour un job qui déclare ses needs).
+stages:
+  - verifier
+  - tester
+  - produire
+  - publier
+
+variables:
+  MILLESIME: "2026"                          # millésime du panel synthétique
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+
+default:
+  interruptible: true          # un nouveau push annule le pipeline devenu inutile
+
+# Modèle commun aux jobs Python (une clé qui commence par un point n'est pas
+# un job : on la réutilise avec extends).
+.python:
+  image: python:3.12-slim      # image : environnement figé où tourne le job
+  cache:                       # les paquets téléchargés sont gardés d'un pipeline à l'autre
+    key:
+      files:
+        - requirements.txt     # nouvelle clé (donc cache neuf) si les versions changent
+    paths:
+      - .cache/pip
+  before_script:
+    - pip install --quiet -r requirements.txt   # versions épinglées
+
+# Les images rocker/r-ver installent les paquets depuis un dépôt CRAN daté
+# (instantané Posit Package Manager fixé dans l'image) : install.packages()
+# donne toujours les mêmes versions pour une même image.
+
+# --- verifier : relire le code sans l'exécuter (lint) ------------------------
+
+lint-python:
+  extends: .python
+  stage: verifier
+  script:
+    - ruff check python/ scripts/ tests/python/
+
+lint-r:
+  stage: verifier
+  image: rocker/r-ver:4.4.1
+  script:
+    - apt-get update -qq && apt-get install -y -qq --no-install-recommends libxml2 > /dev/null
+    - Rscript -e 'install.packages("lintr")'
+    # lint_dir() AFFICHE les problèmes mais se termine avec le code 0 :
+    # sans le quit(status = 1), le job resterait vert.
+    - Rscript -e 'lints <- lintr::lint_dir("."); print(lints); if (length(lints) > 0) quit(status = 1)'
+
+# --- tester : exécuter les assertions (tests automatiques) -------------------
+
+tests-python:
+  extends: .python
+  stage: tester
+  needs: []                    # démarre tout de suite, sans attendre verifier
+  script:
+    - pytest tests/python      # panel réduit, généré par les tests eux-mêmes
+
+tests-r:
+  stage: tester
+  image: rocker/r-ver:4.4.1
+  needs: []
+  script:
+    - Rscript -e 'install.packages(c("dplyr", "testthat"))'
+    - Rscript -e 'testthat::test_dir("tests/testthat", stop_on_failure = TRUE)'
+
+# --- produire : refaire toute la chaîne, du panel au rapport -----------------
+
+donnees:
+  extends: .python
+  stage: produire              # pas de needs : attend que verifier ET tester soient verts
+  script:
+    - python scripts/01_generer_donnees.py --millesime "$MILLESIME"
+    - python scripts/02_preparer.py --millesime "$MILLESIME"
+  artifacts:                   # fichiers conservés par GitLab et transmis aux jobs suivants.
+    paths:                     # Données SYNTHÉTIQUES : jamais de données réelles ici.
+      - data/brut/$MILLESIME/MANIFEST.json
+      - data/prepare/
+    expire_in: 1 week
+
+indicateurs:
+  stage: produire
+  image: rocker/r-ver:4.4.1
+  needs: [donnees]             # démarre dès que donnees a réussi, et reçoit ses artefacts
+  script:
+    - Rscript -e 'install.packages("dplyr")'
+    - Rscript scripts/03_indicateurs.R "$MILLESIME"
+  artifacts:
+    paths:
+      - resultats/
+    expire_in: 1 week
+
+figures:
+  extends: .python
+  stage: produire
+  needs: [donnees, indicateurs]  # la pyramide des âges vient des résultats R
+  script:
+    - python scripts/04_figures.py --millesime "$MILLESIME"
+  artifacts:
+    paths:
+      - resultats/figures/
+    expire_in: 1 week
+
+rapport:
+  stage: produire
+  image: rocker/verse:4.4.1    # R + knitr + Quarto, versions figées
+  needs: [indicateurs, figures]
+  script:
+    - quarto render reports/panorama.qmd -P millesime:$MILLESIME
+  artifacts:
+    paths:
+      - _output/               # le panorama rendu, téléchargeable depuis la MR
+    expire_in: 1 month
+
+# --- publier : ce qui ne tourne que dans certains contextes ------------------
+
+pages:                         # nom réservé : GitLab Pages publie l'artefact public/
+  stage: publier
+  image: alpine:3.20
+  needs: [rapport]
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH   # seulement sur main
+  script:
+    - mkdir -p public
+    - cp _output/reports/panorama.html public/index.html
+  artifacts:
+    paths:
+      - public
+
+publication:                   # crée la GitLab Release d'un tag de publication (E8)
+  stage: publier
+  image: registry.gitlab.com/gitlab-org/release-cli:v0.18.0
+  needs: [donnees, rapport]
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^\d{4}\.\d+$/
+  script:
+    - echo "Publication du panorama $CI_COMMIT_TAG (millésime $MILLESIME)"
+  release:
+    tag_name: $CI_COMMIT_TAG
+    name: "Panorama $CI_COMMIT_TAG"
+    description: >-
+      Panorama de l'emploi dans la filière industrielle stratégique, version
+      $CI_COMMIT_TAG. Code : ce tag. Données : MANIFEST.json (empreintes SHA-256
+      du contenu de chaque table). Environnement : requirements.txt et images
+      python:3.12-slim, rocker/r-ver:4.4.1, rocker/verse:4.4.1.
+    assets:
+      links:
+        - name: "Rapport HTML"
+          url: "$CI_PROJECT_URL/-/jobs/artifacts/$CI_COMMIT_TAG/raw/_output/reports/panorama.html?job=rapport"
+        - name: "MANIFEST.json des données"
+          url: "$CI_PROJECT_URL/-/jobs/artifacts/$CI_COMMIT_TAG/raw/data/brut/$MILLESIME/MANIFEST.json?job=donnees"
+```
+
+::: formateur
+Ce fichier est celui du dépôt compagnon (état `22-integration-continue`, commit c21) : il fait foi. ruff est épinglé dans `requirements.txt` (`ruff==0.16.8`), comme pytest ; l'image `release-cli` est `v0.18.0`. Selon la version de votre instance GitLab, le mot-clé `release:` s'appuie sur `release-cli` ou sur `glab` : vérifiez l'image recommandée dans la documentation de votre instance. Le job `lint-r` installe `libxml2` avant `lintr`, car certaines images `rocker/r-ver` ne l'ont pas ; si votre runner n'a pas accès aux dépôts `apt`, demandez à Jules une image maison qui contient déjà les paquets. Le millésime est passé explicitement à chaque script (`--millesime "$MILLESIME"`, `Rscript scripts/03_indicateurs.R "$MILLESIME"`, `-P millesime:$MILLESIME`) : sans lui, `03_indicateurs.R` prendrait 2025 par défaut.
+:::
+
+### Six mots pour lire n'importe quel pipeline
+
+| Mot-clé | Question à laquelle il répond | Dans notre fichier |
+|---|---|---|
+| `stage` | Dans quel ordre ? | `verifier` → `tester` → `produire` → `publier` |
+| job | Quoi exactement ? | `tests-r` : un `script` exécuté dans une `image` |
+| `image` | Dans quel environnement ? | `rocker/r-ver:4.4.1`, version **épinglée** |
+| code de sortie | Réussi ou échoué ? | `0` : vert ; toute autre valeur : rouge |
+| `needs` / `artifacts` | Qui attend qui, qui transmet quoi ? | `donnees` → `indicateurs` → `figures` → `rapport` |
+| `rules` | Dans quels pipelines ? | `pages` sur `main`, `publication` sur un tag `AAAA.N` |
+
+Trois points méritent d'être dits explicitement.
+
+**Un job ne connaît que son code de sortie.** Le runner lance chaque ligne de `script` ; dès qu'une commande renvoie un code différent de 0, le job s'arrête et devient rouge. `pytest`, `ruff` et `testthat::test_dir(stop_on_failure = TRUE)` renvoient 1 en cas d'échec. `lintr::lint_dir()`, lui, affiche ses remarques mais renvoie 0 : d'où le `quit(status = 1)` explicite. Un contrôle qui affiche une erreur sans changer le code de sortie ne bloque rien.
+
+**`needs` change l'ordre.** Sans `needs`, un job attend la réussite de **tous** les jobs des stages précédents. Avec `needs: []`, `tests-r` démarre immédiatement, en parallèle des lints : on connaît le résultat des tests même quand le style est à revoir. Avec `needs: [donnees]`, `indicateurs` part dès que `donnees` a réussi et **récupère ses [artefacts]{.t ref="artefact"}**. Un runner repart d'une copie propre du dépôt à chaque job : sans artefact, `indicateurs` ne verrait pas les données préparées.
+
+**`rules` décide de la présence d'un job.** Dans le pipeline d'une MR, `pages` et `publication` n'existent pas : le stage `publier` n'apparaît même pas. Sur `main`, `pages` s'ajoute ; sur un tag de publication (`2026.0`, `2025.1` : l'expression `^\d{4}\.\d+$`), c'est `publication`. Les tags de reprise de la formation (`etape-6-debut`…) ne correspondent à aucune règle de `workflow:rules` : ils n'ouvrent aucun pipeline.
+
+::: {.pipeline scenario="e6-main-pages"}
+:::
+
+Sur `main`, `pages` met en ligne le panorama à chaque fusion : c'est le « CD » de notre CI/CD. Ce rapport de travail **n'est pas** la publication officielle. `main` est exécutable, relue et testée ; une publication, elle, est un tag qui fixe aussi la référence des données et l'environnement (étape 8).
+
+### Un pipeline par commit, pas par branche
+
+::: {.git-graph scenario="e6-pipeline-par-commit"}
+:::
+
+Un pipeline s'exécute pour **un commit**, c'est-à-dire pour un instantané complet du projet (étape 1). Il ne « suit » pas une branche. Quand Tom pousse un correctif, il crée un nouveau commit : GitLab lance un **nouveau** pipeline, et l'ancien reste rouge dans l'historique. La MR affiche le pipeline du dernier commit de la branche.
+
+::: idee-fausse
+::: fausse
+Le pipeline est vert : les chiffres sont justes.
+:::
+::: juste
+Le pipeline est vert : **aucune des vérifications écrites** n'a échoué pour ce commit. Ce qui n'est pas testé n'est pas vérifié. La CI ne remplace pas la review de méthode ; elle la libère des contrôles répétitifs.
+:::
+:::
+
+## À vous : lire avant de toucher
+
+::: {.mission #m-e6-1 titre="Lire le pipeline" duree="15 min" mode="seul" depart="etape-6-debut"}
+::: objectif
+Prédire, sans rien exécuter, ce que GitLab lancera dans chaque contexte, puis le vérifier dans l'interface.
+:::
+
+::: consignes
+1. Dans le terminal intégré de VS Code, placez-vous sur `main` à jour, puis affichez l'origine du fichier :
+
+   ```{.bash risque="reversible"}
+   git switch main
+   git pull
+   git log --oneline -- .gitlab-ci.yml
+   ```
+
+2. Ouvrez `.gitlab-ci.yml`. Pour chacun des trois contextes (push sur une branche avec MR ouverte, commit sur `main`, tag `2026.0`), listez les jobs qui apparaîtront.
+3. Répondez par écrit : si `lint-r` échoue, quels jobs s'exécutent quand même ? Lesquels sont ignorés ?
+4. Quel job produit `resultats/indicateurs_2026.csv` ? Comment `rapport` y accède-t-il ?
+5. Dans GitLab, ouvrez **Build › Pipelines** et cliquez sur le dernier pipeline de `main`. Comparez avec votre prédiction.
+:::
+
+::: reussite
+Votre liste pour `main` correspond exactement aux jobs affichés dans **Build › Pipelines** (neuf jobs, dont `pages`), et vous savez expliquer pourquoi `publication` n'y figure pas.
+:::
+
+::: indice
+Lisez les `rules` de `pages` et de `publication`, puis cherchez les `needs` des deux jobs de tests.
+:::
+
+::: corrige
+- **MR** : `lint-python`, `lint-r`, `tests-python`, `tests-r`, `donnees`, `indicateurs`, `figures`, `rapport` (8 jobs). **Main** : les mêmes + `pages` (9 jobs). **Tag `2026.0`** : les 8 + `publication` (9 jobs), car `2026.0` correspond à `^\d{4}\.\d+$`.
+- Si `lint-r` échoue : `lint-python`, `tests-python` et `tests-r` tournent (les tests ont `needs: []`) ; `donnees`, `indicateurs`, `figures` et `rapport` sont ignorés (*skipped*), car `donnees` attend tous les stages précédents, et les trois autres attendent `donnees`.
+- `indicateurs` écrit `resultats/` (dont `resultats/indicateurs_2026.csv`, puisque `MILLESIME` vaut 2026) et le déclare en `artifacts` ; `rapport` le reçoit parce qu'il liste `indicateurs` dans ses `needs` (avec `figures`, pour les images).
+:::
+:::
+
+## Quand ça coince : le pipeline de la MR !3
+
+Voici ce que GitLab a affiché au premier push de Tom sur sa branche.
+
+::: {.pipeline scenario="e6-mr3-echec"}
+```{.text .sortie}
+$ Rscript -e 'testthat::test_dir("tests/testthat", stop_on_failure = TRUE)'
+✔ | F W  S  OK | Context
+✔ |          6 | age
+✖ | 1        9 | indicateurs
+────────────────────────────────────────────────────────────────────────────────
+Failure ('test-indicateurs.R:25:3'): les parts par PCS somment à 1 dans chaque établissement
+sommes$total not equal to rep(1, nrow(sommes)).
+2/2 mismatches (average diff: 0.5)
+[1] 0.6 - 1 == -0.4
+[2] 0.4 - 1 == -0.6
+────────────────────────────────────────────────────────────────────────────────
+[…]
+[ FAIL 1 | WARN 0 | SKIP 0 | PASS 15 ]
+Error: Test failures
+Execution halted
+[…]
+ERROR: Job failed: exit code 1
+```
+:::
+
+::: {.incident #inc-e6-1 titre="Deux jobs rouges sur une MR déjà approuvée"}
+Tom ouvre sa MR : le pipeline #412 est marqué *failed*. Il clique sur le pipeline, puis sur le job `lint-r`, et lit la fin du journal.
+
+::: symptome
+```{.text .sortie}
+$ Rscript -e 'lints <- lintr::lint_dir("."); print(lints); if (length(lints) > 0) quit(status = 1)'
+R/indicateurs.R:38:101: style: [line_length_linter] Lines should not be more than 100 characters. This line is 146 characters.
+  groupes <- c("37" = "cadres et ingénieurs", "47" = "techniciens et agents de maîtrise", "54" = "employés", "62" = "ouvriers", "67" = "ouvriers")
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+[…]
+ERROR: Job failed: exit code 1
+```
+
+Et dans le journal de `tests-r` : `Failure ('test-indicateurs.R:25:3'): les parts par PCS somment à 1 dans chaque établissement`.
+:::
+
+::: hypotheses
+- Le runner est en panne, ou GitLab a un problème passager : il suffit de relancer (*Retry*).
+- `lint-r` ne signale qu'une affaire de style : on peut fusionner, Léa a approuvé.
+- La réécriture de `repartition_pcs()` a changé le calcul : le test de Karim le prouve.
+- Le runner n'a pas accès aux données : le test ne peut pas passer en CI.
+:::
+
+::: diagnostic
+Un job rouge se lit **de bas en haut** : `exit code 1` dit seulement qu'une commande a échoué. Remontez jusqu'à la première ligne qui parle de votre code.
+
+- **`tests-r`** : le test `les parts par PCS somment à 1 dans chaque établissement` (écrit par Karim en c14) reçoit des totaux de 0,6 et 0,4 au lieu de 1, pour ses deux établissements. Le test utilise un mini-panel écrit dans le fichier lui-même : il ne dépend d'aucune donnée externe. Relancer ne changera rien.
+- **`lint-r`** : l'analyse statique du code, le [lint]{.t}, signale que la ligne 38 fait 146 caractères, pour une limite de 100 fixée par l'équipe dans le fichier `.lintr` du projet. C'est du style, mais la règle est celle de l'équipe ; et comme `lint-r` est dans le stage `verifier`, son échec suffit à empêcher `donnees`, `indicateurs`, `figures` et `rapport` de s'exécuter.
+
+Avant de corriger, **reproduisez en local** la commande exacte du job, dans le terminal intégré de VS Code :
+
+```{.bash risque="reversible"}
+git switch 21-regrouper-pcs
+Rscript -e 'testthat::test_dir("tests/testthat", stop_on_failure = TRUE)'
+```
+
+Vous obtenez la même sortie. La cause est dans le diff de Tom : la nouvelle version compte les salariés par établissement et par groupe, puis divise par le total **de tout le panel**.
+
+```r
+repartition_pcs <- function(salaries) {
+  salaries |>
+    dplyr::mutate(groupe_pcs = regrouper_pcs(pcs)) |>
+    dplyr::count(id_etab, groupe_pcs, name = "effectif") |>
+    dplyr::mutate(part = effectif / sum(effectif))
+}
+```
+
+`dplyr::count()` renvoie un tableau non groupé : `sum(effectif)` porte sur tous les établissements. L'ancienne version, elle, faisait `dplyr::group_by(id_etab)` avant le `mutate()` : Tom l'a perdu en réécrivant la fonction.
+:::
+
+::: correction
+Regrouper par établissement avant de calculer la part :
+
+```r
+repartition_pcs <- function(salaries) {
+  salaries |>
+    dplyr::mutate(groupe_pcs = regrouper_pcs(pcs)) |>
+    dplyr::count(id_etab, groupe_pcs, name = "effectif") |>
+    dplyr::group_by(id_etab) |>
+    dplyr::mutate(part = effectif / sum(effectif)) |>
+    dplyr::ungroup()
+}
+```
+
+Couper la ligne trop longue de `regrouper_pcs()`, une correspondance par ligne :
+
+```r
+  groupes <- c(
+    "37" = "cadres et ingénieurs",
+    "47" = "techniciens et agents de maîtrise",
+    "54" = "employés",
+    "62" = "ouvriers",
+    "67" = "ouvriers"
+  )
+```
+
+Puis relancer **les deux** commandes des jobs en local, depuis la racine du projet, et seulement ensuite commiter et pousser :
+
+```{.bash risque="sur"}
+Rscript -e 'testthat::test_dir("tests/testthat", stop_on_failure = TRUE)'
+Rscript -e 'lints <- lintr::lint_dir("."); print(lints)'
+```
+
+```{.bash risque="reversible"}
+git add R/indicateurs.R
+git commit -m "Calcule les parts de PCS par établissement (#21)"
+git push
+```
+:::
+
+::: prevention
+Avant de pousser, lancez en local les commandes des jobs que vous avez pu casser. Le pipeline confirme ; il ne sert pas à découvrir ce qu'une commande de dix secondes aurait montré. Et une MR dont le pipeline est rouge ne se fusionne pas, même approuvée.
+:::
+:::
+
+::: {.regle ref="R11"}
+:::
+
+Cette règle ne doit pas dépendre de la mémoire de chacun : GitLab sait l'imposer. Un Maintainer (Inès) l'active dans **Settings › Merge requests › Merge checks › Pipelines must succeed**. Le bouton *Merge* reste alors inactif tant que le pipeline du dernier commit n'est pas vert. L'option est disponible dans toutes les éditions de GitLab. Selon votre version, une option voisine, *Skipped pipelines are considered successful*, doit rester **décochée**.
+
+::: vscode
+**Reproduire un job, c'est retaper sa ligne `script`.** Ouvrez le terminal intégré (<kbd>Ctrl</kbd>+<kbd>ù</kbd> sur un clavier AZERTY, ou menu **Terminal › New Terminal** (nouveau terminal)) et copiez-y la commande affichée après le `$` dans le journal du job. C'est la même commande, dans un autre environnement : si le résultat diffère, comparez les versions (`R --version`, `python --version`, `packageVersion("testthat")`).
+
+**L'équivalent visuel.** Pour les tests Python, la vue **Testing** (tests) de VS Code, fournie par l'extension Python, exécute `pytest` et affiche chaque test en vert ou en rouge. Facultatif : l'extension **GitLab Workflow** affiche dans la barre d'état le statut du pipeline de la branche courante et permet, selon sa version, d'ouvrir les jobs sans quitter l'éditeur. Elle ne remplace pas la lecture du journal.
+:::
+
+::: {.mission #m-e6-2 titre="Casser, diagnostiquer, réparer" duree="30 min" mode="en binôme" depart="etape-6-debut"}
+::: objectif
+Faire tomber le pipeline sur la branche de Tom, trouver la cause dans le journal, la reproduire en local, puis obtenir un pipeline vert.
+:::
+
+Chaque binôme travaille sur sa propre copie de la branche de Tom, pour que les pipelines ne se mélangent pas.
+
+::: consignes
+1. Récupérez la branche de Tom et créez la vôtre (remplacez `ab` par vos initiales) :
+
+   ```{.bash risque="reversible"}
+   git fetch
+   git switch -c 21-regrouper-pcs-ab origin/21-regrouper-pcs
+   git push -u origin 21-regrouper-pcs-ab
+   ```
+
+2. Dans GitLab, ouvrez une **Draft MR** de `21-regrouper-pcs-ab` vers `main`. Observez : avant la MR, aucun pipeline n'existait. Pourquoi ?
+3. Quand le pipeline est rouge, ouvrez chaque job en échec. Notez pour chacun : la commande qui a échoué, le fichier et la ligne en cause.
+4. Reproduisez les deux échecs dans le terminal intégré avec les commandes exactes des jobs.
+5. Corrigez `repartition_pcs()` et la ligne trop longue. Relancez les deux commandes jusqu'à ce qu'elles passent.
+6. Commitez avec un message qui dit pourquoi et cite l'issue, poussez, et suivez le nouveau pipeline.
+:::
+
+::: reussite
+En local, `testthat` se termine par `[ FAIL 0 | …` et `lint_dir()` n'affiche rien. Dans GitLab, le pipeline du **dernier** commit de votre MR est vert, et `git log --oneline -3` montre votre correctif au-dessus du commit de Tom.
+:::
+
+::: indice
+Relisez `workflow:rules` : quelle règle correspond à un push sur une branche **sans** MR ?
+:::
+
+::: {.indice titre="Indice 2 : où est l'erreur de calcul ?"}
+Après `dplyr::count()`, sur combien de lignes porte `sum(effectif)` ?
+:::
+
+::: corrige
+- Étape 2 : aucune règle de `workflow:rules` ne correspond à une branche sans MR ; la Draft MR déclenche le premier pipeline (`merge_request_event`).
+- Correction : ajouter `dplyr::group_by(id_etab) |>` avant le `mutate()` et `dplyr::ungroup()` après (ou `mutate(..., .by = id_etab)`). Couper le vecteur `groupes` de `regrouper_pcs()` sur plusieurs lignes. Vérifié sur le dépôt compagnon : les tests passent (`[ FAIL 0 | WARN 0 | SKIP 0 | PASS 16 ]`) et `lint_dir(".")` n'affiche plus rien.
+- Si les accents font échouer le chargement des fichiers R (`invalid input found on input connection`), la locale du service n'est pas en UTF-8 : `export LC_ALL=C.UTF-8`, puis relancer.
+- Si un binôme corrige en deux commits (test puis lint), c'est l'occasion de montrer deux pipelines successifs : exactement le graphe de la page.
+- Piège fréquent : le binôme clique sur *Retry* en espérant un résultat différent. Faites-leur dire à voix haute pourquoi un test déterministe ne change pas d'avis.
+- Si `Rscript` n'est pas disponible dans le service VS Code, utilisez un service Onyxia avec R (image `rocker` ou équivalent).
+:::
+:::
+
+Après ses deux correctifs, Tom obtient ce pipeline. La chaîne `donnees` → `indicateurs` → `figures` → `rapport` s'exécute enfin : le panorama rendu se télécharge depuis la MR, comme artefact du job `rapport`.
+
+::: {.pipeline scenario="e6-mr3-vert"}
+```{.text .sortie}
+$ Rscript -e 'testthat::test_dir("tests/testthat", stop_on_failure = TRUE)'
+✔ | F W  S  OK | Context
+✔ |          6 | age
+✔ |         10 | indicateurs
+
+══ Results ═════════════════════════════════════════════════════════════════════
+[ FAIL 0 | WARN 0 | SKIP 0 | PASS 16 ]
+[…]
+Job succeeded
+```
+:::
+
+::: {.incident #inc-e6-2 titre="« Chez moi, ça passe »"}
+Karim ajoute un test qui lit la table d'analyse préparée. Sur son poste, tout est vert. En CI, `tests-r` échoue.
+
+::: symptome
+```{.text .sortie}
+Error in file(file, "rt") : cannot open the connection
+In addition: Warning message:
+In file(file, "rt") :
+  cannot open file 'data/prepare/salaries_champ.csv': No such file or directory
+```
+:::
+
+::: hypotheses
+- Le chemin est faux.
+- Le runner n'a pas les droits de lecture sur le fichier.
+- Le fichier n'existe pas sur le runner.
+:::
+
+::: diagnostic
+Le fichier existe sur le poste de Karim, mais `data/prepare/` est dans `.gitignore` : il n'est pas dans le dépôt. Le runner part d'un clone propre du commit ; il ne voit **que** ce qui est versionné, plus ce que les artefacts et les variables CI lui donnent. Jamais vos fichiers locaux, jamais le stockage S3 de l'équipe.
+:::
+
+::: correction
+Écrire le test sur un mini-panel construit dans le fichier de test, comme celui de Karim en c14. Ou placer le contrôle **après** le job `donnees`, qui régénère les données synthétiques et les transmet par artefact.
+:::
+
+::: prevention
+Un test doit pouvoir tourner sur une machine qui n'a jamais vu vos données. S'il en a besoin, il les fabrique.
+:::
+:::
+
+## Des tests qui sont des règles de méthode
+
+Le [test automatique]{.t} qui a arrêté la MR !3 n'a rien d'informatique. Il énonce une règle que tout statisticien connaît : une répartition somme à 100 %. Karim l'a simplement **écrite** une fois, et la machine la vérifie à chaque push. Voici les deux tests de `repartition_pcs()`, tels qu'ils sont dans le dépôt :
+
+```{.r filename="tests/testthat/test-indicateurs.R (extrait)"}
+test_that("les parts par PCS somment à 1 dans chaque établissement", {
+  jeu <- data.frame(
+    id_etab = rep(c("ETB-00001", "ETB-00002"), times = c(6, 4)),
+    pcs = c("37", "47", "62", "62", "67", "67", "54", "62", "62", "67")
+  )
+  sommes <- repartition_pcs(jeu) |>
+    dplyr::summarise(total = sum(part), .by = id_etab)
+  expect_equal(sommes$total, rep(1, nrow(sommes)))
+})
+
+test_that("repartition_pcs compte chaque salarié une fois", {
+  jeu <- data.frame(
+    id_etab = rep(c("ETB-00001", "ETB-00002"), times = c(6, 4)),
+    pcs = c("37", "47", "62", "62", "67", "67", "54", "62", "62", "67")
+  )
+  expect_equal(sum(repartition_pcs(jeu)$effectif), nrow(jeu))
+})
+```
+
+Le mini-panel est écrit à la main : la bonne réponse se vérifie de tête. `ETB-00001` compte six salariés, `ETB-00002` quatre. La version boguée divise chaque effectif par les **dix** salariés du jeu au lieu de six et de quatre : les parts de `ETB-00001` totalisent 6/10, celles de `ETB-00002` 4/10, d'où les totaux 0,6 et 0,4 du journal. Le second test, lui, passe : la version boguée compte bien chaque salarié une fois. C'est la **part** qui est fausse, pas l'effectif. Les fonctions de `R/` sont chargées par `tests/testthat/helper-projet.R`, que testthat exécute avant les tests.
+
+Les règles portant sur **les données** (schéma, identifiants, bornes, déterminisme) se vérifient sur un panel synthétique réduit, que les tests Python fabriquent eux-mêmes : ils ne dépendent d'aucun fichier de `data/brut/`. Léa les écrit avec `pytest` :
+
+```{.python filename="tests/python/test_donnees.py (extrait)"}
+MILLESIME = 2025
+
+
+@pytest.fixture(scope="module")
+def panel():
+    return generer_panel(MILLESIME, n_etablissements=40)
+
+
+def test_schema_des_tables(panel):
+    assert set(panel) == {"etablissements", "salaries", "recrutements"}
+    for nom, table in panel.items():
+        assert table.schema.equals(SCHEMAS[nom]), nom
+
+
+def test_presents_au_31_decembre(panel):
+    fin = dt.date(MILLESIME, 12, 31)
+    for ligne in panel["salaries"].to_pylist():
+        assert ligne["date_naissance"] < ligne["date_embauche"] <= fin
+
+
+def test_generation_deterministe(panel):
+    autre = generer_panel(MILLESIME, n_etablissements=40)
+    for nom in panel:
+        assert empreinte_table(panel[nom], nom) == empreinte_table(autre[nom], nom)
+```
+
+Le dernier test mérite un temps d'arrêt : il vérifie que deux générations donnent la **même empreinte** de contenu. C'est ce qui permettra, à l'étape 8, de citer les données d'une publication par leur `MANIFEST.json`.
+
+Une assertion peut aussi vivre dans le script de production lui-même. `scripts/03_indicateurs.R` refuse de calculer si les données préparées ne sont pas celles du millésime demandé ; `stop()` provoque une erreur, donc un code de sortie non nul, donc un job `indicateurs` rouge :
+
+```r
+if (!all(salaries$millesime == millesime)) {
+  stop("data/prepare/ ne contient pas le millésime ", millesime,
+       " : relancez scripts/02_preparer.py --millesime ", millesime)
+}
+```
+
+| Règle méthodologique | Où l'écrire | Assertion |
+|---|---|---|
+| Une répartition somme à 100 % par établissement | `testthat`, sur un mini-panel | `expect_equal(sommes$total, rep(1, nrow(sommes)))` |
+| Chaque salarié est compté une fois | `testthat` | `expect_equal(sum(res$effectif), nrow(jeu))` |
+| Les salariés sont présents au 31/12 | `pytest`, sur le panel synthétique réduit | `date_naissance < date_embauche <= 31/12` |
+| Les données viennent du bon millésime | `stop()` dans le script de production | le job `indicateurs` échoue |
+| Un salarié n'apparaît qu'une fois par millésime | `pytest` + DuckDB (mission ci-dessous) | aucun doublon `id_salarie` × `millesime` |
+
+::: {.regle ref="R12"}
+:::
+
+::: {.mission #m-e6-3 titre="Ajouter un contrôle" duree="15 min" mode="en binôme" depart="etape-6-debut"}
+::: objectif
+Transformer une règle de la table ci-dessus en test automatique, prouver qu'il sait échouer, et le voir tourner en CI.
+:::
+
+::: consignes
+1. Sur votre branche de la mission précédente, ouvrez `tests/python/test_donnees.py`.
+2. Écrivez une fonction `doublons(salaries)` qui renvoie les couples `id_salarie` × `millesime` présents plus d'une fois dans une table Arrow. Utilisez DuckDB : `duckdb.sql()` sait interroger directement une table Arrow désignée par le nom de sa variable Python.
+3. Écrivez deux tests : l'un vérifie que le panel généré (la *fixture* `panel`) n'a **aucun** doublon ; l'autre construit une petite table (`pyarrow.table()`) qui en contient un et vérifie que `doublons()` le **trouve**.
+4. En local, lancez les tests et le lint, exactement comme les jobs `tests-python` et `lint-python` :
+
+   ```{.bash risque="sur"}
+   pytest tests/python -v
+   ruff check python/ scripts/ tests/python/
+   ```
+
+5. Commitez (`Teste l'absence de doublons salarié × millésime (#21)`), poussez, et ouvrez le journal du job `tests-python`.
+:::
+
+::: reussite
+`pytest tests/python -v` affiche vos deux nouveaux tests `PASSED`, `ruff check` affiche `All checks passed!`, et le journal de `tests-python` dans votre MR compte deux tests réussis de plus que dans le pipeline précédent.
+:::
+
+::: indice
+En SQL : `GROUP BY id_salarie, millesime HAVING count(*) > 1`. Pour la petite table : `pa.table({"id_salarie": [...], "millesime": [...]})`, après `import pyarrow as pa`.
+:::
+
+::: corrige
+En tête du fichier, avec les autres imports de bibliothèques : `import duckdb` et `import pyarrow as pa`. Puis :
+
+```python
+def doublons(salaries):
+    """Couples id_salarie × millesime présents plus d'une fois dans une table Arrow."""
+    return duckdb.sql("""
+        SELECT id_salarie, millesime, count(*) AS n
+        FROM salaries
+        GROUP BY id_salarie, millesime
+        HAVING count(*) > 1
+    """).fetchall()
+
+
+def test_pas_de_doublon_salarie_millesime(panel):
+    assert doublons(panel["salaries"]) == []
+
+
+def test_le_controle_detecte_un_doublon():
+    salaries = pa.table({"id_salarie": ["SAL-0000001", "SAL-0000001"], "millesime": [2026, 2026]})
+    assert len(doublons(salaries)) == 1
+```
+
+Vérifié sur le dépôt compagnon : `pytest` passe de 13 à 15 tests réussis, et `ruff check` reste propre. Dans `FROM salaries`, DuckDB trouve la variable Python `salaries` (le paramètre de la fonction) et lit la table Arrow sans la copier.
+
+Le second test répond à la question « un test qui n'a jamais échoué prouve-t-il quelque chose ? ». Variante pour les binômes rapides : ajouter à `.gitlab-ci.yml` un job `controles-donnees` (stage `produire`, `needs: [donnees]`) qui vérifie l'absence de doublons dans `data/prepare/salaries_champ.parquet`, transmis par artefact. Faites-leur relire ce changement comme n'importe quel code : `.gitlab-ci.yml` passe en MR.
+:::
+:::
+
+## Ce que la CI ne doit jamais voir, ni devenir
+
+**Les données réelles.** Le runner est une machine partagée, et les artefacts sont téléchargeables par les membres du projet. La CI ne travaille que sur des données **synthétiques**, régénérées par `01_generer_donnees.py`. Les microdonnées restent là où elles sont protégées (règle R09).
+
+**Les secrets.** Le jeton d'API de l'étape 4 ne s'écrit ni dans le code ni dans `.gitlab-ci.yml`, qui est versionné. Un Maintainer le déclare dans **Settings › CI/CD › Variables**, en cochant :
+
+- **Masked** (masquée) : sa valeur est remplacée par `[MASKED]` dans les journaux ;
+- **Protected** (protégée) : elle n'est fournie qu'aux pipelines des branches et tags protégés, donc pas à une branche de travail.
+
+Le job la lit comme une variable d'environnement (`$OEI_API_TOKEN`). Même masquée, ne l'affichez jamais avec `echo`.
+
+**Un pipeline lent.** Un pipeline de vingt minutes, on ne l'attend plus : on fusionne « en attendant ». Gardez les tests rapides (mini-panels), lancez en parallèle ce qui peut l'être (`needs: []`), laissez `interruptible` annuler les pipelines dépassés. L'installation de paquets à chaque job coûte cher : le fichier garde déjà en `cache` les paquets Python (clé : `requirements.txt`) ; pour R, Jules peut fournir une image maison qui contient déjà dplyr, testthat et lintr.
+
+**Une image qui bouge.** `rocker/r-ver:latest` changera de version de R sans prévenir : le même commit pourrait donner un autre résultat. Une étiquette précise (`4.4.1`) fige l'environnement. Les images `rocker/r-ver` versionnées installent en outre les paquets CRAN tels qu'ils étaient à une date donnée. C'est une première brique de reproductibilité ; l'étape 8 la complète (lockfile, référence des données).
+
+## Ce que disent les développeurs
+
+::: decodeur
+« Ta [MR]{.t ref="merge-request"} est bloquée : le [pipeline]{.t} est rouge sur `tests-r`. Regarde le journal du [job]{.t}, reproduis en local avec la même [image]{.t}, et repousse. »
+
+::: traduction
+GitLab refuse la fusion de ta demande parce que la dernière vérification automatique a échoué, sur l'étape qui exécute les tests R. Lis ce que la commande a affiché, relance-la chez toi dans le même environnement (R 4.4.1), corrige, puis envoie un nouveau commit : un nouveau pipeline le vérifiera.
+:::
+:::
+
+::: {.rosette principe="revue"}
+::: principe
+Aucun changement n'entre sans avoir été relu, par un humain **et** par une machine.
+:::
+::: dev
+CI obligatoire sur chaque MR (ou *Pull Request* sur GitHub) : lint, tests unitaires, compilation. Culture « *no green, no merge* ». Couverture de tests suivie dans le temps.
+:::
+::: stat
+Mêmes exigences, avec des tests qui portent sur la **méthode** : parts qui somment à 1, âges bornés, absence de doublons, effectifs positifs. Et un contrôle propre à la publication : le rapport complet se rend de bout en bout, sur des données synthétiques.
+:::
+:::
+
+## En pratique statistique
+
+Le relecteur humain et la machine ne regardent pas les mêmes choses. La review porte sur ce qui demande du jugement : le bon dénominateur, le champ, une hypothèse non documentée (étape 4). La CI vérifie, à chaque commit, tout ce qui a été écrit une fois pour toutes. Chaque erreur méthodologique trouvée en review devrait poser la question : « peut-on l'écrire en test ? ».
+
+::: {.parcours-mr etape="draft,pipeline"}
+:::
+
+Dans le parcours d'une MR, le pipeline arrive **dès la Draft MR** : ouvrez-la tôt, pour que chaque push soit vérifié bien avant la review.
+
+::: retenir
+- Un pipeline est l'exécution, par GitLab, des jobs de `.gitlab-ci.yml` pour **un commit** ; un job réussit ou échoue selon son code de sortie.
+- Un job rouge se lit dans son journal, puis se reproduit en local avec la même commande, dans le terminal.
+- Une règle méthodologique importante s'écrit en test ; une MR au pipeline rouge ne se fusionne pas.
+:::
+
+::: {.checkpoint titre="Avant de passer à la suite"}
+::: {.question rappel="e4"}
+Dans la MR !1 de l'étape 4, lesquels des huit problèmes relevés en review une machine aurait-elle pu détecter, et lesquels demandaient un relecteur humain ?
+
+::: reponse
+Automatisables, au moins en partie : le jeton en clair (détection de secrets), le fichier de données ajouté (contrôle des chemins versionnés), le chemin absolu (le job échoue sur le runner), l'absence de `set.seed()` (un test qui compare deux exécutions). Humains : le taux calculé comme moyenne des taux, les NA remplacés par 0, le filtre `effectif >= 10` non documenté, le message « maj ». Une fois repérées, les erreurs de méthode peuvent devenir des tests.
+:::
+:::
+
+::: {.question rappel="e1"}
+Le pipeline #412 de Tom est rouge. Tom pousse un correctif. Le pipeline #412 devient-il vert ?
+
+::: reponse
+Non. Un pipeline est attaché à un commit, c'est-à-dire à un instantané qui ne change jamais. Le correctif est un **nouveau** commit, qui reçoit un nouveau pipeline. #412 reste rouge dans l'historique ; la MR affiche le pipeline de son dernier commit.
+:::
+:::
+
+::: question
+Un collègue ajoute un job `lint-sql` qui affiche trois erreurs dans son journal, mais le job est vert. Que s'est-il passé ?
+
+::: reponse
+La commande a affiché les erreurs sans renvoyer de code de sortie non nul. GitLab ne lit pas le journal : il ne regarde que le code de sortie. Il faut que la commande échoue (option de l'outil, ou `quit(status = 1)` / `exit 1` explicite).
+:::
+:::
+
+::: question
+Dans le pipeline #412, pourquoi `tests-r` a-t-il tourné alors que `lint-r`, dans le stage précédent, avait échoué ? Et pourquoi `donnees` n'a-t-il pas tourné ?
+
+::: reponse
+`tests-r` déclare `needs: []` : il n'attend aucun job et démarre tout de suite. `donnees` n'a pas de `needs` : il attend la réussite de tous les jobs des stages précédents, et `lint-r` comme `tests-r` ont échoué.
+:::
+:::
+:::
+
+::: pont
+Le pipeline de la MR !3 est vert, et Tom demande une nouvelle review. Mais pendant qu'il corrigeait, `main` a avancé avec la MR de Léa, et sa branche empile des commits nommés « corrige le test » ou « corrige le lint ». L'étape suivante remet sa branche à jour sans réécrire le travail des autres, et livre un historique lisible.
+:::

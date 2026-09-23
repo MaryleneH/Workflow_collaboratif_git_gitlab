@@ -1,0 +1,13 @@
+{
+  "name": "git-a-plusieurs-tests",
+  "private": true,
+  "description": "Contrôles automatiques du site rendu (_site) : liens, ressources, console, débordements, clavier, sans JavaScript, accessibilité.",
+  "type": "module",
+  "scripts": {
+    "test": "node verifier-site.mjs ../_site"
+  },
+  "devDependencies": {
+    "axe-core": "4.13.0",
+    "playwright": "1.56.1"
+  }
+}

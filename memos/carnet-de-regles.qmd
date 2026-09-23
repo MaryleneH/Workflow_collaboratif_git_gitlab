@@ -1,0 +1,41 @@
+---
+title: "Carnet de règles"
+surtitre: "Mémo"
+chapeau: "Dix-sept règles, et pas une de plus. Chacune est née d'un incident vécu pendant le parcours : c'est ce qui la rend légitime, et c'est ce qui permet de l'expliquer à un nouveau venu."
+description: "Le carnet de règles de l'équipe de l'Observatoire : dix-sept règles nées d'incidents, classées par ordre d'apparition et par principe (intégrité, traçabilité, revue, reproductibilité)."
+---
+
+Une règle d'équipe sans histoire ressemble à une contrainte arbitraire ; on la contourne dès qu'elle gêne. Ici, chaque règle porte son **origine** : l'incident qui l'a rendue nécessaire. Quand quelqu'un demande « pourquoi doit-on passer par une MR pour une virgule ? », la réponse n'est pas « parce que c'est la règle », mais « parce qu'un calcul discutable est un jour arrivé dans `main` sans que personne ne le voie ».
+
+Les règles servent quatre **principes**, les mêmes que ceux des équipes de développement professionnelles :
+
+| Principe | Ce qu'il garantit |
+|---|---|
+| **Intégrité** | `main` n'est jamais cassée, et personne ne perd le travail d'un autre. |
+| **Traçabilité** | Chaque changement dit qui, quand, et surtout pourquoi. |
+| **Revue** | Aucun changement n'entre sans avoir été relu, par un humain et par une machine. |
+| **Reproductibilité** | Une publication peut être reconstruite à l'identique : code, données, environnement. |
+
+À l'étape 10, ces règles deviennent le workflow écrit de l'équipe : voir [notre workflow](notre-workflow.qmd).
+
+## Les règles, dans l'ordre où elles sont nées
+
+::: {.carnet}
+:::
+
+## Les règles, par principe
+
+| Principe | Règles |
+|---|---|
+| **Intégrité** | [R02](#R02) · [R03](#R03) · [R04](#R04) · [R07](#R07) · [R09](#R09) · [R13](#R13) · [R16](#R16) · [R17](#R17) |
+| **Traçabilité** | [R01](#R01) · [R10](#R10) · [R14](#R14) |
+| **Revue** | [R05](#R05) · [R06](#R06) · [R08](#R08) · [R11](#R11) |
+| **Reproductibilité** | [R12](#R12) · [R15](#R15) |
+
+L'intégrité domine : dans une équipe qui grandit, le premier risque n'est pas l'erreur de calcul, c'est le travail perdu ou écrasé. La reproductibilité arrive plus tard dans le parcours, mais c'est elle qui donne son sens aux autres : une publication qu'on ne sait pas refaire ne tient pas sa promesse, même si chaque MR a été relue.
+
+## Faire vivre le carnet
+
+- **Une règle se discute, puis s'écrit.** Si l'équipe veut en changer une, elle le fait par une MR sur `CONTRIBUTING.md`, avec l'incident qui justifie le changement.
+- **Une règle que GitLab peut faire respecter doit l'être.** « Pas de push sur `main` » (R06) est un réglage de branche protégée ; « pas de merge sans pipeline vert » (R11) est un réglage de MR. Les autres relèvent de la review.
+- **Un nouvel incident peut créer une règle.** C'est ainsi que le carnet est né ; il n'y a pas de raison qu'il s'arrête à dix-sept.

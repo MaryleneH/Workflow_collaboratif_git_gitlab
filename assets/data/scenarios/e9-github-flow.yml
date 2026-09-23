@@ -1,0 +1,39 @@
+titre: "GitHub Flow"
+couleurs:
+  "30-taux-difficulte": travail
+  "31-arrondi-parts": travail2
+  "erratum-2027": hotfix
+commits:
+  P: {x: 0, y: 0, msg: "Documente le workflow de l'équipe (#27)"}
+  A: {x: 1, y: 1, parents: [P], couleur: travail, msg: "Ajoute le taux de difficulté de recrutement par métier (#30)"}
+  B: {x: 1, y: 2, parents: [P], couleur: travail2, msg: "Arrondit les parts du tableau de synthèse : première version (#31)"}
+  M1: {x: 2, y: 0, parents: [P, A], msg: "Merge branch '30-taux-difficulte' into 'main'"}
+  B2: {x: 3, y: 2, parents: [B], couleur: travail2, msg: "Arrondit les parts : total forcé à 100 % (#31)"}
+  M2: {x: 4, y: 0, parents: [M1, B2], msg: "Merge branch '31-arrondi-parts' into 'main'"}
+  H: {x: 5, y: 1, parents: [M2], couleur: hotfix, msg: "Corrige l'erratum du panorama 2027"}
+  M3: {x: 6, y: 0, parents: [M2, H], msg: "Merge branch 'erratum-2027' into 'main'"}
+etapes:
+  - texte: "Une seule branche permanente, `main`, toujours livrable. Chaque sujet vit dans une branche courte, partie de `main`."
+    commande: "git switch -c 30-taux-difficulte main"
+    commits: [P, A, B]
+    refs: {main: P, "30-taux-difficulte": A, "31-arrondi-parts": B}
+    head: "30-taux-difficulte"
+  - texte: "#30 est relu puis fusionné dans `main`, ici avec un commit de fusion (**M1**). La publication `2027.0` est un tag sur `main`."
+    commande: "git tag -a 2027.0 -m \"Panorama 2027 : publication\""
+    commits: [P, A, B, M1]
+    refs: {main: M1, "31-arrondi-parts": B}
+    tags: {"2027.0": M1}
+    head: main
+    surligne: [M1]
+  - texte: "#31, terminé après la publication, est fusionné à son tour (**M2**). `main` contient maintenant du travail destiné à l'édition suivante."
+    commits: [P, A, B, M1, B2, M2]
+    refs: {main: M2}
+    tags: {"2027.0": M1}
+    head: main
+  - texte: "L'erratum part de `main`, qui contient déjà #31. Le tag `2027.1` publie donc la correction **et** #31, qui n'avait rien à faire dans un erratum. Pour un site web livré en continu, c'est voulu ; pour une publication datée, non."
+    commande: "git switch -c erratum-2027 main"
+    commits: [P, A, B, M1, B2, M2, H, M3]
+    refs: {main: M3}
+    tags: {"2027.0": M1, "2027.1": M3}
+    head: main
+    surligne: [B2, M3]

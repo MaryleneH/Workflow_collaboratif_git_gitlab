@@ -1,0 +1,73 @@
+---
+title: "Panorama de l'emploi dans la filière industrielle stratégique"
+subtitle: "Édition 2025"
+author: "Observatoire des entreprises industrielles"
+date: "2025-06-16"
+lang: fr
+engine: knitr
+execute:
+  echo: false
+format:
+  html:
+    embed-resources: true
+    toc: true
+---
+
+```{r}
+#| label: donnees
+indicateurs <- utils::read.csv("../resultats/indicateurs_2025.csv", encoding = "UTF-8")
+valeur <- function(indicateur, modalite = "ensemble") {
+  indicateurs$valeur[indicateurs$indicateur == indicateur & indicateurs$modalite == modalite]
+}
+pct <- function(x) paste0(format(round(100 * x, 1), nsmall = 1, decimal.mark = ","), " %")
+nombre <- function(x) format(x, big.mark = " ")
+seniors <- indicateurs[indicateurs$indicateur == "part_55_plus" &
+                         indicateurs$dimension == "sous_filiere", ]
+plus_agee <- seniors[which.max(seniors$valeur), ]
+```
+
+## Synthèse
+
+En 2025, le panel de l'Observatoire compte `r nombre(valeur("salaries"))`
+salariés dans `r nombre(valeur("etablissements"))` établissements industriels.
+La main-d'œuvre de la filière est âgée : `r pct(valeur("part_55_plus"))` des
+salariés ont 55 ans ou plus, et les départs à la retraite des prochaines années
+rendront les recrutements décisifs.
+
+## Chiffres clés
+
+- Salariés du champ : `r nombre(valeur("salaries"))`.
+- Établissements : `r nombre(valeur("etablissements"))`.
+- Part des 55 ans et plus : `r pct(valeur("part_55_plus"))`.
+- Sous-filière la plus âgée : `r plus_agee$modalite` (`r pct(plus_agee$valeur)` de 55 ans et plus).
+
+## Âges
+
+![Pyramide des âges des salariés au 31 décembre 2025](../resultats/figures/pyramide_2025.png)
+
+```{r}
+#| label: tbl-seniors
+#| tbl-cap: "Part des 55 ans et plus par sous-filière"
+tableau <- data.frame(
+  `Sous-filière` = seniors$modalite,
+  `Part des 55 ans et plus` = pct(seniors$valeur),
+  check.names = FALSE
+)
+knitr::kable(tableau[order(-seniors$valeur), ], row.names = FALSE)
+```
+
+## Métiers
+
+![Répartition des salariés par métier en 2025](../resultats/figures/metiers_2025.png)
+
+## Méthode
+
+- **Champ** : salariés présents au 31 décembre 2025 dans les établissements du
+  panel, hors intérimaires.
+- **Données** : panel synthétique de l'Observatoire ; les entreprises, les
+  établissements et les chiffres sont fictifs. La référence exacte des données
+  est le fichier `MANIFEST.json` du millésime (empreinte SHA-256 de chaque
+  table).
+- **Âge** : âge en années révolues.
+- **Reproduire ce rapport** : voir le `README.md` du dépôt, à la version
+  étiquetée `2025.0`.

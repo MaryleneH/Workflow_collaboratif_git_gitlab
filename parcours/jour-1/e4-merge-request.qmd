@@ -1,0 +1,639 @@
+---
+title: "Personne ne merge seul"
+etape: e4
+description: "Protéger main, ouvrir une Merge Request depuis une issue, relire le code et la méthode d'un collègue, puis fusionner en squash et nettoyer ses branches."
+---
+
+::: situation
+Vendredi, #12 et #13 sont entrés dans `main` par deux fusions locales suivies d'un `git push`. Personne n'a relu la résolution du conflit de Léa : elle était juste, mais c'était de la chance.
+
+Lundi, Tom livre l'issue #18, le taux de recrutement par métier, de la même façon : fusion locale dans `main`, puis `git push`. Karim ouvre le diff par curiosité et relève un chemin vers `/home/tom/…`, une moyenne de taux présentée comme un taux et un fichier `salaries_2025_nominatif.csv`. Si le push était passé, tout cela serait dans `main`, donc dans le prochain panorama.
+
+Cette fois, le push est refusé : ce matin, Inès a protégé `main`.
+:::
+
+## Ce qui se passe réellement
+
+Jusqu'ici, `main` n'était protégée que par la bonne volonté de chacun. Git ne peut pas faire mieux : pour lui, `main` est une branche comme une autre, et quiconque peut écrire sur le dépôt peut la déplacer. La promesse de `main` (« toujours relue, toujours exécutable ») ne peut être tenue que par **le serveur**. C'est le rôle de GitLab.
+
+GitLab ajoute pour cela deux objets que Git ne connaît pas :
+
+- la [branche protégée]{.t} : le serveur refuse qu'on pousse directement sur `main` ;
+- la [Merge Request]{.t} (MR) : la seule porte d'entrée restante. Elle montre le [diff]{.t}, porte la discussion, la [review]{.t}, l'[approval]{.t} et, demain, le pipeline. Quand tout est au vert, c'est GitLab qui fusionne.
+
+::: idee-fausse
+::: fausse
+« Ouvrir une MR, c'est une commande Git. »
+:::
+::: juste
+Il n'existe pas de `git merge-request`. Git fournit la branche, les commits, le push et le merge. La MR est un **objet GitLab** : une page, avec un numéro, qui demande « intégrez cette branche dans celle-là ». Sur GitHub, le même objet s'appelle [Pull Request]{.t}.
+:::
+:::
+
+Voici le chemin complet d'une modification. Chaque station porte le nom de qui la fournit : Git ou GitLab.
+
+::: {.parcours-mr}
+:::
+
+Retenez surtout la frontière. Les stations 2 et 3 se passent dans votre terminal, avec Git. Tout le reste se passe sur GitLab, qui s'appuie sur les branches que vous poussez.
+
+## Une branche protégée : c'est GitLab qui dit non
+
+Voici ce que Tom a vu lundi matin.
+
+::: {.incident #inc-e4-1 titre="Le push sur main est refusé"}
+::: symptome
+```{.text .sortie}
+$ git push
+remote: GitLab: You are not allowed to push code to protected branches on this project.
+To https://gitlab.example.org/oei/observatoire-industrie.git
+ ! [remote rejected] main -> main (pre-receive hook declined)
+error: failed to push some refs to 'https://gitlab.example.org/oei/observatoire-industrie.git'
+```
+:::
+::: hypotheses
+- Quelqu'un a poussé sur `main` depuis le dernier fetch de Tom : il faut faire `git pull`.
+- Tom n'a plus les droits d'écriture sur le projet.
+- Le serveur refuse, par principe, toute écriture directe sur `main`.
+:::
+::: diagnostic
+Comparez avec le push refusé de l'étape 2 : `! [rejected] main -> main (fetch first)`. Ici, c'est `! [remote rejected]` :
+
+- `[rejected]` : c'est **Git**, chez vous, qui renonce, parce que le push ne serait pas un fast-forward ;
+- `[remote rejected]` : le serveur a reçu les commits, puis les a **refusés**. La raison est donnée entre parenthèses, et la ligne `remote: GitLab:` la précise. Tout ce qui commence par `remote:` est écrit par le serveur, pas par Git.
+
+Le *pre-receive hook* est un contrôle que GitLab exécute avant d'accepter un push. Il a appliqué le réglage d'Inès : sur `main`, *Allowed to push and merge* vaut *No one*. Tom a toujours ses droits de développeur : il peut pousser sur n'importe quelle autre branche.
+
+Un `git pull` n'y changerait rien. Et `git push --force` non plus : le refus ne vient pas de la position de `main`, mais de la règle.
+:::
+::: correction
+Le travail de Tom n'est pas perdu : il est dans le commit que portent à la fois `main` et `18-taux-recrutement` sur sa machine. Il faut remettre `main` à sa place, puis livrer la branche.
+
+```{.bash risque="reversible"}
+git switch 18-taux-recrutement      # quitter main : on ne peut pas déplacer la branche courante
+git branch -f main origin/main      # remettre main là où est main sur GitLab
+git push -u origin 18-taux-recrutement
+```
+
+`git branch -f` déplace une étiquette ; le reflog garde l'ancienne position. Aucun commit n'est détruit : celui de Tom reste porté par `18-taux-recrutement`.
+:::
+::: prevention
+Sur un projet où `main` est protégée, on ne commite plus sur `main`. On y fait seulement `git pull`, pour la tenir à jour.
+:::
+:::
+
+Le réglage se trouve dans **Settings › Repository › Protected branches** (rôle *Maintainer* requis). Pour chaque branche protégée, GitLab propose :
+
+| Réglage | Valeur à l'Observatoire | Effet |
+|---|---|---|
+| *Allowed to merge* | Developers + Maintainers | qui peut fusionner une MR dans `main` |
+| *Allowed to push and merge* | No one | qui peut pousser directement sur `main` : personne, pas même Inès |
+| *Allowed to force push* | désactivé | personne ne peut réécrire l'historique de `main` |
+
+Sur beaucoup d'instances, la branche par défaut d'un projet neuf est déjà protégée, mais laisse les Maintainers pousser directement. Vérifiez ce réglage sur vos projets : c'est lui, et non Git, qui fait de `main` une référence commune.
+
+::: {.regle ref="R06"}
+:::
+
+## De l'issue à la Draft MR
+
+### Tout part d'une issue
+
+L'[issue]{.t} #18 décrit le besoin : « Ajouter le taux de recrutement par métier ». Elle dit pourquoi le travail existe et le rend discutable avant qu'une ligne soit écrite. Son numéro va suivre le travail partout : dans le nom de la branche, dans les messages de commit, dans la MR.
+
+GitLab numérote **séparément** les issues et les MR :
+
+- `#18` : l'issue, c'est-à-dire le besoin ;
+- `!1` : la Merge Request, c'est-à-dire la proposition de code qui y répond.
+
+Une issue peut avoir plusieurs MR. Une MR peut ne correspondre à aucune issue. Dans un commentaire GitLab, `#18` et `!1` deviennent des liens.
+
+### Deux façons de créer la branche
+
+**Depuis l'issue.** Le bouton **Create merge request** de l'issue crée, en un clic, la branche sur GitLab et une MR en brouillon qui lui est liée. GitLab propose un nom de branche construit sur le numéro et le titre de l'issue (`18-ajouter-le-taux-…`). Le menu déroulant du bouton permet de le raccourcir en `18-taux-recrutement`. La branche n'existe alors que sur le serveur : il faut la récupérer.
+
+```{.bash risque="sur"}
+git fetch
+```
+
+```{.bash risque="reversible"}
+git switch 18-taux-recrutement
+```
+
+```{.text .sortie}
+branch '18-taux-recrutement' set up to track 'origin/18-taux-recrutement'.
+Switched to a new branch '18-taux-recrutement'
+```
+
+`git switch` a trouvé `origin/18-taux-recrutement` et créé une branche locale du même nom, qui la suit.
+
+**Depuis le terminal**, comme Tom. On crée la branche depuis `main` à jour, on commite, puis on pousse en créant le lien de suivi (`-u` pour [upstream]{.t}).
+
+```{.bash risque="reversible"}
+git switch main
+git pull
+git switch -c 18-taux-recrutement
+```
+
+```{.bash risque="sur"}
+git push -u origin 18-taux-recrutement
+```
+
+```{.text .sortie}
+remote:
+remote: To create a merge request for 18-taux-recrutement, visit:
+remote:   https://gitlab.example.org/oei/observatoire-industrie/-/merge_requests/new?merge_request%5Bsource_branch%5D=18-taux-recrutement
+remote:
+To https://gitlab.example.org/oei/observatoire-industrie.git
+ * [new branch]      18-taux-recrutement -> 18-taux-recrutement
+branch '18-taux-recrutement' set up to track 'origin/18-taux-recrutement'.
+```
+
+Les lignes `remote:` viennent de GitLab : il propose l'adresse qui ouvre le formulaire de MR. Les trois dernières lignes viennent de Git.
+
+::: {.vscode titre="Publier une branche"}
+Pour une branche qui n'existe pas encore sur le serveur, la vue **Source Control** (<kbd>Ctrl</kbd>+<kbd>Maj</kbd>+<kbd>G</kbd>) affiche un bouton **Publish Branch** (publier la branche). Il exécute `git push -u origin <branche>`. La barre d'état, en bas à gauche, affiche le nom de la branche courante : c'est `git branch --show-current` en permanence.
+:::
+
+### Ouvrir la MR tôt, en Draft
+
+Tom ouvre la MR dès son premier push, en [Draft]{.t} (le titre commence par `Draft:`). Une Draft MR est visible et discutable, mais GitLab refuse de la fusionner. Elle dit : « voilà où j'en suis, regardez ». Quand le travail est prêt, **Mark as ready** retire le préfixe.
+
+La description compte autant que le code. Elle dit ce qui change, pourquoi, comment vérifier, et elle relie la MR à l'issue :
+
+```markdown
+Ajoute le taux de recrutement par métier au panorama.
+
+- Calcul : `taux_recrutement_metier()` dans `R/recrutement.R`
+- Données : table `recrutements` (millésime 2025)
+- Pour vérifier : `Rscript scripts/03_indicateurs.R 2025`, puis comparer au tableau 4
+
+Closes #18
+```
+
+`Closes #18` ferme automatiquement l'issue quand la MR est fusionnée dans la branche par défaut. Ce mot-clé est une convention GitLab ; Git l'ignore.
+
+Le graphe suivant montre ce qui se passe, dans les deux dépôts, pendant toute la vie de la MR.
+
+::: {.git-graph scenario="e4-mr-squash"}
+:::
+
+Deux points méritent d'être soulignés.
+
+- La MR suit une **branche**, pas un commit. Chaque `git push` sur `18-taux-recrutement` met la MR à jour.
+- GitLab peut, lui aussi, créer des commits sur la branche du serveur, par exemple quand on applique une suggestion. Pensez à faire `git pull` sur votre branche avant de continuer.
+
+## Relire une MR
+
+### Ce que GitLab met à disposition
+
+Une MR s'organise en onglets.
+
+| Onglet | Contenu |
+|---|---|
+| **Overview** | description, discussion générale, état (Draft, approbations, pipeline), bouton de merge |
+| **Commits** | les commits de la branche qui ne sont pas dans la cible |
+| **Pipelines** | les exécutions de la CI sur cette branche (étape 6) |
+| **Changes** | le diff, fichier par fichier, où l'on commente ligne à ligne |
+
+L'onglet *Changes* montre ce que la branche ajoute depuis son point de départ. En terminal, c'est `git diff main...18-taux-recrutement` : avec trois points, Git compare à l'**ancêtre commun**, et non à la pointe actuelle de `main`.
+
+Pour commenter, survolez une ligne du diff et cliquez sur la bulle. Chaque commentaire ouvre un **fil de discussion** (*thread*). Il reste ouvert jusqu'à ce que quelqu'un clique sur **Resolve thread**. Un projet peut exiger que tous les fils soient résolus avant le merge : c'est le réglage *All threads must be resolved* (Settings › Merge requests › Merge checks).
+
+Une [suggestion]{.t} propose directement le code corrigé. Dans le commentaire, le bouton **Insert suggestion** produit un bloc de ce type :
+
+````markdown
+Bloquant : c'est une moyenne de taux d'établissements, pas le taux du métier.
+
+```suggestion:-0+0
+    dplyr::summarise(taux = sum(recrutements) / sum(effectif), .groups = "drop")
+```
+````
+
+L'auteur clique sur **Apply suggestion**, et GitLab crée le commit sur la branche. `-0+0` indique combien de lignes avant et après la ligne commentée la suggestion remplace.
+
+Plutôt que de publier ses commentaires un par un, le relecteur commence par **Start a review**. Ses commentaires restent en attente, et il les publie d'un coup, avec un résumé, par **Submit review** (**Finish review** dans certaines versions). L'auteur reçoit une seule notification, avec une relecture cohérente.
+
+Enfin, l'[approval]{.t} : le bouton **Approve** dit « j'ai relu, je suis d'accord ». Dans l'édition gratuite de GitLab, l'approbation est indicative. Les **règles d'approbation obligatoires** (par exemple « au moins un approbateur autre que l'auteur ») demandent une édition payante, Premium ou Ultimate. Sans elles, c'est la règle d'équipe qui oblige.
+
+### À vous : la MR !1
+
+Voici le diff de la MR de Tom, telle qu'il l'a poussée. Cherchez avant de dérouler la liste.
+
+::: {.review scenario="mr-18"}
+```{.diff fichier="R/recrutement.R"}
++# Taux de recrutement par métier, pour le panorama annuel
++
++taux_recrutement_metier <- function(annee) {
++  rec <- read.csv("/home/tom/Documents/extractions/recrutements_2025.csv")
++  sal <- read.csv("data/prepare/salaries_champ.csv")
++
++  effectifs <- sal |>
++    dplyr::filter(millesime == annee) |>
++    dplyr::count(id_etab, metier, name = "effectif")
++
++  rec |>
++    dplyr::filter(millesime == annee) |>
++    dplyr::mutate(recrutements = ifelse(is.na(recrutements), 0, recrutements)) |>
++    dplyr::inner_join(effectifs, by = c("id_etab", "metier")) |>
++    dplyr::filter(effectif >= 10) |>
++    dplyr::group_by(metier) |>
++    dplyr::summarise(taux = mean(recrutements / effectif), .groups = "drop")
++}
++
++intervalle_taux <- function(taux_etab, n_boot = 1000) {
++  estimations <- replicate(n_boot, mean(sample(taux_etab, replace = TRUE)))
++  quantile(estimations, c(0.025, 0.975))
++}
+```
+
+```{.diff fichier="scripts/telecharger_recrutements.py"}
++"""Télécharge les déclarations de recrutement depuis l'API de l'Observatoire."""
++
++import requests
++
++API_URL = "https://api.example.org/oei/v1/recrutements"
++API_TOKEN = "oei-9f3b2c71e4d84a0b-fictif"
++
++
++def telecharger(millesime: int, destination: str) -> None:
++    reponse = requests.get(
++        API_URL,
++        params={"millesime": millesime},
++        headers={"Authorization": f"Bearer {API_TOKEN}"},
++        timeout=60,
++    )
++    reponse.raise_for_status()
++    with open(destination, "wb") as f:
++        f.write(reponse.content)
+```
+
+```{.diff fichier="data/extractions/salaries_2025_nominatif.csv"}
++id_salarie,nom,prenom,date_naissance,sexe,pcs,metier,id_etab
++SAL-0000001,MARTIN,Julie,1971-04-12,F,62,soudeur·se,ETB-00017
++SAL-0000002,BERNARD,Karim,1988-11-03,H,47,technicien·ne méthodes,ETB-00017
++SAL-0000003,PETIT,Claire,1965-02-28,F,37,ingénieur·e systèmes,ETB-00342
+```
+:::
+
+Le fichier CSV compte 40 salariés (41 lignes avec l'en-tête), tous fictifs ; l'extrait n'en montre que le début. Peu importe sa taille : une seule ligne nominative suffit à poser le problème. Le message du commit unique de la MR est « maj ».
+
+::: {.mission #m-e4-1 titre="Relire comme un pro" duree="25 min" mode="en binôme" depart="etape-4-debut"}
+::: objectif
+Trouver ce qui ne doit pas entrer dans `main`, et l'écrire sous une forme que l'auteur pourra traiter.
+:::
+
+La MR !1 est ouverte dans le projet GitLab de votre binôme. Vous pouvez aussi lire la branche en terminal.
+
+::: consignes
+1. Récupérez la branche et regardez ce qu'elle apporte, sans rien modifier :
+
+   ```{.bash risque="sur"}
+   git fetch
+   git log --oneline --graph main..origin/18-taux-recrutement
+   git diff --stat main...origin/18-taux-recrutement
+   ```
+
+2. Lisez le diff ci-dessus ou dans l'onglet **Changes** de la MR. Pendant 10 minutes, sans dérouler la liste, notez tout ce qui vous arrête : le code, mais aussi **la méthode** (que mesure ce taux ?) et **ce qui ne devrait pas être dans un dépôt**.
+3. Dans GitLab, cliquez sur **Start a review**, puis rédigez au moins quatre commentaires sur les lignes concernées. Commencez chacun par sa nature : `Question :`, `Suggestion :` ou `Bloquant :`. Au moins un commentaire doit contenir une suggestion (`suggestion:-0+0`).
+4. Publiez la review (**Submit review**) avec un résumé de deux lignes : peut-on fusionner en l'état ?
+5. Comparez enfin votre liste aux points ci-dessus, déroulés.
+:::
+
+::: reussite
+Dans l'onglet **Overview** de la MR !1, vos commentaires apparaissent comme des fils ouverts. Chacun est attaché à une ligne, annonce sa nature, et au moins six des huit points sont couverts, dont les deux problèmes de méthode sur le calcul du taux.
+:::
+
+::: indice
+Relisez la ligne `summarise` en vous demandant : si un établissement de 12 salariés et un établissement de 2 000 salariés recrutent chacun 10 %, puis 1 %, quel est le taux du métier ?
+:::
+
+::: {.indice titre="Indice 2 : ce que le code ne montre pas"}
+Trois problèmes ne sont pas des erreurs de calcul : un fichier, une ligne du script Python, et le message du commit.
+:::
+
+::: corrige
+Les huit points sont dans la liste de la review (fichier `assets/data/reviews/mr-18.yml`). Attendus de méthode : NA remplacés par 0 (biais vers le bas, exclure et publier le taux de réponse) ; moyenne des taux au lieu de `sum(recrutements) / sum(effectif)`.
+
+Ordres de grandeur sur les données 2025 du dépôt compagnon, tous métiers confondus : rapport des sommes sur les répondants **9,97 %** (le calcul retenu en c20) ; moyenne des taux d'établissements 12,5 % ; NA remplacés par 0, 9,2 % ; calcul de la MR telle quelle (NA → 0, `effectif >= 10`, moyenne des taux) 9,6 %. Le chiffre de Tom est proche du bon **par hasard** : deux biais de sens contraire se compensent en partie. C'est l'argument à donner aux binômes qui disent « le résultat est plausible, donc le code est bon ». Les binômes trouvent en général le chemin et le jeton, plus rarement le filtre `effectif >= 10` et le bootstrap sans graine.
+
+Points à reprendre en débriefing :
+
+- un commentaire qui vise la personne (« tu n'as pas compris… ») contre un commentaire qui vise le code (« cette ligne donne le même poids à… ») ;
+- un « Bloquant » doit dire ce qui débloquerait ;
+- le fichier nominatif et le jeton ne se règlent pas par un commentaire de review : voir l'incident suivant.
+:::
+:::
+
+### Écrire un commentaire utile
+
+Une review n'est pas un examen de l'auteur. C'est une relecture du **changement**, pour que `main` tienne sa promesse.
+
+- **Commentez le code, pas la personne.** « Cette ligne remplace les non-réponses par 0 » plutôt que « tu as oublié les NA ».
+- **Annoncez la nature du commentaire.** Une *question* appelle une réponse, une *suggestion* peut être ignorée avec une raison, un point *bloquant* doit être traité avant le merge. Beaucoup d'équipes préfixent leurs commentaires ainsi : c'est une convention d'équipe, pas une fonction GitLab.
+- **Proposez une sortie.** Une suggestion applicable, un lien vers la note de méthode, un test à ajouter.
+- **Relisez la méthode autant que le code.** Que mesure l'indicateur ? Sur quel champ ? Que deviennent les valeurs manquantes ? Le résultat est-il reproductible ?
+
+La liste de contrôle complète se trouve dans le mémo [Relire une MR](../../memos/relecture-mr.qmd).
+
+::: {.regle ref="R08"}
+:::
+
+## Quand un secret ou des données sont poussés
+
+::: {.incident #inc-e4-2 titre="« Je supprime la ligne et c'est bon ? »"}
+::: symptome
+Tom répond au fil de Karim sur le jeton, puis pousse un commit qui remplace la ligne par une lecture de variable d'environnement. Dans la branche, le jeton n'apparaît plus :
+
+```{.text .sortie}
+$ git grep -n "oei-9f3b" -- scripts/
+$ git log --oneline -S "oei-9f3b2c71e4d84a0b" origin/18-taux-recrutement
+b7e2d40 Lit le jeton d'API dans l'environnement (#18)
+805fa9a maj
+```
+:::
+::: hypotheses
+- Le jeton n'est plus dans le code : le problème est réglé.
+- Le jeton est toujours dans l'historique : il faut réécrire la branche, et ce sera réglé.
+- Le jeton a été diffusé : il faut le considérer comme connu de tous.
+:::
+::: diagnostic
+`git grep` cherche dans l'instantané courant : il ne trouve plus rien. `git log -S` cherche les commits qui ont ajouté ou retiré la chaîne : `805fa9a` contient toujours le jeton, car un commit est un instantané qui ne change jamais.
+
+Réécrire la branche (étape 7) ferait disparaître ce commit de `18-taux-recrutement`, mais pas du reste du monde :
+
+- tous ceux qui ont fait `git fetch` depuis lundi en ont une copie complète ;
+- GitLab conserve les versions successives du diff de la MR ;
+- le jeton a pu être lu dans l'interface, dans une notification ou dans un journal.
+
+Un secret poussé est un secret **compromis**. La seule correction fiable est de le rendre inutile.
+
+Il en va de même pour `salaries_2025_nominatif.csv`. Ici, les données sont synthétiques ; avec de vraies données individuelles, ce serait une fuite, et elle concerne d'autres personnes que l'équipe.
+:::
+::: correction
+1. **Révoquer le jeton**, immédiatement, dans le service qui l'a émis, puis en demander un nouveau.
+2. **Ne plus jamais l'écrire dans le code.** Le script le lit dans l'environnement :
+
+   ```python
+   import os
+
+   API_TOKEN = os.environ["OEI_API_TOKEN"]
+   ```
+
+   Sur votre service, la variable se définit hors du dépôt. Dans la CI, elle se déclare dans **Settings › CI/CD › Variables**, avec l'option de masquage (*Mask variable*), pour qu'elle n'apparaisse pas dans les journaux des jobs.
+3. **Prévenir Inès**, responsable de la publication, pour le fichier de données. Retirer le fichier de la branche et empêcher son retour :
+
+   ```{.bash risque="reversible"}
+   git rm data/extractions/salaries_2025_nominatif.csv
+   echo "data/extractions/" >> .gitignore
+   git add .gitignore
+   git commit -m "Retire l'extraction nominative et ignore data/extractions (#18)"
+   git push
+   ```
+
+4. **Décider à plusieurs** de la suite. Tant que la branche n'est pas fusionnée, on peut réécrire son historique pour en retirer le fichier. Mais les copies déjà faites ne disparaîtront pas pour autant, et un nettoyage côté GitLab demande un Maintainer, voire l'administrateur de l'instance. Ce n'est pas une décision à prendre seul dans son terminal.
+:::
+::: prevention
+Les données individuelles restent hors du dépôt (`data/brut/` et `data/prepare/` sont dans le `.gitignore`), et les secrets restent dans l'environnement. Avant chaque commit, `git status` et `git diff --staged` : on sait ce qu'on envoie.
+:::
+:::
+
+::: {.regle ref="R09"}
+:::
+
+## Fusionner, puis faire le ménage
+
+### Ce que fait GitLab au moment du merge
+
+Tom a traité les fils et passé la MR en *ready*. Karim a approuvé. Inès clique sur **Merge** en laissant cochées deux cases :
+
+- **Squash commits** : les commits de la branche (« maj », les corrections, la suggestion appliquée) sont remplacés, **dans `main`**, par un seul nouveau commit. Son message, modifiable avant le merge, devient « Ajoute le taux de recrutement par métier (#18) ».
+- **Delete source branch** : GitLab supprime `18-taux-recrutement` sur le serveur.
+
+Le [squash]{.t} ne modifie pas les commits de Tom : il en crée un **nouveau**, dont l'instantané est l'état final de la branche et dont le seul parent est la pointe de `main`. C'est l'étape 6 du graphe ci-dessus. Vous reverrez le squash en détail à l'étape 7.
+
+Le résultat exact dépend d'un réglage du projet, **Settings › Merge requests › Merge method**. À l'Observatoire, il vaut *Fast-forward merge* : GitLab crée le commit de squash et avance `main` jusqu'à lui, sans commit de fusion. Avec la méthode par défaut, *Merge commit*, GitLab ajouterait un commit de fusion par-dessus le commit de squash. Le même écran règle le squash lui-même (*Squash commits when merging* : autorisé, encouragé ou imposé) ; vous le configurerez à l'étape 10.
+
+### Remettre son dépôt à jour
+
+GitLab a changé le serveur. Votre dépôt, lui, n'en sait rien tant que vous ne lui demandez pas.
+
+```{.bash risque="reversible"}
+git switch main
+```
+
+```{.text .sortie}
+Switched to branch 'main'
+Your branch is up to date with 'origin/main'.
+```
+
+« Up to date » est vrai… par rapport à `origin/main` tel que vous l'avez vu à votre dernier fetch. C'est la [branche distante]{.t} de l'étape 2 : une photo datée, pas le serveur.
+
+```{.bash risque="reversible"}
+git pull
+```
+
+```{.text .sortie}
+From https://gitlab.example.org/oei/observatoire-industrie
+   f478ddb..432145a  main       -> origin/main
+Updating f478ddb..432145a
+Fast-forward
+```
+
+Comme vous ne commitez jamais sur `main`, ce pull est toujours un [fast-forward]{.t} : l'étiquette avance, aucun commit n'est créé. Autant le demander explicitement à Git, une fois pour toutes :
+
+```{.bash risque="sur"}
+git config --global pull.ff only
+```
+
+Désormais, si votre `main` locale a divergé (un commit fait par erreur sur `main`), `git pull` s'arrête sur `fatal: Not possible to fast-forward, aborting.` au lieu de fabriquer un commit « Merge branch 'main' of… ». C'est un signal d'alarme, pas une panne.
+
+::: {.regle ref="R07"}
+:::
+
+Reste la branche locale.
+
+```{.bash risque="reversible"}
+git branch -d 18-taux-recrutement
+```
+
+```{.text .sortie}
+warning: deleting branch '18-taux-recrutement' that has been merged to
+         'refs/remotes/origin/18-taux-recrutement', but not yet merged to HEAD
+Deleted branch 18-taux-recrutement (was 9e04b6d).
+```
+
+L'avertissement est instructif. Git vérifie qu'une branche est fusionnée en regardant les **parents**, pas le contenu. Or les commits de Tom ne sont pas des ancêtres de `main` : le squash en a fait une copie, `S`. Git accepte quand même de supprimer la branche, parce qu'elle est identique à la branche distante qu'elle suit. Après un `git fetch --prune`, cette branche distante aurait disparu, et Git refuserait avec `error: the branch '18-taux-recrutement' is not fully merged` (formulation exacte selon votre version). Si la MR est bien fusionnée, `git branch -D` supprime alors sans vérifier.
+
+Enfin, on élague les branches distantes qui n'existent plus sur le serveur :
+
+```{.bash risque="sur"}
+git fetch --prune
+```
+
+```{.text .sortie}
+From https://gitlab.example.org/oei/observatoire-industrie
+ - [deleted]         (none)     -> origin/18-taux-recrutement
+```
+
+`git branch -a` ne montre plus que ce qui est réellement en cours.
+
+::: {.regle ref="R10"}
+:::
+
+::: {.vscode titre="Voir les MR sans quitter l'éditeur"}
+L'extension officielle **GitLab Workflow** (éditeur : GitLab) est optionnelle. Elle affiche dans VS Code les issues et les MR qui vous concernent, l'état du pipeline de la branche courante, et permet de répondre aux commentaires de review. Elle demande un jeton d'accès personnel : il se range dans l'extension, jamais dans un fichier du projet.
+
+L'essentiel reste ailleurs : Git dans le terminal, et l'interface web de GitLab pour la MR.
+:::
+
+::: {.mission #m-e4-2 titre="Un cycle complet, de l'issue à la suppression" duree="30 min" mode="en binôme" depart="etape-4-debut"}
+::: objectif
+Faire passer chacun une modification par tout le parcours d'une MR, en relisant celle de l'autre.
+:::
+
+Chaque membre du binôme est auteur d'une MR et relecteur de l'autre. Deux sujets au choix :
+
+- **A** : ajouter dans `tests/testthat/test-age.R` un test de bornes pour `classe_age()` (un salarié de 54 ans et un de 55 ans au 31 décembre) ;
+- **B** : préciser dans `data/README.md` que l'âge est calculé au 31 décembre de l'année de référence, en citant l'issue #7.
+
+::: consignes
+1. Créez votre issue dans GitLab, avec un titre qui dit le besoin. Notez son numéro.
+2. Depuis l'issue, utilisez **Create merge request** en raccourcissant le nom de branche (`<numéro>-sujet-court`). Récupérez la branche : `git fetch`, puis `git switch <branche>`.
+3. Faites un ou deux commits dont le message dit pourquoi et cite l'issue, puis `git push`.
+4. Complétez la description de la Draft MR (quoi, pourquoi, comment vérifier, `Closes #<numéro>`), puis passez-la en *ready* et désignez votre binôme comme *Reviewer*.
+5. Relisez la MR de votre binôme avec **Start a review**. Au moins un commentaire doit être une suggestion. Publiez la review.
+6. Traitez les commentaires reçus : appliquez la suggestion (puis `git pull` sur votre branche), répondez, résolvez les fils.
+7. Quand les fils sont résolus, le relecteur approuve et fusionne avec **Squash commits** et **Delete source branch**.
+8. Chacun remet son dépôt à jour : `git switch main`, `git pull`, `git branch -d <branche>`, `git fetch --prune`.
+:::
+
+::: reussite
+`git log --oneline -3 main` montre, sur `main`, un commit par MR, chacun citant son issue ; `git branch -a` ne montre plus aucune de vos deux branches ; dans GitLab, les deux issues sont fermées.
+:::
+
+::: indice
+Si le bouton **Merge** est remplacé par une demande de rebase, c'est que `main` a avancé depuis la création de votre branche : avec la méthode *Fast-forward merge*, GitLab exige que la branche parte de la pointe de `main`. Utilisez le bouton **Rebase** proposé dans la MR ; l'étape 7 expliquera ce qu'il fait.
+:::
+
+::: {.indice titre="Indice 2 : le pull est refusé sur ma branche"}
+`fatal: Not possible to fast-forward, aborting.` : vous avez commité en local pendant que GitLab appliquait une suggestion sur le serveur. Votre branche a divergé de `origin/<branche>`. Réunissez les deux par une fusion, comme à l'étape 3 : `git merge origin/<branche>`. La prochaine fois, appliquez les suggestions et faites `git pull` avant de reprendre le travail en local.
+:::
+
+::: corrige
+Timing : 5 min issues et branches, 10 min commits et MR, 10 min review croisée, 5 min merge et nettoyage.
+
+Pièges fréquents :
+
+- oublier `git fetch` avant `git switch <branche>` quand la branche a été créée depuis l'issue (`fatal: invalid reference`) ;
+- commiter en local pendant qu'une suggestion est appliquée sur le serveur (indice 2) ;
+- le second binôme à fusionner doit rebaser sa MR, car `main` a avancé : c'est normal, et c'est la porte d'entrée de l'étape 7.
+:::
+:::
+
+## Ce que disent les développeurs
+
+::: decodeur
+« J'ai ouvert une [Draft]{.t} [MR]{.t ref="merge-request"}, peux-tu faire une [review]{.t} ? Il y a deux threads à résoudre avant l'[approval]{.t}. »
+
+::: traduction
+J'ai proposé sur GitLab l'intégration de ma branche, en signalant qu'elle n'est pas encore prête à fusionner. Peux-tu relire le code et la méthode ? Deux fils de discussion sont encore ouverts : il faut les traiter avant que quelqu'un valide formellement la demande.
+:::
+:::
+
+::: {.rosette principe="revue"}
+::: principe
+Aucun changement n'entre dans la version de référence sans un second regard.
+:::
+::: dev
+Code review systématique sur chaque MR, approbations obligatoires, branche protégée : le code relu est celui qui est livré.
+:::
+::: stat
+Relecture du code **et** de la méthode : champ, pondérations, valeurs manquantes, hypothèses, reproductibilité. Le relecteur statisticien se demande ce que mesure le chiffre, pas seulement si le script tourne.
+:::
+:::
+
+## En pratique statistique
+
+Dans une équipe de développement, un bug relu trop vite finit en ticket. À l'Observatoire, une moyenne de taux relue trop vite finit dans un rapport publié, avec le logo de l'équipe. La MR est l'endroit où la **méthode** est discutée par écrit, datée et liée au code qui l'applique. Dans un an, quand quelqu'un demandera pourquoi le taux de recrutement exclut les non-répondants, la réponse sera dans !1, à un clic du commit `S`.
+
+Le chiffre publié gagne ainsi un maillon de confiance :
+
+::: {.chaine-confiance jusqua="relu"}
+:::
+
+Il en manque encore : la relecture humaine ne vérifie pas, à chaque push, que les parts somment à 100 %. Ce sera le rôle de la CI.
+
+::: retenir
+- La MR est un objet GitLab, pas une commande Git : elle suit une branche, réunit diff, discussion et approbation, et c'est GitLab qui fusionne et protège `main`.
+- Une review relit le code **et** la méthode ; un bon commentaire vise le code, annonce s'il est bloquant et propose une correction.
+- Un secret ou une donnée individuelle poussés sont compromis : on révoque, on prévient, et un commit de suppression ne suffit jamais.
+:::
+
+::: {.checkpoint titre="Avant de passer à la suite"}
+::: {.question rappel="e2"}
+Juste après le merge de la MR, Tom tape `git switch main` et lit « Your branch is up to date with 'origin/main' ». Pourquoi ce message ne prouve-t-il pas que sa `main` contient la MR ?
+
+::: reponse
+`origin/main` est la position de `main` sur GitLab **lors du dernier fetch**. Le merge a eu lieu sur le serveur après ce fetch : la comparaison se fait avec une photo périmée. Il faut `git fetch` (ou `git pull`) pour que `origin/main` rattrape le serveur.
+:::
+:::
+
+::: {.question rappel="e3"}
+Vendredi, #12 est entré dans `main` par fast-forward et #13 par un commit de fusion. La MR !1, fusionnée en squash, a produit un commit à un seul parent. Lequel de ces trois cas crée un commit, et avec combien de parents ?
+
+::: reponse
+Le fast-forward ne crée aucun commit : l'étiquette avance. La fusion à trois voies crée un commit à deux parents. Le squash crée un nouveau commit à un seul parent (la pointe de `main`), dont l'instantané est l'état final de la branche.
+:::
+:::
+
+::: question
+`#18` et `!1` : que désigne chacun, et lequel ferme l'autre ?
+
+::: reponse
+`#18` est l'issue (le besoin), `!1` la Merge Request (la proposition de code). `Closes #18` dans la description de !1 ferme l'issue quand la MR est fusionnée dans la branche par défaut.
+:::
+:::
+
+::: question
+Le push de Tom sur `main` affiche `! [remote rejected] … (pre-receive hook declined)`. Qui refuse : Git ou GitLab ? À quoi le voit-on ?
+
+::: reponse
+GitLab. `[remote rejected]` signifie que le serveur a reçu puis refusé le push, et la ligne `remote: GitLab: …` est écrite par le serveur. Git ignore la notion de branche protégée ; un refus de Git lui-même s'afficherait `[rejected]`.
+:::
+:::
+
+::: question
+Pourquoi `git branch -d 18-taux-recrutement` émet-il un avertissement après un merge en squash ?
+
+::: reponse
+Git juge qu'une branche est fusionnée si son dernier commit est un **ancêtre** de la branche de référence. Le squash a créé un nouveau commit : ceux de la branche ne sont pas ancêtres de `main`. Git accepte la suppression parce que la branche est identique à `origin/18-taux-recrutement`, mais signale qu'elle n'est pas fusionnée dans HEAD.
+:::
+:::
+
+::: question
+Tom a retiré le jeton dans un second commit. Karim approuve-t-il la MR ?
+
+::: reponse
+Pas tant que le jeton n'est pas révoqué. Le premier commit contient toujours le jeton, et il a été copié chez tous ceux qui ont récupéré la branche. Le retrait dans le code est nécessaire, mais c'est la révocation qui corrige.
+:::
+:::
+:::
+
+::: formateur
+**Timing (90 min).** Situation et incident 1 : 10 min. Protection de `main` en direct dans GitLab : 5 min. Issue, branche, Draft MR, graphe : 15 min. Mission m-e4-1 : 25 min, débriefing compris. Incident 2 : 5 min. Merge et nettoyage : 5 min. Mission m-e4-2 : 20 à 25 min selon le groupe (raccourcir à un seul sujet par binôme si besoin).
+
+**Préparation.** Dans chaque projet de binôme : `main` protégée (*Allowed to push and merge* : No one), *Merge method* : Fast-forward merge, *Squash commits when merging* : Encourage, et la MR !1 ouverte en Draft depuis la branche livrée `18-taux-recrutement`. Donner aux stagiaires le rôle *Developer*, pour qu'ils voient le refus de l'incident 1.
+
+**Pièges observés.**
+
+- Les stagiaires cherchent les erreurs de code et ratent la méthode : relancer par « que mesure ce taux ? ».
+- Le jeton est vu, le fichier nominatif beaucoup moins souvent : il n'a « pas de code ».
+- Confusion `[rejected]` / `[remote rejected]` : la faire verbaliser, elle revient en E6 avec les pipelines.
+
+**Si le groupe est en avance** : faire comparer `git log --oneline --graph --all` avant et après le squash, et chercher les anciens commits de Tom avec `git reflog`.
+:::
+
+::: pont
+Vous savez faire passer une modification par une MR relue, et `main` ne reçoit plus que ce qui a été discuté. Mais la relecture reste humaine : elle se fatigue, et personne ne relance les tests à chaque push. Demain matin, après un rappel de ce premier jour, l'équipe confiera cette vérification à une machine.
+:::

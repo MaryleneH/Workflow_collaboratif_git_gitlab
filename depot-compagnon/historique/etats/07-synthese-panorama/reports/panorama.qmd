@@ -1,0 +1,43 @@
+---
+title: "Panorama de l'emploi dans la filière industrielle stratégique"
+subtitle: "Édition 2025"
+author: "Observatoire des entreprises industrielles"
+lang: fr
+engine: knitr
+execute:
+  echo: false
+---
+
+```{r}
+#| label: donnees
+indicateurs <- utils::read.csv("../resultats/indicateurs_2025.csv", encoding = "UTF-8")
+valeur <- function(indicateur, modalite = "ensemble") {
+  indicateurs$valeur[indicateurs$indicateur == indicateur & indicateurs$modalite == modalite]
+}
+pct <- function(x) paste0(format(round(100 * x, 1), nsmall = 1, decimal.mark = ","), " %")
+nombre <- function(x) format(x, big.mark = " ")
+seniors <- indicateurs[indicateurs$indicateur == "part_55_plus" &
+                         indicateurs$dimension == "sous_filiere", ]
+plus_agee <- seniors[which.max(seniors$valeur), ]
+```
+
+## Synthèse
+
+En 2025, le panel de l'Observatoire compte `r nombre(valeur("salaries"))`
+salariés dans `r nombre(valeur("etablissements"))` établissements industriels.
+La main-d'œuvre de la filière est âgée : `r pct(valeur("part_55_plus"))` des
+salariés ont 55 ans ou plus, et les départs à la retraite des prochaines années
+rendront les recrutements décisifs.
+
+## Chiffres clés
+
+- Salariés du champ : `r nombre(valeur("salaries"))`.
+- Établissements : `r nombre(valeur("etablissements"))`.
+- Part des 55 ans et plus : `r pct(valeur("part_55_plus"))`.
+- Sous-filière la plus âgée : `r plus_agee$modalite` (`r pct(plus_agee$valeur)` de 55 ans et plus).
+
+## Méthode
+
+Le panel est synthétique : les entreprises, les établissements et les chiffres
+sont fictifs. Le champ couvre les salariés présents au 31 décembre, hors
+intérimaires.

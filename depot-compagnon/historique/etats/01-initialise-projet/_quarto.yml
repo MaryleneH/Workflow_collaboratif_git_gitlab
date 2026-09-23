@@ -1,0 +1,5 @@
+project:
+  type: default
+  output-dir: _output
+
+lang: fr

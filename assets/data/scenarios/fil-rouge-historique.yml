@@ -1,0 +1,70 @@
+titre: "Le journal du dépôt, de c01 à c25"
+nom_distant: "GitLab (origin)"
+ids: false
+couleurs:
+  "12-seuil-seniors": travail
+  "13-exclure-apprentis": travail2
+  "maintenance/2025": hotfix
+commits:
+  c01: {x: 0, y: 0, msg: "c01 · Initialise le projet de l'Observatoire"}
+  c02: {x: 0.6, y: 0, parents: [c01], msg: "c02 · Ajoute le générateur de données synthétiques du panel"}
+  c03: {x: 1.2, y: 0, parents: [c02], msg: "c03 · Ajoute le calcul de l'âge et des classes d'âge"}
+  c04: {x: 1.8, y: 0, parents: [c03], msg: "c04 · maj"}
+  c05: {x: 2.4, y: 0, parents: [c04], msg: "c05 · Prépare les données avec DuckDB"}
+  c06: {x: 3.0, y: 0, parents: [c05], msg: "c06 · modifs"}
+  c07: {x: 3.6, y: 0, parents: [c06], msg: "c07 · Rédige la synthèse et les chiffres clés du panorama 2025"}
+  c08: {x: 4.2, y: 0, parents: [c07], msg: "c08 · Ajoute les tests des classes d'âge"}
+  c09: {x: 4.8, y: 0, parents: [c08], msg: "c09 · Ajoute la pyramide des âges et la répartition des métiers"}
+  c10: {x: 5.4, y: 0, parents: [c09], msg: "c10 · Finalise le panorama 2025 pour publication"}
+  c11: {x: 6.0, y: 0, parents: [c10], msg: "c11 · Corrige le calcul de l'âge : âge au 31 décembre (#7)"}
+  c12: {x: 6.6, y: 0, parents: [c11], msg: "c12 · Harmonise les figures avec une charte commune"}
+  c13: {x: 7.2, y: 0, parents: [c12], msg: "c13 · Paramètre le millésime du panorama"}
+  c14: {x: 7.8, y: 0, parents: [c13], msg: "c14 · Ajoute la répartition par PCS et ses tests de cohérence"}
+  c15: {x: 8.4, y: 0, parents: [c14], msg: "c15 · Teste le schéma et la cohérence des données générées"}
+  c16: {x: 9.0, y: 0, parents: [c15], msg: "c16 · Documente le champ et les sources du panel"}
+  c17: {x: 10, y: 0, parents: [c16], msg: "c17 · Paramètre le seuil de la part des seniors (#12)"}
+  c18: {x: 10, y: 1, parents: [c16], couleur: travail2, msg: "c18 · Exclut les apprentis du calcul de la part des seniors (#13)"}
+  c19: {x: 11, y: 0, parents: [c17, c18], msg: "c19 · Merge branch '13-exclure-apprentis'"}
+  m18: {x: 12, y: 1, parents: [c19], couleur: travail, msg: "Commits de travail de la MR !1 (dont « maj »)"}
+  c20: {x: 13, y: 0, parents: [c19], msg: "c20 · Ajoute le taux de recrutement par métier (#18) · squash de !1"}
+  c21: {x: 13.6, y: 0, parents: [c20], msg: "c21 · Met en place l'intégration continue (#20) · !2"}
+  c22: {x: 14.2, y: 0, parents: [c21], msg: "c22 · Ajoute la répartition des établissements par région (#19) · !4"}
+  c23: {x: 14.8, y: 0, parents: [c22], msg: "c23 · Regroupe les PCS en quatre grandes catégories (#21) · squash de !3"}
+  c24: {x: 15.4, y: 0, parents: [c23], msg: "c24 · Finalise le panorama 2026"}
+  h01: {x: 16.0, y: -1, parents: [c10], couleur: hotfix, msg: "Corrige le calcul de l'âge… (cherry picked from commit c11) · MR !5"}
+  h02: {x: 16.4, y: -1, parents: [h01], couleur: hotfix, msg: "Ajoute la note d'erratum du panorama 2025 (#25) · MR !5, fusionnée en fast-forward"}
+  c25: {x: 16.8, y: 0, parents: [c24], msg: "c25 · Documente le workflow de l'équipe (#27) · !6"}
+etapes:
+  - texte: "Début 2025 : Inès et Karim commitent **directement sur `main`**, l'un après l'autre. L'historique est une ligne. Deux messages (« maj », « modifs ») n'expliquent rien : c'est l'énigme de E1."
+    commits: [c01, c02, c03, c04, c05, c06, c07, c08, c09]
+    refs: {main: c09}
+  - texte: "Juin 2025 : le panorama 2025 est publié, un **tag** `2025.0` marque ce commit. En septembre, Karim corrige l'âge (#7) dans `main`… mais la version publiée, elle, reste fausse."
+    commits: [c01, c02, c03, c04, c05, c06, c07, c08, c09, c10, c11, c12, c13, c14, c15, c16]
+    refs: {main: c16}
+    tags: {"2025.0": c10}
+    surligne: [c10, c11]
+  - texte: "Janvier 2026 : deux sujets en parallèle, deux **branches** nées d'issues. Chacune n'est qu'une étiquette sur son dernier commit ; `main` n'a pas bougé."
+    commits: [c01, c02, c03, c04, c05, c06, c07, c08, c09, c10, c11, c12, c13, c14, c15, c16, c17, c18]
+    refs: {main: c16, 12-seuil-seniors: c17, 13-exclure-apprentis: c18}
+    tags: {"2025.0": c10}
+  - texte: "L'issue #12 entre par **fast-forward** : `main` avance jusqu'à c17 sans créer de commit. #13 demande une **fusion à trois voies** : c19 a deux parents, après un conflit résolu."
+    commits: [c01, c02, c03, c04, c05, c06, c07, c08, c09, c10, c11, c12, c13, c14, c15, c16, c17, c18, c19]
+    refs: {main: c19}
+    tags: {"2025.0": c10}
+    surligne: [c19]
+  - texte: "À partir de E4, tout passe par une **Merge Request**. Les commits de travail de la MR !1 ne vont pas dans `main` : GitLab crée un nouveau commit par **squash** (c20, un seul parent). Même chose pour !2, !4 et !3."
+    commits: [c01, c02, c03, c04, c05, c06, c07, c08, c09, c10, c11, c12, c13, c14, c15, c16, c17, c18, c19, m18, c20, c21, c22, c23]
+    refs: {main: c23}
+    tags: {"2025.0": c10}
+    estompes: [m18]
+    surligne: [c20, c21, c22, c23]
+  - texte: "Mars 2026 : publication du panorama 2026 (tag `2026.0`). L'erratum 2025 part du tag `2025.0`, sur `maintenance/2025`, sans embarquer 2026 : la correction c11 y est reportée par cherry-pick, puis la note d'erratum est ajoutée. Il est publié sous `2025.1`, deux commits au-dessus de `2025.0`."
+    commits: [c01, c02, c03, c04, c05, c06, c07, c08, c09, c10, c11, c12, c13, c14, c15, c16, c17, c18, c19, c20, c21, c22, c23, c24, h01, h02]
+    refs: {main: c24, maintenance/2025: h02}
+    tags: {"2025.0": c10, "2026.0": c24, "2025.1": h02}
+    surligne: [c24, h01, h02]
+  - texte: "L'équipe écrit son workflow (`CONTRIBUTING.md`, MR !6). C'est l'état de départ de la simulation finale (E11) : vous préparez l'édition 2027."
+    commits: [c01, c02, c03, c04, c05, c06, c07, c08, c09, c10, c11, c12, c13, c14, c15, c16, c17, c18, c19, c20, c21, c22, c23, c24, h01, h02, c25]
+    refs: {main: c25, maintenance/2025: h02}
+    tags: {"2025.0": c10, "2026.0": c24, "2025.1": h02}
+    surligne: [c25]

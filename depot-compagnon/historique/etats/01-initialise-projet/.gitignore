@@ -1,0 +1,21 @@
+# Données individuelles : jamais dans Git (voir data/README.md)
+data/brut/
+data/prepare/
+
+# Résultats et rendus : ils se régénèrent à partir du code
+resultats/
+_output/
+.quarto/
+*_files/
+
+# R
+.Rhistory
+.RData
+.Rproj.user/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.ruff_cache/

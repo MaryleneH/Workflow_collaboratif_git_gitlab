@@ -1,0 +1,200 @@
+---
+title: "L'Observatoire des entreprises industrielles"
+surtitre: "Fil rouge"
+chapeau: "Le projet fictif qui sert de terrain à toute la formation : une petite équipe statistique, un rapport annuel, un dépôt GitLab dont l'histoire se construit sous vos yeux."
+description: "Le projet fil rouge de la formation Git à plusieurs : l'Observatoire des entreprises industrielles, son panorama annuel, son équipe, son dépôt et son historique."
+---
+
+**Tout est fictif.** Les entreprises, les établissements, les salariés et tous les
+chiffres de ce projet sont **synthétiques**, produits par un générateur. Aucune donnée
+réelle n'est utilisée, ni dans le site, ni dans le dépôt compagnon. Seules les
+nomenclatures publiques (codes NAF, régions) sont réelles.
+
+## Le projet
+
+L'Observatoire des entreprises industrielles (OEI) est une petite équipe statistique.
+Chaque année, elle publie le *Panorama de l'emploi dans la filière industrielle
+stratégique* : un rapport Quarto qui décrit les établissements de la filière, leurs
+effectifs, leurs métiers, la pyramide des âges de leurs salariés et leurs difficultés de
+recrutement.
+
+Ce rapport est **publié** : il est lu, cité, parfois repris dans des décisions. Un chiffre
+faux ne se corrige pas en silence ; il appelle un erratum. C'est ce qui rend la question
+de la formation concrète : `main` doit rester une promesse, parce qu'un jour ce qu'elle
+contient sera publié.
+
+Le projet a les dimensions d'un vrai projet d'équipe, sans en avoir la lourdeur : quelques
+centaines de lignes de R et de Python, un rapport, des tests, un pipeline d'intégration
+continue. Assez pour que les problèmes de collaboration apparaissent ; assez peu pour
+que vous puissiez tout lire.
+
+## Le champ
+
+- **Un panel synthétique** d'environ 300 entreprises et 800 établissements industriels,
+  répartis en six sous-filières : aéronautique et spatial, naval, électronique de
+  défense, mécanique de précision, munitions et armement terrestre, maintenance
+  aéronautique.
+- **Des identifiants fictifs** : `ENT-0001` pour une entreprise, `ETB-00001` pour un
+  établissement, `SAL-0000001` pour un salarié. Jamais de SIREN, jamais de nom
+  d'entreprise réel.
+- **Une géographie mixte** : les régions françaises réelles, mais des zones d'emploi
+  **fictives**, codées `ZE-01` à `ZE-40`.
+- **La sous-traitance** : chaque établissement a un rang (0 pour un donneur d'ordre, puis 1
+  ou 2 pour ses sous-traitants).
+
+Trois tables, toutes générées :
+
+| Table | Une ligne par… | Colonnes principales |
+|---|---|---|
+| `etablissements` | établissement et millésime | `id_etab`, `id_entreprise`, `naf`, `sous_filiere`, `region`, `zone_emploi`, `rang_sous_traitance`, `annee_creation` |
+| `salaries` | salarié présent au 31 décembre | `id_salarie`, `id_etab`, `millesime`, `date_naissance`, `sexe`, `pcs`, `metier`, `date_embauche`, `contrat` |
+| `recrutements` | établissement, métier et millésime | `id_etab`, `millesime`, `metier`, `recrutements` (`NA` si non déclaré), `difficulte` |
+
+La PCS est simplifiée en cinq codes de travail : `37` (cadres et ingénieurs), `47`
+(techniciens et agents de maîtrise), `54` (employés), `62` (ouvriers qualifiés) et `67`
+(ouvriers non qualifiés).
+
+## Les indicateurs du panorama
+
+Chaque indicateur est une **décision méthodologique** écrite dans du code. C'est
+pour cela que son histoire compte.
+
+- **La part des 55 ans et plus**, avec un seuil paramétrable et l'âge calculé au
+  31 décembre de l'année de référence. Une erreur sur ce point est l'énigme de E1,
+  puis l'erratum de E8.
+- **La pyramide des âges** et les **classes d'âge**.
+- **La répartition par PCS**, dont les parts doivent sommer à 100 % dans chaque
+  établissement. Cette règle devient un test automatique en E6.
+- **Le taux de recrutement par métier**, rapport des sommes et non moyenne des taux,
+  avec les non-répondants exclus et non comptés comme zéro. La MR de E4 en fait un piège.
+- **La répartition des établissements par région**, et bientôt par zone d'emploi.
+
+## Le dépôt
+
+Le dépôt s'appelle `observatoire-industrie`, dans le groupe `oei` d'un GitLab
+d'entreprise. Son arborescence est celle d'un projet statistique ordinaire :
+
+```text
+observatoire-industrie/
+├── README.md
+├── CONTRIBUTING.md          ← écrit par l'équipe en E10
+├── .gitignore               ← data/brut/, data/prepare/, resultats/, _output/
+├── .gitlab-ci.yml           ← apparaît en E6 (MR !2, issue #20)
+├── .lintr                   ← règles de lintr (lignes de 100 caractères au plus)
+├── pyproject.toml           ← réglages de ruff et de pytest
+├── _quarto.yml
+├── requirements.txt         ← versions Python épinglées (dont pytest et ruff)
+├── dependances-r.txt        ← paquets R utilisés
+├── data/
+│   ├── README.md            ← où sont les données, comment les référencer
+│   └── reference/           ← petites nomenclatures publiques, versionnées
+├── R/
+│   ├── age.R                ← age_au_31_decembre() (age_fin_annee() avant c11), classe_age()
+│   └── indicateurs.R        ← part_seniors(), repartition_pcs(), taux_recrutement()…
+├── python/observatoire/
+│   ├── generation.py        ← générateur synthétique déterministe
+│   ├── preparation.py       ← requêtes DuckDB sur les fichiers Parquet
+│   └── charte.py            ← charte graphique commune
+├── scripts/
+│   ├── 01_generer_donnees.py
+│   ├── 02_preparer.py
+│   ├── 03_indicateurs.R
+│   └── 04_figures.py
+├── reports/
+│   └── panorama.qmd         ← le rapport annuel
+└── tests/
+    ├── testthat/            ← tests R ; helper-projet.R charge les fonctions de R/
+    └── python/              ← tests Python
+```
+
+Remarquez ce qui **n'y est pas** : les données individuelles. `data/brut/` et
+`data/prepare/` sont exclus par le `.gitignore`. Git versionne le code qui produit les
+données et les petites nomenclatures publiques, jamais les microdonnées.
+
+## La chaîne de traitement
+
+Quatre scripts, puis le rapport. Chacun lit ce que le précédent a écrit.
+
+1. **Générer** (Python) : `01_generer_donnees.py` écrit les tables brutes au format
+   Parquet dans `data/brut/<millésime>/`, avec un `MANIFEST.json` qui contient l'empreinte SHA-256 du **contenu** de
+   chaque table. La génération est déterministe : la graine dépend du millésime.
+2. **Préparer** (Python et DuckDB) : `02_preparer.py` interroge les fichiers Parquet avec
+   DuckDB, sans tout charger en mémoire, et produit des tables d'analyse compactes en CSV.
+3. **Calculer** (R) : `03_indicateurs.R` lit ces CSV et calcule les indicateurs avec
+   dplyr. Il les écrit au format long (`indicateur`, `dimension`, `modalite`, `valeur`)
+   dans `resultats/indicateurs_<millésime>.csv`.
+4. **Illustrer** (Python) : `04_figures.py` produit les figures avec la charte commune.
+5. **Publier** (Quarto) : `reports/panorama.qmd` assemble indicateurs et figures.
+
+Les détails de DuckDB et de Parquet ne sont pas le sujet de la formation. Retenez une
+chose : l'empreinte du `MANIFEST.json` est la **référence précise des données** d'une
+publication. Avec le commit du code et l'environnement figé, c'est ce qui permet de
+refaire un chiffre publié (E8).
+
+Pour installer et exécuter cette chaîne, voir [le dépôt compagnon](depot-compagnon.qmd).
+
+## L'équipe
+
+Cinq personnes, qui portent chacune un point de vue. Vous rejoignez l'équipe **en même
+temps que Tom** ; mais Tom n'est pas vous : il fait les erreurs que tout le monde fait,
+et il les dit à voix haute.
+
+::: {.equipe detail="oui"}
+:::
+
+Leur rôle dans la formation :
+
+| Personnage | Ce qu'il apporte au parcours |
+|---|---|
+| **Inès** | La responsabilité du chiffre publié. C'est elle qui protège `main`, pose les tags et décide d'un erratum. Maintainer du projet GitLab. |
+| **Karim** | L'exigence de méthode. Ses questions (« que mesure-t-on exactement ? ») transforment une review de code en review statistique. |
+| **Léa** | La vitesse et l'outillage. Elle pousse souvent, fait avancer `main` pendant que les autres travaillent, et provoque ainsi les divergences. |
+| **Tom** | Le regard neuf. Il vient de RStudio, découvre VS Code et le travail à plusieurs, et commet les erreurs que vous auriez pu commettre. |
+| **Jules** | La culture des développeurs. Il administre GitLab et les runners, parle Git Flow couramment, et doit apprendre ce qu'impose une publication statistique. |
+
+## Le journal du dépôt
+
+L'historique de `main` est **fixe** : les mêmes 25 commits, aux mêmes dates, dans le
+même ordre, pour tous les groupes. Il raconte comment l'équipe est passée d'une personne
+qui commite seule à une équipe qui fait relire, tester et publier chaque changement.
+Faites défiler les étapes du schéma.
+
+::: {.git-graph scenario="fil-rouge-historique"}
+:::
+
+Quelques repères de lecture :
+
+- Les cercles sont des **[commits]{.t ref="commit"}** ; chacun pointe vers son ou ses parents, à gauche.
+- `main`, `12-seuil-seniors` ou `maintenance/2025` sont des **[branches]{.t ref="branche"}** : des étiquettes
+  posées sur un commit, qui avancent quand on commite.
+- `2025.0`, `2026.0` et `2025.1` sont des **[tags]{.t ref="tag"}** : des étiquettes qui, elles, ne
+  bougent jamais. Ce sont les versions publiées.
+- Survolez un cercle pour lire son message. La version textuelle du schéma, sous
+  celui-ci, donne l'état complet de chaque étape.
+
+## Les issues et les Merge Requests
+
+GitLab numérote **séparément** les [issues]{.t ref="issue"} (`#18`) et les [Merge Requests]{.t ref="merge-request"} (`!1`). Une
+issue décrit un besoin ; une MR propose un changement. La MR !1 « ferme » l'issue #18
+parce que sa description contient `Closes #18`.
+
+| Issue | Sujet | Branche | MR | Étape |
+|---|---|---|---|---|
+| #7 | L'âge est calculé à la date d'extraction au lieu du 31 décembre | *(commit direct sur `main`)* | — | E1 |
+| #12 | Paramétrer le seuil de la part des seniors (55 ans par défaut) | `12-seuil-seniors` | — *(fusion locale)* | E3 |
+| #13 | Exclure les apprentis du calcul de la part des seniors | `13-exclure-apprentis` | — *(fusion locale)* | E3 |
+| #18 | Ajouter le taux de recrutement par métier | `18-taux-recrutement` | !1 | E4 |
+| #20 | Mettre en place l'intégration continue | `20-integration-continue` | !2 | E6 |
+| #21 | Regrouper les PCS en quatre grandes catégories | `21-regrouper-pcs` | !3 | E6, E7 |
+| #19 | Répartition des établissements par région dans le panorama | `19-etablissements-region` | !4 | E7 |
+| #25 | Erratum : part des 55 ans et plus du panorama 2025 | `hotfix/25-erratum-age` | !5 *(vers `maintenance/2025`)* | E8 |
+| #27 | Écrire le workflow de l'équipe (`CONTRIBUTING.md`) | `27-workflow-equipe` | !6 | E10 |
+| #30 à #34 | L'édition 2027 | *(les vôtres)* | *(les vôtres)* | E11 |
+
+Les numéros de MR suivent l'ordre d'**ouverture**, pas celui de fusion : la MR !4 de Léa
+est ouverte après !3, mais fusionnée avant, et c'est elle qui fait diverger la branche de
+Tom en E7.
+
+Les noms de branche suivent la convention `<issue>-<sujet-court>`, celle que produit le
+bouton *Create merge request* d'une issue GitLab. Le numéro relie la branche à son
+besoin ; le reste dit de quoi il s'agit.

@@ -1,0 +1,54 @@
+/*-- scss:defaults --*/
+// ---------------------------------------------------------------------------
+// Couche Bootstrap/Quarto : uniquement les variables. L'identité du site est
+// dans les fichiers CSS (base, mise-en-page, composants, graphe, accueil).
+// ---------------------------------------------------------------------------
+
+// Polices : piles système soignées (aucun appel réseau, aucune police à
+// télécharger). Windows : Segoe UI / Sitka / Cascadia ; macOS : SF / Iowan /
+// SF Mono ; Linux : polices système libres.
+$font-family-sans-serif: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, "SF Pro Text", "Helvetica Neue", "Noto Sans", "Liberation Sans", Arial, sans-serif;
+$font-family-monospace: "Cascadia Code", "Cascadia Mono", "SF Mono", ui-monospace, Menlo, Consolas, "Liberation Mono", "DejaVu Sans Mono", monospace;
+
+$body-bg: #faf8f4;
+$body-color: #17202b;
+$body-secondary-color: #3e4855;
+$link-color: #0f6b6b;
+$link-hover-color: #0a4d4d;
+$primary: #0f6b6b;
+$secondary: #3e4855;
+$danger: #b42318;
+$warning: #9a5b00;
+$success: #1b7a4a;
+$info: #1f5fa8;
+
+$font-size-root: 106.25%; // 17 px : lecture confortable sur portable
+$line-height-base: 1.65;
+$headings-font-weight: 650;
+$headings-color: #17202b;
+$border-color: #e2ddd2;
+$border-radius: .5rem;
+$border-radius-sm: .375rem;
+$border-radius-lg: .75rem;
+
+$navbar-bg: #faf8f4;
+$navbar-fg: #17202b;
+$navbar-hl: #0f6b6b;
+$footer-bg: #faf8f4;
+$footer-fg: #5f6874;
+
+$code-color: #17202b;
+$code-bg: #f1ede4;
+$code-block-bg: #f4f1ea;
+$code-block-border-left: #cfc8b9;
+
+$input-bg: #ffffff;
+$input-border-color: #cfc8b9;
+
+$enable-shadows: false;
+$enable-gradients: false;
+$box-shadow: none;
+$box-shadow-sm: none;
+
+/*-- scss:rules --*/
+// Les règles vivent dans assets/css/*.css (CSS natif, variables CSS).

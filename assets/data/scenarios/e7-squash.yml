@@ -1,0 +1,27 @@
+titre: "Squash au merge : un sujet, un commit dans main (vue GitLab)"
+couleurs:
+  "21-regrouper-pcs": travail
+commits:
+  C: {x: 0, y: 0, msg: "c21 · Met en place l'intégration continue (#20)"}
+  L: {x: 1, y: 0, parents: [C], msg: "c22 · Ajoute la répartition des établissements par région (#19)"}
+  "D'": {x: 2, y: 1, parents: [L], label: "D′", msg: "Regroupe les PCS en quatre grandes catégories"}
+  "E'": {x: 3, y: 1, parents: ["D'"], label: "E′", msg: "wip"}
+  "F'": {x: 4, y: 1, parents: ["E'"], label: "F′", msg: "corrige le test"}
+  "G'": {x: 5, y: 1, parents: ["F'"], label: "G′", msg: "oups"}
+  "H'": {x: 6, y: 1, parents: ["G'"], label: "H′", msg: "wip 2"}
+  "I'": {x: 7, y: 1, parents: ["H'"], label: "I′", msg: "corrige le lint"}
+  "J'": {x: 8, y: 1, parents: ["I'"], label: "J′", msg: "encore"}
+  S: {x: 9, y: 0, parents: [L], msg: "c23 · Regroupe les PCS en quatre grandes catégories (#21)"}
+etapes:
+  - texte: "Le dépôt sur GitLab : la MR !3 est prête. Branche rebasée sur **L**, pipeline vert, review approuvée. Elle contient toujours sept commits de travail."
+    commits: [C, L, "D'", "E'", "F'", "G'", "H'", "I'", "J'"]
+    refs: {main: L, 21-regrouper-pcs: "J'"}
+  - texte: "Inès fusionne avec l'option **Squash commits**. GitLab crée **un nouveau commit S** (c23) : son instantané est celui de **J′**, son unique parent est **L**. Aucun des sept commits de travail n'entre dans `main`."
+    commits: [C, L, "D'", "E'", "F'", "G'", "H'", "I'", "J'", S]
+    refs: {main: S, 21-regrouper-pcs: "J'"}
+    estompes: ["D'", "E'", "F'", "G'", "H'", "I'", "J'"]
+    surligne: [S]
+  - texte: "L'option **Delete source branch** supprime `21-regrouper-pcs` : plus aucune référence ne désigne **D′** à **J′**. Dans `main`, un sujet égale un commit, et ce commit cite l'issue #21."
+    commits: [C, L, S]
+    refs: {main: S}
+    surligne: [S]

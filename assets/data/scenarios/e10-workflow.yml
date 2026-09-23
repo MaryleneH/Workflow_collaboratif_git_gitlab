@@ -1,0 +1,80 @@
+titre: "Notre cycle, de l'issue au tag"
+couleurs:
+  "30-taux-difficulte": travail
+  "origin/30-taux-difficulte": travail
+commits:
+  C0: {x: 0, y: 0, msg: "Finalise le panorama 2026"}
+  C: {x: 1, y: 0, parents: [C0], msg: "Documente le workflow de l'équipe (#27)"}
+  W1: {x: 2, y: 1, parents: [C], couleur: travail, msg: "Ajoute le taux de difficulté de recrutement par métier (#30)"}
+  W2: {x: 3, y: 1, parents: [W1], couleur: travail, msg: "Teste que chaque taux de difficulté est compris entre 0 et 1 (#30)"}
+  W3: {x: 4, y: 1, parents: [W2], couleur: travail, msg: "Exclut les établissements non répondants du dénominateur (#30)"}
+  S: {x: 5, y: 0, parents: [C], msg: "Ajoute le taux de difficulté de recrutement par métier (#30)"}
+etapes:
+  - texte: "L'issue #30 existe. Vous mettez `main` à jour (fast-forward seulement), puis vous créez une branche courte, nommée d'après l'issue."
+    commande: "git switch -c 30-taux-difficulte"
+    local:
+      commits: [C0, C]
+      refs: {main: C, origin/main: C, "30-taux-difficulte": C}
+      tags: {"2026.0": C0}
+      head: "30-taux-difficulte"
+    distant:
+      commits: [C0, C]
+      refs: {main: C}
+      tags: {"2026.0": C0}
+  - texte: "Deux commits explicites, qui citent l'issue, puis un premier push. Vous ouvrez aussitôt une **Draft MR** : le pipeline tourne, l'équipe voit le travail en cours."
+    commande: "git push -u origin 30-taux-difficulte"
+    local:
+      commits: [C0, C, W1, W2]
+      refs: {main: C, origin/main: C, "30-taux-difficulte": W2, "origin/30-taux-difficulte": W2}
+      tags: {"2026.0": C0}
+      head: "30-taux-difficulte"
+    distant:
+      commits: [C0, C, W1, W2]
+      refs: {main: C, "30-taux-difficulte": W2}
+      tags: {"2026.0": C0}
+  - texte: "La review porte sur le code **et** la méthode : Karim demande d'exclure les non-répondants. Vous corrigez et poussez **W3** ; le pipeline repasse au vert, la MR est approuvée."
+    commande: "git push"
+    local:
+      commits: [C0, C, W1, W2, W3]
+      refs: {main: C, origin/main: C, "30-taux-difficulte": W3, "origin/30-taux-difficulte": W3}
+      tags: {"2026.0": C0}
+      head: "30-taux-difficulte"
+    distant:
+      commits: [C0, C, W1, W2, W3]
+      refs: {main: C, "30-taux-difficulte": W3}
+      tags: {"2026.0": C0}
+    surligne: [W3]
+  - texte: "Sur GitLab, **Merge** avec squash : un seul commit **S** entre dans `main` (un parent), et la branche source est supprimée **sur le serveur**. Votre dépôt n'en sait encore rien : `origin/main` ne bouge qu'au fetch."
+    local:
+      commits: [C0, C, W1, W2, W3]
+      refs: {main: C, origin/main: C, "30-taux-difficulte": W3, "origin/30-taux-difficulte": W3}
+      tags: {"2026.0": C0}
+      head: "30-taux-difficulte"
+    distant:
+      commits: [C0, C, S]
+      refs: {main: S}
+      tags: {"2026.0": C0}
+    surligne: [S]
+  - texte: "Vous revenez sur `main`, vous tirez (fast-forward), vous nettoyez la référence distante disparue, puis votre branche locale. Après un squash, `git branch -d` refuse : **W3** n'est pas un ancêtre de **S**. Le contenu est dans `main`, `-D` est donc légitime ici."
+    commande: "git switch main && git pull && git fetch --prune && git branch -D 30-taux-difficulte"
+    local:
+      commits: [C0, C, S]
+      refs: {main: S, origin/main: S}
+      tags: {"2026.0": C0}
+      head: main
+    distant:
+      commits: [C0, C, S]
+      refs: {main: S}
+      tags: {"2026.0": C0}
+  - texte: "Plus tard, d'autres MR ont suivi le même cycle (le schéma les omet). Le jour de la publication, Inès pose un **tag annoté** : c'est lui, et non `main`, qui désigne l'état reproductible."
+    commande: "git tag -a 2027.0 -m \"Panorama 2027 : publication\" && git push origin 2027.0"
+    local:
+      commits: [C0, C, S]
+      refs: {main: S, origin/main: S}
+      tags: {"2026.0": C0, "2027.0": S}
+      head: main
+    distant:
+      commits: [C0, C, S]
+      refs: {main: S}
+      tags: {"2026.0": C0, "2027.0": S}
+    surligne: [S]

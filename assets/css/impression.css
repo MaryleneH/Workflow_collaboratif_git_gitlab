@@ -1,0 +1,25 @@
+/* ==========================================================================
+   Impression / PDF : un support papier lisible, sans navigation ni contrôles.
+   Les descriptions textuelles des graphes sont imprimées ; les indices,
+   diagnostics et réponses repliés sont dépliés.
+   ========================================================================== */
+@media print {
+  :root { --gf-papier: #fff; }
+  body { background: #fff; font-size: 10.5pt; }
+  #quarto-header, .nav-footer, .gf-rail, .gf-anatomie, .gf-evitement,
+  .gf-graphe__controles, .gf-graphe__scene, .gf-mission__pied, .gf-pont__actions,
+  .gf-review__bascule, .gf-atlas__onglets, .code-copy-button, #quarto-search { display: none !important; }
+  .gf-page { display: block !important; max-width: none; padding: 0; }
+  .gf-main { padding-top: 0; }
+  .gf-contenu > *, .gf-contenu section > *, .gf-entete, .gf-pont, .gf-contenu .gf-large { max-width: none !important; }
+  details > * { display: block !important; }
+  details > summary::after { display: none; }
+  .gf-atlas--actif .gf-graphe[hidden] { display: block !important; }
+  .gf-mission, .gf-incident, .gf-regle, .gf-checkpoint, .gf-graphe, .gf-pipeline, .gf-review, figure { break-inside: avoid; }
+  h2, h3 { break-after: avoid; }
+  a { color: inherit; text-decoration: none; }
+  .gf-decodeur { background: #fff; color: #000; border: 1.5px solid #000; }
+  .gf-decodeur .gf-label, .gf-decodeur__termes dd, .gf-decodeur__traduction { color: #000; }
+  .gf-decodeur__phrase a.gf-t, .gf-decodeur__termes dt { color: #000; }
+  .gf-bulle { display: none !important; }
+}

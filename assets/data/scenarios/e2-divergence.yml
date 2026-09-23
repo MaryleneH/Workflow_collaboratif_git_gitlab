@@ -1,0 +1,80 @@
+titre: "Deux historiques qui doivent se rejoindre"
+nom_distant: "GitLab (origin)"
+couleurs:
+  main: main
+commits:
+  A: {x: 0, y: 0, msg: "Ajoute la répartition par PCS et ses tests de cohérence"}
+  B: {x: 1, y: 0, parents: [A], msg: "Teste le schéma et la cohérence des données générées"}
+  V: {x: 2, y: 0, parents: [B], msg: "Documente les sources du panel (votre commit)"}
+  K: {x: 2, y: -1, parents: [B], couleur: main, msg: "Décrit le champ du panel dans data/README.md (Karim)"}
+  M: {x: 3, y: 0, parents: [V, K], msg: "Merge branch 'main' of https://gitlab.example.org/oei/observatoire-industrie"}
+etapes:
+  - texte: "Vous venez de cloner. Votre dépôt contient tout l'historique. `main` est votre branche ; `origin/main` est une **branche distante** : la mémoire locale de l'endroit où était `main` sur GitLab au moment du clone."
+    commande: "git clone https://gitlab.example.org/oei/observatoire-industrie.git"
+    local:
+      commits: [A, B]
+      refs: {main: B, "origin/main": B}
+      head: main
+    distant:
+      commits: [A, B]
+      refs: {main: B}
+  - texte: "Vous commitez la documentation des sources. `main` avance sur **V** ; `origin/main` ne bouge pas. `git status` annonce « ahead of 'origin/main' by 1 commit ». GitLab ne sait rien de **V**."
+    commande: "git commit -am \"Documente les sources du panel\""
+    local:
+      commits: [A, B, V]
+      refs: {main: V, "origin/main": B}
+      head: main
+    distant:
+      commits: [A, B]
+      refs: {main: B}
+    surligne: [V]
+  - texte: "Pendant ce temps, Karim pousse **K** depuis son poste. Sur GitLab, `main` pointe maintenant sur **K**. Votre dépôt n'en sait rien : `origin/main` est une photo datée, pas une vue en direct."
+    commande: "git push   # sur le poste de Karim"
+    local:
+      commits: [A, B, V]
+      refs: {main: V, "origin/main": B}
+      head: main
+    distant:
+      commits: [A, B, K]
+      refs: {main: K}
+    surligne: [K]
+  - texte: "Vous poussez. Accepter reviendrait à déplacer le `main` de GitLab de **K** vers **V** : **K** ne serait plus dans l'historique de `main`. Git refuse : `! [rejected] main -> main (fetch first)`. Rien n'a changé, ni chez vous ni sur GitLab."
+    commande: "git push"
+    local:
+      commits: [A, B, V]
+      refs: {main: V, "origin/main": B}
+      head: main
+    distant:
+      commits: [A, B, K]
+      refs: {main: K}
+    surligne: [V, K]
+  - texte: "`git fetch` télécharge **K** et avance `origin/main`. Votre `main` et vos fichiers n'ont pas bougé. Le graphe montre la **divergence** : **V** et **K** ont le même parent, et chacun manque à l'autre."
+    commande: "git fetch"
+    local:
+      commits: [A, B, V, K]
+      refs: {main: V, "origin/main": K}
+      head: main
+    distant:
+      commits: [A, B, K]
+      refs: {main: K}
+    surligne: [K]
+  - texte: "`git pull --no-rebase` refait un fetch, puis fusionne `origin/main` dans `main`. Le fast-forward est impossible : Git crée **M**, un commit de fusion à **deux parents** (V d'abord, la branche où vous étiez ; K ensuite)."
+    commande: "git pull --no-rebase"
+    local:
+      commits: [A, B, V, K, M]
+      refs: {main: M, "origin/main": K}
+      head: main
+    distant:
+      commits: [A, B, K]
+      refs: {main: K}
+    surligne: [M]
+  - texte: "Maintenant, `main` sur GitLab (**K**) est un ancêtre de **M** : le push est un fast-forward pour le serveur. Git envoie **V** et **M**, GitLab avance `main`, et votre `origin/main` suit."
+    commande: "git push"
+    local:
+      commits: [A, B, V, K, M]
+      refs: {main: M, "origin/main": M}
+      head: main
+    distant:
+      commits: [A, B, K, V, M]
+      refs: {main: M}
+    surligne: [M]

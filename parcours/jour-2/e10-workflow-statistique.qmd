@@ -1,0 +1,598 @@
+---
+title: "Déduire notre workflow"
+etape: e10
+description: "Construire le workflow de l'équipe à partir des dix-sept règles du carnet, l'écrire dans un CONTRIBUTING.md et configurer GitLab pour le faire respecter."
+---
+
+::: situation
+Jules a retiré sa proposition de Git Flow, avec une condition : « je veux voir vos règles écrites ». Inès ouvre l'issue #27, *Écrire le workflow de l'équipe*.
+
+Les dix-sept règles du carnet existent, mais elles sont éparses : chacune est née d'un incident différent, à un moment différent. Un nouvel arrivant ne peut pas les deviner, et rien n'empêche encore de les enfreindre. Inès veut une pratique **écrite** (on sait ce qu'on attend), **outillée** (GitLab la fait respecter) et **opposable** (on peut la citer dans une review).
+:::
+
+Cette étape ne vous donne pas un workflow tout fait. Vous l'avez déjà vécu, morceau par morceau, depuis hier matin. Il s'agit maintenant de le **déduire** : partir des contraintes réelles d'une équipe statistique, relire les règles, choisir une option pour chaque dimension, et justifier chaque choix par une règle. Le résultat devient le `CONTRIBUTING.md` du dépôt (MR !6), puis un ensemble de réglages GitLab.
+
+## L'atelier en cinq temps
+
+1. **Contraintes** : ce qui distingue une équipe statistique d'une équipe de développement (5 min).
+2. **Relecture du carnet**, regroupé par principe (5 min).
+3. **Cartes-options** : pour chaque dimension, un choix et sa justification (20 min, mission 1).
+4. **Confrontation** entre groupes (10 min).
+5. **Formalisation** : le `CONTRIBUTING.md` et la configuration de GitLab (20 min, mission 2).
+
+## 1. Les contraintes d'une équipe statistique
+
+Un workflow se choisit selon le contexte (R17). Voici le nôtre, et ce qu'il implique.
+
+| Contrainte | Conséquence pour le workflow |
+|---|---|
+| **2 à 6 personnes**, qui se connaissent | Pas besoin de hiérarchie de branches ; une règle écrite et un réglage suffisent. |
+| **Publications datées**, une par an, et une seule édition vivante | Pas de `develop` ni de `release/*` (E9) ; un tag à chaque publication. |
+| **Errata** sur une édition publiée, pendant que la suivante avance | Une branche de maintenance, créée depuis le tag, seulement quand il le faut (E8). |
+| **Données confidentielles**, qui ne vont jamais dans Git | `.gitignore`, référence des données par empreinte, secrets en variables CI. |
+| **Reproductibilité** d'un chiffre publié, parfois des années après | Tag annoté, données référencées, environnement figé. |
+| **Relecteurs rares** : une seule personne maîtrise parfois une méthode | Une approbation, pas deux ; la CI prend en charge ce qui peut être automatisé. |
+| **Pas de déploiement continu** | `main` n'a pas besoin d'être « en production » ; elle doit être **exécutable et relue**. |
+| **Services Onyxia éphémères** | On pousse souvent ; la branche distante est la sauvegarde. |
+
+## 2. Relire le carnet
+
+Voici les dix-sept règles, regroupées par principe. Relisez-les **en groupe** : pour chacune, retrouvez l'incident qui l'a fait naître, et demandez-vous si elle doit figurer dans le workflow écrit, dans un réglage GitLab, ou dans les deux.
+
+::: {.carnet groupe="principe"}
+:::
+
+## 3. Les cartes-options
+
+Pour chaque dimension, il existe plusieurs réponses défendables. Votre groupe en choisit **une**, et la justifie par **au moins une règle** du carnet. Un choix sans règle n'est qu'une préférence.
+
+| Dimension | Options possibles | Règles à invoquer |
+|---|---|---|
+| Modèle de branches | Git Flow · GitHub Flow · GitLab Flow · trunk-based | R04, R16, R17 |
+| Durée de vie d'une branche | quelques heures · quelques jours · le temps qu'il faut | R04, R13 |
+| Nommage des branches | `<issue>-<sujet>` · `feature/<sujet>` · libre | R01, R04, R10 |
+| Méthode de merge (GitLab) | *Merge commit* · *Merge commit with semi-linear history* · *Fast-forward merge* | R07, R13, R14 |
+| Squash (GitLab) | *Do not allow* · *Allow* · *Encourage* · *Require* | R14 |
+| Approbations | aucune · une · deux | R06, R08 |
+| Contenu de la CI | lint · tests R et Python · rendu du rapport · contrôles de données | R11, R12 |
+| Versionnage | version calendaire (`2027.0`) · SemVer (`2.1.0`) | R15 |
+| Procédure d'erratum | correction dans `main` puis nouvelle publication · branche de maintenance depuis le tag | R16 |
+| Emplacement des données | dans le dépôt · hors du dépôt, référencées | R09, R15 |
+
+Trois de ces dimensions demandent une précision technique.
+
+**Les trois méthodes de merge de GitLab.** C'est un réglage du projet (*Settings › Merge requests › Merge method*), pas une commande que vous tapez.
+
+- *Merge commit* (la valeur par défaut) : GitLab crée **toujours** un [commit de fusion]{.t}, même quand un fast-forward serait possible, comme `git merge --no-ff`.
+- *Merge commit with semi-linear history* : GitLab crée un commit de fusion, mais n'accepte la fusion que si la branche est à jour avec `main`. Sinon, il faut d'abord la rebaser.
+- *Fast-forward merge* : aucun commit de fusion. La fusion n'est possible que si la branche est à jour avec `main` ; sinon, la MR propose un bouton **Rebase** (s'il n'y a pas de conflit) ou vous demande de rebaser vous-même, comme en E7.
+
+**Le [squash]{.t} et la méthode de merge se combinent.** Avec *Merge commit*, un squash produit **deux** commits dans `main` : le commit « écrasé » et, par-dessus, un commit de fusion. Avec *Fast-forward merge*, il n'en produit qu'**un**, qui n'a qu'un parent. C'est ce que montre l'historique de `main` depuis E4 (c20, c23).
+
+**Les approbations dépendent de l'édition de GitLab.** Dans l'édition gratuite (Free), un relecteur peut cliquer sur *Approve*, mais GitLab n'**exige** pas d'approbation avant la fusion. Les règles d'approbation obligatoires (*Settings › Merge requests › Merge request approvals*) sont une fonctionnalité des éditions payantes (Premium et Ultimate). Sans elles, la règle d'approbation vit dans le `CONTRIBUTING.md`, et *All threads must be resolved* fait une partie du travail.
+
+## 4. La confrontation
+
+Chaque groupe présente ses choix. Les désaccords sont utiles : ils révèlent une règle mal comprise ou une contrainte oubliée. Trois débats reviennent presque toujours.
+
+- **Squash *Require* ou *Encourage* ?** *Require* garantit R14 sans exception. *Encourage* coche la case par défaut, mais laisse fusionner une branche dont les commits sont déjà propres et significatifs. Les deux se défendent ; l'important est que `main` reste lisible.
+- **Fast-forward ou semi-linéaire ?** Les deux imposent une branche à jour, donc un rebase de temps en temps (E7). Avec des branches courtes (R04), ce rebase est rare et sans conflit. Le fast-forward donne l'historique le plus simple : un sujet, un commit.
+- **Une approbation ou deux ?** Deux, c'est mieux sur le papier. Mais si une seule personne maîtrise la méthode de pondération, exiger deux approbations produit des approbations de complaisance. Mieux vaut **une** vraie review, code **et** méthode (R08), plus une CI qui vérifie le reste (R12).
+
+## 5. Ce que les groupes obtiennent en général
+
+Les groupes arrivent rarement à des workflows identiques, mais ils convergent presque toujours vers le même squelette. Le voici, étape par étape. Chaque étape est justifiée par les règles qui l'ont fait naître.
+
+::: {.git-graph scenario="e10-workflow"}
+:::
+
+::: {.parcours-mr etape="issue,branche,commits,draft,pipeline,review,approval,merge,suppression"}
+:::
+
+| # | Étape du cycle | Qui la fournit | Pourquoi (règles) |
+|---|---|---|---|
+| 1 | Une **issue** décrit le besoin | GitLab | R01 (le message cite l'issue), R04 (une branche naît d'une issue) |
+| 2 | Une **branche courte** `<issue>-<sujet>`, depuis `main` à jour | Git | R02 (fetch avant d'intégrer), R04 (un sujet, quelques jours), R07 (`main` avance en fast-forward) |
+| 3 | Des **commits explicites** qui disent pourquoi | Git | R01 |
+| 4 | Un **push** fréquent | Git | R03 (Onyxia est éphémère) |
+| 5 | Une **Draft MR**, ouverte tôt | GitLab | R06 (rien n'entre sans MR) |
+| 6 | Un **pipeline vert** | GitLab | R11 (pas de merge au rouge), R12 (la méthode devient un test) |
+| 7 | Une **review** du code **et** de la méthode | GitLab | R05, R08, R09 |
+| 8 | Si la branche a divergé : **rebase** puis `--force-with-lease` | Git | R13 (seulement sur sa propre branche) |
+| 9 | **Squash au merge**, par GitLab | GitLab | R14 |
+| 10 | **Suppression** de la branche source | GitLab, puis Git en local | R10 |
+
+À ce cycle s'ajoutent des règles **permanentes** :
+
+- `main` est une [branche protégée]{.t} : personne n'y pousse directement (R06, R07) ;
+- **aucune donnée individuelle, aucun secret** dans Git (R09) ;
+- chaque **publication** est un [tag]{.t} annoté en version calendaire, `AAAA.0` (R15) ;
+- un **erratum** part du tag, dans `maintenance/AAAA`, par une branche `hotfix/<issue>-<sujet>` ; il est publié en `AAAA.1`, et la correction existe aussi dans `main` (R16) ;
+- sur chaque poste, `git config --global pull.ff only` (R07).
+
+Vous reconnaissez la phrase-boussole de l'accueil : « J'ai ouvert une MR sur ma feature branch, mais elle a divergé de main. Je vais rebase avant la review et squash mes commits au merge. » Chaque mot de cette phrase est une étape de ce cycle.
+
+### `main` n'est pas une publication
+
+Une confusion fréquente doit être levée avant d'écrire quoi que ce soit.
+
+::: idee-fausse
+::: fausse
+Puisque tout passe par une MR relue et un pipeline vert, `main` est totalement reproductible : on peut publier depuis n'importe quel commit de `main`.
+:::
+::: juste
+`main` tient une promesse précise : elle est **exécutable, relue, et son pipeline est vert**. Elle ne garantit pas qu'un chiffre soit reproductible. La CI tourne sur des données **synthétiques** régénérées ; elle ne dit rien du millésime réel utilisé, ni de la version exacte des paquets le jour de la publication.
+
+Un **tag** de publication, lui, est destiné à être reproductible. Il désigne un commit précis, et il est accompagné de la référence exacte des données (le `MANIFEST.json` et ses empreintes), d'un environnement figé ([lockfile]{.t}, image) et du rapport correspondant, joint à la [GitLab Release]{.t}.
+:::
+:::
+
+::: {.chaine-confiance}
+:::
+
+## Quand ça coince
+
+::: {.incident #inc-e10-1 titre="Deux commits par MR dans main"}
+Le projet de l'édition 2027 vient d'être configuré. Squash réglé sur *Require*, merge checks cochés. Après la première MR fusionnée (!7, issue #30), Karim met `main` à jour et regarde l'historique.
+
+::: symptome
+```{.text .sortie}
+$ git log --oneline --graph -3
+*   4be1f0a (HEAD -> main, origin/main) Merge branch '30-taux-difficulte' into 'main'
+|\
+| * 8d2c7e3 Ajoute le taux de difficulté de recrutement par métier (#30)
+|/
+* 71a9c02 Documente le workflow de l'équipe (#27)
+```
+:::
+::: hypotheses
+- Le squash n'a pas fonctionné.
+- Quelqu'un a fusionné la branche en local, puis poussé sur `main`.
+- La méthode de merge du projet est restée sur *Merge commit*.
+:::
+::: diagnostic
+Le squash a fonctionné : **8d2c7e3** est l'unique commit qui résume la branche. Personne n'a pu pousser sur `main`, qui est protégée ; le message du commit de fusion est d'ailleurs celui que produit GitLab (`git show 4be1f0a` affiche, dans le corps, `See merge request oei/observatoire-industrie!7`).
+
+La cause est le réglage *Merge method*, resté sur sa valeur par défaut, *Merge commit*. GitLab crée d'abord le commit « écrasé », puis un commit de fusion par-dessus, même si un fast-forward était possible.
+:::
+::: correction
+Dans *Settings › Merge requests › Merge method*, choisir *Fast-forward merge*, puis enregistrer. Les MR suivantes n'ajouteront qu'un commit à `main`.
+
+On ne réécrit pas `main` pour effacer le commit de fusion déjà créé : c'est un historique partagé (R13). Il reste là, inoffensif.
+:::
+::: prevention
+Un réglage oublié ne se voit qu'après coup. Les réglages du projet font partie du workflow : ils sont listés dans le `CONTRIBUTING.md` et vérifiés à la création de chaque projet (voir la liste de contrôle plus bas).
+:::
+:::
+
+## 6. Formaliser : le `CONTRIBUTING.md`
+
+Le document qui suit est la version complète que l'équipe rédige en E10. Le `CONTRIBUTING.md` entré dans `main` par la MR !6 (commit c25 du dépôt compagnon) en est la version courte : même cycle, mêmes réglages GitLab, même carnet de règles. Celui-ci est volontairement **complet** : c'est la référence qu'un nouvel arrivant lit le premier jour, et que l'on cite dans une review (« voir CONTRIBUTING, section Données »). La version maintenue vit dans le mémo [Notre workflow](../../memos/notre-workflow.qmd).
+
+````markdown
+# Contribuer au Panorama de l'emploi dans la filière industrielle stratégique
+
+Ce document décrit comment l'équipe de l'Observatoire travaille avec Git et
+GitLab. Chaque règle est numérotée comme dans le carnet de règles (R01 à R17) :
+elle est née d'un incident réel. En cas de doute, demandez à Inès (Maintainer).
+
+## Le cycle en une phrase
+
+issue → branche courte → commits explicites → push → Draft MR → pipeline vert
+→ review du code et de la méthode → squash au merge → `main` → branche supprimée.
+
+## Configuration du poste (une fois)
+
+```bash
+git config --global user.name "Prénom Nom"
+git config --global user.email "prenom.nom@example.org"
+git config --global init.defaultBranch main
+git config --global pull.ff only          # R07 : main n'avance qu'en fast-forward
+git config --global fetch.prune true      # nettoie les branches distantes supprimées
+git config --global core.editor "code --wait"
+```
+
+## Conventions
+
+- **Branches** : `<numéro d'issue>-<sujet-court>`, par exemple
+  `30-taux-difficulte` (le bouton « Create merge request » de l'issue la crée).
+  Une branche = un sujet = quelques jours au plus (R04).
+- **Commits** : une première ligne au présent qui dit ce que fait le commit
+  (« Exclut les non-répondants du dénominateur »), un corps qui dit pourquoi,
+  et le numéro d'issue (R01). Jamais « maj », « modifs », « wip » dans `main`.
+- **Merge Requests** : le titre de la MR devient le message du commit de
+  squash ; il suit donc la convention des commits. La description contient
+  `Closes #30`.
+- **Versions** : version calendaire. `2027.0` pour la publication, `2027.1`
+  pour le premier erratum (R15).
+
+## Le cycle, commande par commande
+
+```bash
+# 1. Partir de main à jour (R02, R07)
+git switch main
+git pull                                   # échoue si main a divergé : c'est voulu
+
+# 2. Une branche par sujet (R04)
+git switch -c 30-taux-difficulte
+
+# 3. Travailler, tester, commiter (R01)
+git add R/indicateurs.R tests/testthat/test-indicateurs.R
+git commit                                 # message : quoi, pourquoi, #30
+
+# 4. Pousser tôt et souvent (R03)
+git push -u origin 30-taux-difficulte
+```
+
+5. Ouvrir une **Draft MR** vers `main` dès le premier push (R06).
+6. Attendre un **pipeline vert** (R11). Un test rouge se corrige, il ne se
+   contourne pas. Une règle de méthode importante devient un test (R12).
+7. Passer la MR en *Ready* et demander une **review** du code **et** de la
+   méthode (R08). Répondre à chaque fil ; tous doivent être résolus.
+8. Si `main` a avancé et que la MR n'est plus à jour :
+
+   ```bash
+   git fetch
+   git rebase origin/main                  # seulement sur SA branche (R13)
+   # résoudre les conflits éventuels, relancer les tests (R05)
+   git push --force-with-lease             # jamais --force
+   ```
+
+9. Fusionner avec **squash** (R14) ; « Delete source branch » reste coché (R10).
+10. Nettoyer le poste :
+
+    ```bash
+    git switch main
+    git pull
+    git branch -D 30-taux-difficulte        # -D : après un squash, -d refuse
+    ```
+
+## La review : ce que l'on vérifie
+
+- **Méthode** : le calcul mesure-t-il ce qu'il prétend ? (rapport des sommes
+  ou moyenne des rapports, traitement des valeurs manquantes, champ, seuils)
+- **Données** : aucun fichier de données individuelles, aucun chemin absolu.
+- **Reproductibilité** : graine aléatoire fixée, dépendances déclarées.
+- **Secrets** : aucun jeton, mot de passe ou clé dans le diff.
+- **Tests** : la règle méthodologique ajoutée est-elle testée ?
+- **Clarté** : noms, commentaires, et une mise à jour du rapport si besoin.
+
+## Données et secrets (R09)
+
+- `data/brut/` et `data/prepare/` ne sont jamais versionnés (`.gitignore`).
+  Seules les petites nomenclatures publiques de `data/reference/` le sont.
+- Une publication référence ses données par le `MANIFEST.json`
+  (empreintes SHA-256), pas par une copie.
+- Les jetons et mots de passe vivent dans des variables d'environnement, ou
+  dans des variables CI masquées (Settings › CI/CD › Variables).
+
+## Publier (R15)
+
+Inès, ou une personne qu'elle désigne, crée le tag sur le commit de `main`
+validé pour la publication :
+
+```bash
+git switch main
+git pull
+git tag -a 2027.0 -m "Panorama 2027 : publication"
+git push origin 2027.0
+```
+
+Le job `publication` crée la GitLab Release, avec le `MANIFEST.json` et le
+lien vers le rapport. Un tag publié n'est jamais déplacé ni supprimé.
+
+## Corriger une publication : l'erratum (R16)
+
+1. Ouvrir une issue « Erratum : … ».
+2. Corriger d'abord dans `main` par une MR ordinaire, si ce n'est pas déjà fait.
+3. Créer la branche de maintenance depuis le tag, si elle n'existe pas
+   (Maintainer uniquement ; elle est protégée) :
+
+   ```bash
+   git fetch --tags
+   git switch -c maintenance/2027 2027.0
+   git push -u origin maintenance/2027
+   ```
+
+4. Reporter la correction sur une branche de hotfix, puis ouvrir une MR vers
+   `maintenance/2027` (et non vers `main`) :
+
+   ```bash
+   git switch -c hotfix/<issue>-<sujet> maintenance/2027
+   git cherry-pick -x <commit-de-la-correction-dans-main>
+   git push -u origin hotfix/<issue>-<sujet>
+   ```
+
+5. Après review, pipeline vert et fusion, taguer `2027.1` sur
+   `maintenance/2027`, avec une note d'erratum dans le rapport.
+
+## Quand ça coince
+
+**Mon push est refusé (`fetch first`).** Quelqu'un a poussé sur la même
+branche avant vous. `git fetch`, regardez `git log --oneline --graph --all`,
+puis intégrez son travail : `git pull --rebase` rejoue vos commits, pas encore
+poussés, au-dessus des siens (R02, R13).
+
+**Conflit pendant un rebase.** Lisez les deux versions, comprenez les deux
+intentions, gardez-les toutes les deux si elles sont compatibles, relancez les
+tests (R05). En cas de doute : `git rebase --abort` et demandez à l'auteur de
+l'autre modification.
+
+**J'ai commité sur `main` par erreur** (le push est refusé, et c'est tant mieux) :
+
+```bash
+git switch -c 30-mon-sujet                 # la branche garde vos commits
+git branch -f main origin/main             # main revient à l'état du serveur
+```
+
+**J'ai poussé un secret.** Il est compromis, même si vous le supprimez tout de
+suite (R09). Dans l'ordre : révoquer le jeton auprès du service qui l'a émis,
+prévenir Inès, le remplacer par une variable d'environnement, puis retirer le
+fichier par un nouveau commit. Le nettoyage de l'historique ne vient qu'après,
+et il ne rend pas le secret à nouveau sûr.
+
+**J'ai poussé des données individuelles.** Prévenez Inès immédiatement : le
+fichier a pu être récupéré par chaque `git fetch` depuis le push. Retirez-le
+de la branche ; si elle n'est pas fusionnée, son historique peut être purgé
+avec l'accord de la responsable.
+
+## Réglages GitLab du projet
+
+Ils sont listés dans l'étape E10 de la formation et vérifiés à la création de
+chaque projet : `main` protégée, tags protégés, méthode de merge
+*Fast-forward merge*, squash *Require*, *Pipelines must succeed*,
+*All threads must be resolved*, suppression de la branche source par défaut.
+
+## Pourquoi pas Git Flow ? (R17)
+
+Nous n'avons qu'une édition vivante à la fois et des errata ponctuels. Une
+branche de maintenance, créée depuis le tag quand il le faut, suffit.
+````
+
+Remarquez ce que ce document **n'est pas** : une liste de commandes à réciter. Chaque section renvoie à une règle, et chaque règle à un incident. C'est ce qui le rend opposable : « on ne force pas le push sur `main` » n'est pas une préférence de Jules, c'est R13.
+
+## 7. Configurer GitLab pour faire respecter le workflow
+
+Une règle qui compte ne doit pas reposer sur la mémoire de chacun. Voici les réglages à appliquer au projet `oei/observatoire-industrie` (rôle Maintainer requis). Les chemins de menus sont ceux de GitLab 16 et 17 ; certains libellés varient légèrement selon votre version.
+
+**Settings › Repository › Protected branches**
+
+- [ ] `main` : *Allowed to merge* = **Developers + Maintainers** ; *Allowed to push and merge* = **No one** ; *Allowed to force push* = **désactivé** (R06, R13).
+- [ ] `maintenance/*` (le joker `*` est accepté) : *Allowed to merge* = **Maintainers** ; *Allowed to push and merge* = **No one** (R16).
+
+**Settings › Repository › Protected tags**
+
+- [ ] Tags `20*` : *Allowed to create* = **Maintainers**. Un tag de publication ne se crée pas par hasard, et un tag protégé ne peut être ni déplacé ni supprimé par un Developer (R15).
+
+**Settings › Merge requests**
+
+- [ ] *Merge method* = **Fast-forward merge** (ou *Merge commit with semi-linear history* si l'équipe tient aux commits de fusion) (R07, R14).
+- [ ] *Merge options* : cocher **Enable "Delete source branch" option by default** (R10).
+- [ ] *Squash commits when merging* = **Require** (ou **Encourage**) (R14).
+- [ ] *Merge checks* : cocher **Pipelines must succeed** (R11) et **All threads must be resolved** (R08). Laisser décochée l'option qui considère un pipeline ignoré (*skipped*) comme réussi.
+- [ ] *Merge request approvals* : une approbation requise, **si votre édition le permet** (Premium ou Ultimate). En édition Free, la règle est écrite dans le `CONTRIBUTING.md` (R06, R08).
+
+**Settings › CI/CD › Variables**
+
+- [ ] Les jetons d'accès aux données sont des variables **masquées** (*Masked*) et, si possible, **protégées** (*Protected*) : disponibles seulement pour les pipelines des branches et tags protégés (R09).
+
+**Sur chaque poste**
+
+```{.bash risque="reversible"}
+git config --global pull.ff only
+git config --global init.defaultBranch main
+```
+
+```{.bash risque="sur"}
+git config --global --get pull.ff
+```
+
+La seconde commande doit répondre `only`. Désormais, sur une `main` qui a divergé, `git pull` s'arrête avec `fatal: Not possible to fast-forward, aborting.` au lieu de créer un commit de fusion.
+
+::: {.vscode titre="Le bouton Synchronize Changes"}
+Le bouton **Synchronize Changes** (synchroniser les modifications) de la barre d'état exécute un pull, puis un push. Il s'appuie sur Git et sur votre configuration : avec `pull.ff only`, il échoue proprement sur une branche divergente au lieu de fusionner en silence. Vérifiez dans les paramètres de VS Code que **Git: Rebase When Sync** est désactivé (c'est la valeur par défaut) : sinon, VS Code rebase à votre place, sans que vous l'ayez décidé.
+:::
+
+## À vous
+
+::: {.mission #m-e10-1 titre="Atelier : déduire notre workflow" duree="30 min" mode="en équipe de 3 ou 4"}
+::: objectif
+Choisir une option pour chaque dimension du workflow, justifier chaque choix par une ou plusieurs règles du carnet, et en tirer le plan du `CONTRIBUTING.md`.
+:::
+
+Les formateurs distribuent les cartes-options (une par dimension, voir le tableau de la section 3). Le carnet, regroupé par principe, reste affiché.
+
+::: consignes
+1. Relisez les contraintes de la section 1. Ajoutez-en une si votre propre équipe en a une que l'Observatoire n'a pas.
+2. Pour chaque carte-option, choisissez **une** option. Écrivez au dos la ou les règles qui la justifient.
+3. Repérez les règles du carnet qu'**aucune** de vos cartes ne couvre : ce sont des règles de comportement à écrire telles quelles dans le `CONTRIBUTING.md`.
+4. Classez chaque règle : « outillée par GitLab », « écrite seulement », ou « les deux ».
+5. Rédigez le plan du `CONTRIBUTING.md` (titres de sections), puis confrontez-le à celui d'un autre groupe.
+:::
+
+::: reussite
+Chacune de vos dix cartes cite au moins une règle, et chacune des dix-sept règles apparaît au moins une fois : sur une carte, dans un réglage GitLab ou dans le plan du `CONTRIBUTING.md`. Le plan contient au minimum le cycle, les conventions, la procédure d'erratum et la conduite à tenir face à un secret poussé.
+:::
+
+::: indice
+Commencez par les deux dimensions qui ont le plus de règles : la méthode de merge (R07, R13, R14) et la procédure d'erratum (R16).
+:::
+
+::: {.indice titre="Indice 2 : les règles orphelines"}
+R03 (pousser à chaque fin de session), R05 (résoudre un conflit en comprenant les deux intentions) et R17 ne correspondent à aucun réglage. Elles vont dans le texte.
+:::
+
+::: corrige
+**Résultat attendu** (celui de la section 5) : GitLab Flow minimal, c'est-à-dire `main` et des branches courtes `<issue>-<sujet>` de quelques jours ; *Fast-forward merge* et squash *Require* ou *Encourage* ; une approbation ; CI avec lint, tests R et Python, rendu du rapport ; version calendaire ; erratum par `maintenance/AAAA` depuis le tag, avec la correction aussi dans `main` ; données hors du dépôt, référencées par `MANIFEST.json`.
+
+**Classement des règles.**
+
+- Outillées par GitLab : R06 (branche protégée), R10 (suppression par défaut), R11 (*Pipelines must succeed*), R14 (squash), R15 (tags protégés, en partie).
+- Outillées côté poste : R07 (`pull.ff only`).
+- Écrites seulement : R01, R02, R03, R04, R05, R08 (en partie outillée par *All threads must be resolved*), R09 (outillage possible : détection de secrets, selon l'édition), R12, R13 (outillée pour `main` : *Allowed to force push* désactivé), R16, R17.
+
+**Débats à provoquer si le groupe converge trop vite.** « Pourquoi pas deux approbations ? » (relecteurs rares). « Pourquoi pas *Merge commit* ? » (voir l'incident : deux commits par MR avec le squash). « Pourquoi SemVer ne convient-il pas ? » (un panorama n'a pas d'interface dont on casserait la compatibilité ; le millésime est l'information utile).
+
+**Piège fréquent.** Un groupe écrit « on teste avant de fusionner » sans dire comment. Demandez : « qui, ou quoi, empêche la fusion si ce n'est pas fait ? ». La réponse attendue est *Pipelines must succeed*.
+:::
+:::
+
+::: {.mission #m-e10-2 titre="Configurer le projet GitLab" duree="15 min" mode="en binôme" depart="etape-10-debut"}
+::: objectif
+Appliquer les réglages de la section 7 au projet GitLab de votre binôme, puis **prouver** qu'ils fonctionnent.
+:::
+
+Une personne du binôme a le rôle Maintainer sur le projet ; l'autre a le rôle Developer.
+
+::: consignes
+1. Le Maintainer applique la liste de contrôle de la section 7 (branches protégées, tags protégés, méthode de merge, squash, merge checks, suppression de la branche source).
+2. Les deux configurent leur poste avec `pull.ff only` et vérifient la valeur.
+3. **Test 1.** Le Developer fait un commit directement sur `main` (par exemple, une phrase ajoutée dans `data/README.md`), puis `git push origin main`. Observez la réponse. Remettez ensuite votre dépôt en ordre, comme l'indique la section « J'ai commité sur `main` par erreur » du `CONTRIBUTING.md`.
+4. **Test 2.** Sur une branche `test-pipeline-rouge`, réintroduisez le bug de E1 : dans `R/age.R`, remplacez `paste0(annee, "-12-31")` par `paste0(annee + 1, "-06-30")`, c'est-à-dire l'âge au 30 juin de l'année suivante. Poussez, ouvrez une MR vers `main` et attendez la fin du pipeline.
+5. Fermez la MR sans la fusionner, et supprimez la branche.
+:::
+
+::: reussite
+Le test 1 affiche :
+
+```{.text .sortie}
+remote: GitLab: You are not allowed to push code to protected branches on this project.
+To https://gitlab.example.org/oei/observatoire-industrie.git
+ ! [remote rejected] main -> main (pre-receive hook declined)
+error: failed to push some refs to 'https://gitlab.example.org/oei/observatoire-industrie.git'
+```
+
+Au test 2, le job `tests-r` est rouge (le test ajouté par Karim en c11 échoue : `Failure ('test-age.R:25:3'): l'âge est calculé au 31 décembre de l'année de référence (#7)`, `[1] 55 - 54 == 1`) et la MR ne peut pas être fusionnée : le bouton **Merge** est indisponible, avec un message qui indique que le pipeline doit réussir (le libellé exact dépend de votre version de GitLab). Enfin, `git config --global --get pull.ff` répond `only`.
+:::
+
+::: indice
+Au test 1, si le push **passe**, vérifiez le réglage *Allowed to push and merge* de `main` : il doit valoir *No one*, même pour les Maintainers.
+:::
+
+::: {.indice titre="Indice 2 : la MR reste fusionnable"}
+Vérifiez que *Pipelines must succeed* est coché **et enregistré** (le bouton *Save changes* est en bas de la section). Vérifiez aussi que le pipeline a bien démarré : sans pipeline, il n'y a rien à attendre.
+:::
+
+::: corrige
+Points de contrôle pour le formateur, dans *Settings › Repository* et *Settings › Merge requests* du projet du binôme : les valeurs de la section 7. Erreurs fréquentes :
+
+- *Allowed to push and merge* laissé à *Maintainers* : le test 1 passe si c'est le Maintainer qui pousse. Faites-le refaire par le Maintainer après correction.
+- Merge checks cochés mais non enregistrés.
+- Branche `test-pipeline-rouge` fusionnée « pour voir » : faites-la annuler par une MR de `git revert`, pas par un push forcé (R13).
+
+Remise en ordre du test 1, depuis `main` avec le commit fautif :
+
+```bash
+git switch -c test-protection
+git branch -f main origin/main
+git switch main
+git branch -D test-protection
+```
+:::
+:::
+
+## Les mêmes principes, plus simplement
+
+Vous avez construit un workflow plus simple que Git Flow. Il n'est pas « au rabais » : il applique les **quatre mêmes principes** que les équipes de développement, avec les contraintes d'une publication statistique.
+
+::: {.rosette principe="integrite"}
+::: principe
+`main` n'est jamais cassée, et personne ne perd le travail d'un autre.
+:::
+::: dev
+Branches protégées, CI obligatoire, trunk-based avec feature flags, ou `develop` et `release/*` en Git Flow.
+:::
+::: stat
+`main` protégée (personne n'y pousse, même Inès), *Pipelines must succeed*, `pull.ff only`, `--force-with-lease` sur sa seule branche. Un erratum part du tag, jamais du travail en cours.
+:::
+:::
+
+::: {.rosette principe="tracabilite"}
+::: principe
+Chaque changement dit qui, quand, et surtout pourquoi.
+:::
+::: dev
+Conventional Commits, lien vers le ticket, changelog généré, historique linéaire.
+:::
+::: stat
+Branche `<issue>-<sujet>`, message qui explique le choix méthodologique, `Closes #30`, squash : un sujet, un commit dans `main`. `cherry-pick -x` garde la trace de l'origine d'un correctif.
+:::
+:::
+
+::: {.rosette principe="revue"}
+::: principe
+Aucun changement n'entre sans avoir été relu, par un humain et par une machine.
+:::
+::: dev
+Pull ou Merge Request, approbations obligatoires, propriétaires de code, analyses automatiques.
+:::
+::: stat
+Draft MR ouverte tôt, review du code **et** de la méthode, fils résolus, une approbation. La CI teste les règles méthodologiques : des parts qui somment à 100 %, des taux entre 0 et 1.
+:::
+:::
+
+::: {.rosette principe="reproductibilite"}
+::: principe
+Une publication peut être reconstruite à l'identique : code, données, environnement.
+:::
+::: dev
+Versions SemVer, builds reproductibles, images de conteneur, lockfiles.
+:::
+::: stat
+Tag annoté `AAAA.N`, `MANIFEST.json` des données, `renv.lock` et `requirements.txt` épinglé, image de CI fixée, rapport joint à la GitLab Release. `main` est exécutable ; c'est le **tag** qui est reproductible.
+:::
+:::
+
+::: formateur
+**Timing (60 min).** Contraintes et carnet : 10 min. Mission 1 (cartes-options) : 20 min. Confrontation : 10 min. Présentation du résultat attendu, de l'incident et du `CONTRIBUTING.md` : 5 min (il sera relu en E11). Mission 2 : 15 min.
+
+**Préparation.** Imprimez une carte par dimension (dix cartes par groupe). Vérifiez que chaque binôme a bien un projet où l'un des deux est Maintainer ; sinon, faites la mission 2 en démonstration.
+
+**Posture.** Ne présentez le résultat attendu qu'**après** la confrontation. Si un groupe aboutit à un choix différent mais justifié (par exemple *Merge commit with semi-linear history*), validez-le : le but est la justification, pas l'uniformité.
+
+**Édition GitLab.** Vérifiez avant la session l'édition du GitLab utilisé. En Free, montrez que le bouton *Approve* existe, mais que l'approbation n'est pas exigible.
+:::
+
+::: retenir
+- Notre workflow n'est pas une convention arbitraire : chaque étape du cycle répond à une règle née d'un incident.
+- `main` est exécutable, relue et verte ; c'est le tag qui désigne une publication reproductible (commit, données référencées, environnement figé, rapport).
+- Une règle qui compte est outillée : GitLab la fait respecter, le `CONTRIBUTING.md` l'explique.
+:::
+
+::: {.checkpoint titre="Avant de passer à la suite"}
+::: {.question rappel="e4"}
+Pourquoi régler *Allowed to push and merge* sur *No one* pour `main`, même pour les Maintainers comme Inès ?
+
+::: reponse
+Parce que la règle R06 ne connaît pas d'exception : aucune modification n'entre dans `main` sans MR relue. Si les Maintainers peuvent pousser, un correctif « urgent » finit par contourner la review et la CI. Inès garde ses droits d'administration : elle peut modifier la protection si c'est vraiment nécessaire, mais ce sera un geste délibéré et visible.
+:::
+:::
+
+::: {.question rappel="e6"}
+*Pipelines must succeed* est coché. Quelle règle du carnet ce réglage rend-il automatique, et quelle autre règle conditionne son utilité ?
+
+::: reponse
+Il rend automatique R11 (on ne fusionne pas une MR au pipeline rouge). Mais un pipeline vert ne vaut que ce que valent les tests : c'est R12 (une règle méthodologique importante devient un test) qui lui donne sa valeur.
+:::
+:::
+
+::: {.question rappel="e8"}
+Un lecteur demande à reproduire le chiffre de la part des seniors publié dans le panorama 2027. Faut-il lui indiquer le dernier commit de `main` ? Que lui donnez-vous ?
+
+::: reponse
+Non : `main` a avancé depuis, et elle n'est pas une publication. On lui donne le tag `2027.0`, ou `2027.1` s'il y a eu un erratum. Avec ce tag viennent le `MANIFEST.json` (empreintes des données), l'environnement figé (lockfile, image) et le rapport joint à la GitLab Release.
+:::
+:::
+
+::: question
+Avec la méthode *Fast-forward merge*, GitLab refuse de fusionner une MR dont la branche n'est plus à jour. Que faites-vous ?
+
+::: reponse
+Si le bouton **Rebase** de la MR est proposé (pas de conflit), on peut l'utiliser. Sinon : `git fetch`, `git rebase origin/main` sur sa branche, résolution des conflits, tests, puis `git push --force-with-lease`. C'est exactement E7, et c'est sans danger parce que la branche n'est pas partagée (R13).
+:::
+:::
+:::
+
+::: pont
+Le workflow est écrit, justifié règle par règle, et GitLab le fait respecter. Il reste à le vivre en conditions réelles : l'étape suivante prépare l'édition 2027 de bout en bout, avec les incidents qui arrivent toujours au mauvais moment.
+:::

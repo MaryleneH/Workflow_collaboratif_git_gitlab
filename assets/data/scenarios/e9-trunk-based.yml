@@ -1,0 +1,37 @@
+titre: "Trunk-based"
+couleurs:
+  "30-difficulte-calcul": travail
+  "31-arrondi-flag": travail2
+commits:
+  P: {x: 0, y: 0, msg: "Documente le workflow de l'équipe (#27)"}
+  A: {x: 1, y: 0, parents: [P], couleur: travail, msg: "Calcule le taux de difficulté de recrutement et ses tests (#30)"}
+  B: {x: 1, y: 1, parents: [P], couleur: travail2, msg: "Ajoute l'arrondi des parts, désactivé par défaut (#31)"}
+  "B'": {x: 2, y: 0, parents: [A], label: "B′", msg: "Ajoute l'arrondi des parts, désactivé par défaut (#31)"}
+  A2: {x: 3, y: 0, parents: ["B'"], msg: "Ajoute la figure du taux de difficulté au rapport (#30)"}
+  B3: {x: 4, y: 0, parents: [A2], msg: "Arrondit les parts : total forcé à 100 %, toujours désactivé (#31)"}
+  E: {x: 5, y: 0, parents: [B3], msg: "Corrige l'erratum du panorama 2027"}
+etapes:
+  - texte: "Pas de branche longue : chaque sujet est découpé en incréments de quelques heures. Une branche part du tronc (`main`) le matin et y revient le soir."
+    commande: "git switch -c 30-difficulte-calcul main"
+    commits: [P, A, B]
+    refs: {main: P, "30-difficulte-calcul": A, "31-arrondi-flag": B}
+    head: "30-difficulte-calcul"
+  - texte: "Le premier incrément de #30 est intégré en fast-forward : aucun nouveau commit. Celui de #31, rebasé (**B′** est un nouveau commit), entre aussi dans `main` **alors qu'il n'est pas fini** : il est caché derrière un *feature flag* désactivé."
+    commande: "git rebase main"
+    commits: [P, A, B, "B'"]
+    refs: {main: "B'"}
+    head: main
+    estompes: [B]
+  - texte: "#30 est terminé par un second petit incrément. La publication `2027.0` est un tag sur le tronc : le code de #31 y est présent, mais inactif."
+    commande: "git tag -a 2027.0 -m \"Panorama 2027 : publication\""
+    commits: [P, A, "B'", A2]
+    refs: {main: A2}
+    tags: {"2027.0": A2}
+    head: main
+    surligne: [A2]
+  - texte: "#31 continue sur le tronc, toujours désactivé. L'erratum n'est qu'une petite correction de plus (**E**), et le tag `2027.1` est posé sur le tronc. Il contient le code inachevé de #31, éteint par le flag : il faut le **prouver**, pas le supposer."
+    commits: [P, A, "B'", A2, B3, E]
+    refs: {main: E}
+    tags: {"2027.0": A2, "2027.1": E}
+    head: main
+    surligne: [B3, E]

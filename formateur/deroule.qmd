@@ -1,0 +1,397 @@
+---
+title: "Déroulé des deux jours"
+surtitre: "Espace formateur"
+chapeau: "Horaires indicatifs, objectif et matériel de chaque étape, points d'attention, réalignements du dépôt, plan B en cas de retard et conseils d'animation."
+description: "Déroulé minuté de la formation Git/GitLab niveau 2 : étapes E0 à E11, pauses, plan B, conseils d'animation."
+---
+
+## Vue d'ensemble
+
+Les durées viennent de `assets/data/parcours.yml`. Elles totalisent
+**5 h 45 le premier jour** et **6 h 20 le second**. Sur des journées de
+9 h 00 à 17 h 30 avec 1 h 15 de déjeuner et deux pauses de 15 minutes, il reste
+environ une heure de marge le jour 1 et **moins d'une demi-heure le jour 2**. Le
+jour 2 est donc le plus exposé : préparez dès le matin ce que vous couperez
+(voir [le plan B](#plan-b)).
+
+Les horaires sont **indicatifs**. Ce qui compte, c'est l'ordre des étapes et
+les points de réalignement du dépôt, qui tombent pendant les pauses.
+
+### Jour 1 · Travailler à plusieurs sans se marcher dessus
+
+| Horaire | Étape | Durée | Objectif |
+|---|---|---|---|
+| 09:00 – 09:45 | [E0 · Ouverture](../parcours/jour-1/e0-ouverture.qmd) | 45 min | Situer son niveau ; Git, VS Code et GitLab fonctionnent ensemble |
+| 09:45 – 10:45 | [E1 · Modèle mental](../parcours/jour-1/e1-modele-mental.qmd) | 60 min | Lire un historique et retrouver qui a changé une méthode, quand, pourquoi |
+| 10:45 – 11:00 | *Pause* | 15 min | |
+| 11:00 – 12:15 | [E2 · Dépôt partagé](../parcours/jour-1/e2-depot-partage.qmd) | 75 min | Synchroniser avec GitLab en sachant ce que fait chaque commande |
+| 12:15 – 12:30 | *Marge* | 15 min | Rattraper E2, questions |
+| 12:30 – 13:45 | *Déjeuner* | | |
+| 13:45 – 15:00 | [E3 · Branches et conflits](../parcours/jour-1/e3-branches-conflits.qmd) | 75 min | Isoler son travail, fusionner, résoudre un conflit en comprenant les deux intentions |
+| 15:00 – 15:15 | *Pause* · **réalignement sur `etape-4-debut`** | 15 min | |
+| 15:15 – 16:45 | [E4 · Merge Request](../parcours/jour-1/e4-merge-request.qmd) | 90 min | Ouvrir une MR, relire code **et** méthode, la faire aboutir |
+| 16:45 – 17:00 | *Bilan du jour 1* | 15 min | Relire le carnet (R01 à R10) et la phrase-boussole |
+| 17:00 – 17:30 | *Marge* | 30 min | Rattrapage individuel, questions |
+
+### Jour 2 · Industrialiser et choisir son workflow
+
+| Horaire | Étape | Durée | Objectif |
+|---|---|---|---|
+| 09:00 – 09:20 | [E5 · Rappel](../parcours/jour-2/e5-rappel.qmd) | 20 min | Reformuler sans notes le modèle local/distant et le parcours d'une MR |
+| 09:20 – 10:35 | [E6 · Intégration continue](../parcours/jour-2/e6-ci.qmd) | 75 min | Lire un pipeline, diagnostiquer un job en échec, ajouter un contrôle |
+| 10:35 – 10:50 | *Pause* · **réalignement sur `etape-7-debut`** | 15 min | |
+| 10:50 – 12:05 | [E7 · Rebase et squash](../parcours/jour-2/e7-rebase-squash.qmd) | 75 min | Mettre sa branche à jour avant la review, livrer un historique lisible |
+| 12:05 – 12:15 | *Marge* | 10 min | E7 déborde presque toujours |
+| 12:15 – 13:30 | *Déjeuner* · **réalignement sur `etape-8-debut`** | | |
+| 13:30 – 14:20 | [E8 · Tags, releases, hotfix](../parcours/jour-2/e8-tags-releases-hotfix.qmd) | 50 min | Publier une version reproductible, produire un erratum |
+| 14:20 – 15:20 | [E9 · Workflows pros](../parcours/jour-2/e9-workflows-pros.qmd) | 60 min | Expliquer et critiquer Git Flow, le situer parmi les pratiques modernes |
+| 15:20 – 15:35 | *Pause* | 15 min | |
+| 15:35 – 16:35 | [E10 · Notre workflow](../parcours/jour-2/e10-workflow-statistique.qmd) | 60 min | Justifier chaque règle du workflow et configurer GitLab |
+| 16:35 – 17:15 | [E11 · Simulation finale](../parcours/jour-2/e11-simulation-finale.qmd) | 40 min | Mener un cycle complet en équipe, sous incidents |
+| 17:15 – 17:30 | *Clôture* | 15 min | Phrase-boussole, évaluation |
+
+::: {.formateur titre="Les réalignements, en une phrase"}
+Les branches d'exercice livrées avec le dépôt (`18-taux-recrutement`,
+`21-regrouper-pcs`, `21-regrouper-pcs-e7`) partent des tags de reprise, pas de
+la `main` que les stagiaires ont fait évoluer. Avant E4, E6, E7 et E8, vous
+remettez donc la `main` de chaque projet sur le tag de l'étape, **pendant une
+pause, projet par projet, en l'annonçant**. La procédure exacte est dans
+[Remettre à zéro](remise-a-zero.qmd#realigner). Le réalignement vers
+`etape-6-debut` se fait le soir du jour 1 ou le matin du jour 2 avant 9 h.
+:::
+
+## Jour 1, étape par étape
+
+### E0 · Ouverture · 45 min
+
+Activités
+: Tour de table orienté pratique : R, Python ou les deux ; Git seul ou déjà en
+  équipe ; GitLab ou GitHub. Décodage à l'aveugle de la phrase-boussole : on
+  **ne corrige pas**, on garde les réponses pour la clôture. Diagnostic de
+  départ. Ouverture du service VS Code, puis vérification de `git --version`,
+  de `git config --global --list` et d'un premier `git clone` du projet du
+  binôme.
+
+Matériel
+: Liste des binômes, de leurs projets et de leurs URL de clone ; services
+  VS Code lancés ou lançables ; jetons GitLab créés (voir
+  [la préparation](preparation.qmd)).
+
+Points d'attention
+: Tous les problèmes d'accès (jeton, proxy, identité Git) se règlent **ici**.
+  Un stagiaire qui ne peut pas cloner à 9 h 45 ne pourra pas pousser à 11 h 30.
+  Formez les binômes maintenant (voir [les conseils](#animer)).
+
+### E1 · Modèle mental · 60 min
+
+Activités
+: Graphe projeté pas à pas. Question d'archéologie : pourquoi la part des
+  55 ans et plus du panorama publié (tag `2025.0`) dépasse-t-elle d'environ un
+  point et demi celle du code actuel ? Chemin attendu : `git log --graph`, puis
+  `git log 2025.0..main -- R/`, `git log -S`, `git blame` et enfin `git show`
+  sur le commit c11. La règle R01 naît des messages « maj » et « modifs ».
+
+Matériel
+: Dépôt au tag `etape-1-debut` : `main` sur c15 dans les projets de binôme (voir
+  [l'import](preparation.qmd#import)). L'étape est en **lecture seule**.
+
+Points d'attention
+: Ne donnez pas la réponse avant que deux binômes au moins aient trouvé c11.
+  Traquez les idées reçues dès maintenant : « une branche est une copie », « un
+  commit est un diff ». Faites dire à voix haute ce que pointe `main`, puis ce
+  que pointe `HEAD`.
+
+### E2 · Dépôt partagé · 75 min
+
+Activités
+: Chaque binôme clone son projet et commite, sans pousser, la section
+  `## Sources` de `data/README.md`. Pendant ce temps, vous poussez au nom de
+  Karim un commit qui complète la section `## Champ` du même fichier
+  (« Décrit le champ du panel dans data/README.md ») avec
+  `simuler_collegue.py --depot <votre clone>` (voir
+  [Simuler un collègue](remise-a-zero.qmd#simuler)). Premier push refusé,
+  diagnostic par `git fetch` puis `git log --oneline --graph --all`. Premier
+  `git pull` refusé (« divergent branches »), puis `git pull --no-rebase`.
+  Règles R02 et R03.
+
+Matériel
+: Simulateur de collègue prêt : un clone de chaque projet de binôme sur votre
+  poste, essayé en `--dry-run` ; `main` **non protégée** dans les projets des
+  binômes.
+
+Points d'attention
+: Lancez le simulateur **après** le commit local des stagiaires et **avant**
+  leur push, sinon il n'y a pas de divergence. Si un stagiaire obtient une
+  fusion silencieuse au lieu du message « divergent branches », c'est qu'un
+  `pull.rebase` ou un `pull.ff` traîne dans sa configuration : faites-lui
+  exécuter `git config --show-origin --get-regexp '^pull\.'`. Corrigez
+  fermement « origin, c'est GitLab » : `origin` est un **nom local** donné à
+  une URL.
+
+### E3 · Branches et conflits · 75 min
+
+Activités
+: Dans chaque binôme, le rôle A traite l'issue #12 (seuil paramétrable de la
+  part des seniors), le rôle B l'issue #13 (exclusion des apprentis). A
+  fusionne d'abord : c'est un fast-forward. B fusionne ensuite : c'est une
+  fusion à trois voies, avec un conflit sur la ligne `summarise`. Résolution
+  dans le Merge Editor de VS Code, en gardant les deux intentions, puis
+  relance de `testthat`. Règles R04 et R05.
+
+Matériel
+: Issues #12 et #13 présentes dans chaque projet ; R et `testthat` disponibles
+  dans le service VS Code.
+
+Points d'attention
+: Surveillez les boutons *Accept Current* et *Accept Incoming* du Merge Editor :
+  ils font **choisir un camp**, exactement ce que R05 interdit. Exigez la
+  relance des tests **avant** le commit de fusion. Le second conflit, dans
+  `reports/panorama.qmd`, est optionnel : réservez-le aux binômes en avance.
+
+### E4 · Merge Request · 90 min
+
+Activités
+: Vous protégez `main` **en direct**, projeté (Settings › Repository ›
+  Protected branches), puis un stagiaire tente un push direct : il est
+  refusé. Chaque binôme relit la MR !1 de Tom (branche `18-taux-recrutement`).
+  Il cherche les huit problèmes plantés, code **et** méthode : commentaires,
+  suggestions, puis demande de modifications. Enfin, fusion en squash avec
+  suppression de la branche source, et `git config --global pull.ff only`.
+  Règles R06 à R10.
+
+Matériel
+: `main` réalignée sur `etape-4-debut` ; la MR !1 ouverte dans chaque projet
+  (voir [la préparation](preparation.qmd#issues)) ; la grille de review de la
+  page.
+
+Points d'attention
+: Faites distinguer `#18` (une issue) et `!1` (une Merge Request) : GitLab les
+  numérote séparément. Sur une instance **Free**, l'approbation n'est pas
+  bloquante : dites-le plutôt que de laisser croire qu'elle l'est. Le jeton en
+  clair ouvre la discussion la plus importante de la journée : un secret poussé
+  est compromis, **on le révoque**, et le supprimer du dernier commit ne suffit
+  pas.
+
+### Bilan du jour 1 · 15 min
+
+Relisez le carnet : les dix règles nées dans la journée, **dans l'ordre des
+incidents**. Relisez aussi la phrase-boussole : quels mots sont désormais
+compris ? Il reste « rebase » et « squash » : c'est la promesse du jour 2.
+Rappelez R03 avant de partir : chacun pousse ses branches, car un service
+Onyxia peut disparaître pendant la nuit.
+
+## Jour 2, étape par étape
+
+### E5 · Rappel · 20 min
+
+Activités
+: Questions de récupération sans notes, un incident mixte à diagnostiquer,
+  relecture du carnet.
+
+Matériel
+: Rien de plus que la page. Le réalignement sur `etape-6-debut` est déjà fait,
+  et un pipeline a tourné sur `main` : il est vert.
+
+Points d'attention
+: Ne transformez pas E5 en cours magistral de rattrapage. Si une notion
+  manque à tout le groupe, notez-la et traitez-la **dans** l'étape qui la
+  réutilise. Pendant ce temps, les stagiaires font `git fetch` puis
+  réalignent leur `main` locale, en suivant les commandes projetées.
+
+### E6 · Intégration continue · 75 min
+
+Activités
+: Lecture du `.gitlab-ci.yml` (quatre stages : `verifier`, `tester`,
+  `produire`, `publier`), puis du vocabulaire : pipeline, stage, job, runner,
+  image. La branche `21-regrouper-pcs` fait échouer `tests-r` (les parts ne
+  somment plus à 1 par établissement) et `lint-r` (ligne trop longue).
+  Diagnostic dans le journal du job, correction, puis nouveau pipeline.
+  Règles R11 et R12.
+
+Matériel
+: Runners disponibles, images déjà tirées une fois (voir
+  [la préparation](preparation.qmd#runners)), un pipeline de référence réussi
+  à montrer si les runners sont lents.
+
+Points d'attention
+: Un pipeline prend plusieurs minutes. Utilisez l'attente pour faire lire le
+  journal d'un job, pas pour attendre. Distinguez GitLab, qui orchestre, du
+  runner, qui exécute dans une image. Le test qui échoue est une **assertion
+  méthodologique** : insistez sur le fait qu'il a été écrit par un
+  statisticien.
+
+### E7 · Rebase et squash · 75 min
+
+Activités
+: La branche `21-regrouper-pcs-e7` (sept commits « wip ») a divergé : `main`
+  contient le travail de Léa (c22). `git fetch`, `git rebase origin/main`,
+  conflit dans `reports/panorama.qmd`, résolution, `git rebase --continue`,
+  tests, puis `git push --force-with-lease`. On constate que les hash ont
+  changé et que l'ancienne tête reste accessible par `git reflog`. Squash au
+  merge dans GitLab. Règles R13 et R14.
+
+Matériel
+: `main` réalignée sur `etape-7-debut` ; une copie de la branche d'exercice par
+  binôme si plusieurs binômes partagent un projet.
+
+Points d'attention
+: **Le piège VS Code.** Après le rebase d'une branche déjà poussée, la barre
+  d'état affiche par exemple `7↓ 7↑`. Un clic sur *Sync Changes*
+  (synchroniser) fait un pull, puis un push. Avec `pull.ff only` (R07), ce pull
+  échoue, ce qui déroute. Sans ce réglage, il crée une fusion qui
+  **réintroduit les anciens commits** à côté de leurs copies. Prévenez avant
+  que quelqu'un clique : après un rebase, on pousse avec
+  `git push --force-with-lease`, dans le terminal. Reprenez toute formulation
+  « le rebase déplace mes commits » : il en **crée de nouveaux**. Ne montrez
+  jamais `git push --force` comme une option.
+
+### E8 · Tags, releases, hotfix · 50 min
+
+Activités
+: Tag annoté `2026.0` sur c24, poussé explicitement (`git push origin 2026.0`) ;
+  le job `publication` crée la GitLab Release. Erratum 2025 : `git switch
+  --detach 2025.0`, régénération des données et comparaison du
+  `MANIFEST.json`. Ensuite, `maintenance/2025` (vous jouez Inès et vous la
+  protégez), `hotfix/25-erratum-age`, `git cherry-pick -x` de c11, MR vers
+  `maintenance/2025`, et tag `2025.1`. Règles R15 et R16.
+
+Matériel
+: `main` réalignée sur `etape-8-debut` ; tags `2026.0` et `2025.1`
+  **absents** des projets des binômes ; les stagiaires, avec le rôle
+  Developer, peuvent pousser des tags (aucun tag protégé à ce stade).
+
+Points d'attention
+: L'erreur la plus fréquente : ouvrir la MR d'erratum **vers `main`** au lieu de
+  `maintenance/2025`. Vérifiez la branche cible avant la review. `git push` ne
+  pousse pas les tags : un tag créé mais non poussé ne déclenche aucune
+  Release. La detached HEAD n'est pas une erreur : c'est l'état normal pour
+  explorer un tag.
+
+### E9 · Workflows pros · 60 min
+
+Activités
+: L'atlas rejoue le même scénario (#30, #31, publication `2027.0`, erratum
+  `2027.1`) sous Git Flow, GitHub Flow, GitLab Flow et trunk-based
+  development. Discussion : pourquoi Git Flow a été conçu, ce qu'il résout, ce
+  qu'il coûte. Règle R17.
+
+Matériel
+: L'atlas projeté ; l'énigme Git Flow de la page d'accueil, qui devient
+  lisible.
+
+Points d'attention
+: Ne caricaturez pas Git Flow : il répond bien au besoin de maintenir
+  plusieurs versions livrées en parallèle. La conclusion porte sur **notre**
+  contexte : une seule version vivante, et `maintenance/2025` qui était déjà
+  une brique de GitLab Flow. Signalez l'homonymie de *feature* (branche Git
+  Flow ou variable en data science).
+
+### E10 · Notre workflow · 60 min
+
+Activités
+: Les binômes regroupés en équipes reconstruisent `CONTRIBUTING.md` à partir
+  des dix-sept règles du carnet, puis configurent GitLab : branche protégée,
+  *Pipelines must succeed*, *All threads must be resolved*, squash, suppression
+  de la branche source, méthode de merge.
+
+Matériel
+: Carnet de règles imprimé (une carte par règle) ; accès aux réglages du
+  projet.
+
+Points d'attention
+: Les réglages de Settings › Merge requests exigent le rôle **Maintainer**.
+  Deux options : vous configurez en projetant, sur le projet de référence, ce
+  que chaque équipe dicte ; ou vous promouvez **un** stagiaire par projet au
+  rôle Maintainer pour la durée de l'étape. Le workflow doit être **déduit**
+  du carnet, jamais dicté : si une équipe oublie une règle, demandez-lui
+  quel incident elle vient d'oublier.
+
+### E11 · Simulation finale · 40 min
+
+Activités
+: Par équipes de 3 ou 4, dans un projet au tag `etape-11-debut` : issues #30 à
+  #34, cycle complet de l'issue au tag, cartes-incident tirées au hasard.
+
+Matériel
+: Projets d'équipe prêts, avec l'historique complet, y compris `2026.0` pour
+  l'incident « erratum urgent `2026.1` » ; cartes-incident imprimées.
+
+Points d'attention
+: Tirez les cartes **quand l'équipe est occupée**, pas entre deux tâches : c'est
+  tout l'intérêt. Limitez-vous à deux ou trois cartes par équipe. Gardez cinq
+  minutes pour que chaque équipe raconte un incident et la règle qui l'a
+  sauvée.
+
+### Clôture · 15 min
+
+Faites relire la phrase-boussole, puis laissez un stagiaire la traduire sans
+aide :
+
+> « J'ai ouvert une MR sur ma feature branch, mais elle a divergé de main. Je
+> vais rebase avant la review et squash mes commits au merge. »
+
+Comparez avec les réponses notées en E0. Rappelez les mémos
+([commandes](../memos/commandes.qmd), [notre workflow](../memos/notre-workflow.qmd),
+[dépannage](../memos/depannage.qmd)) : ils sont faits pour être relus dans six
+mois.
+
+## Plan B : quoi couper en cas de retard {#plan-b}
+
+Coupez **tôt**, dès qu'une étape déborde de plus de 10 minutes, et pas à
+16 h 30 le jour 2. Les coupes ci-dessous remplacent une pratique individuelle
+par une démonstration projetée ; elles ne suppriment jamais une notion.
+
+| Étape | Coupe possible | Gain | À ne jamais couper |
+|---|---|---|---|
+| E1 | Vous faites vous-même `git blame` et `git log -S`, projetés, après la première piste des stagiaires | 15 min | La lecture du graphe par les stagiaires |
+| E3 | Supprimer le second conflit (`panorama.qmd`) | 10 min | Le conflit sur `summarise` et la relance des tests |
+| E4 | Répartir les huit problèmes entre binômes (deux ou trois chacun), puis mise en commun | 15 min | La discussion sur le jeton et les données individuelles |
+| E5 | Réduire à cinq questions | 10 min | L'incident mixte |
+| E6 | L'ajout d'un contrôle devient une démonstration | 15 min | La lecture du journal d'un job en échec |
+| E7 | `commit --amend` et `reflog` montrés, pas pratiqués | 10 min | Le rebase avec conflit et le `--force-with-lease` |
+| E8 | La partie *detached HEAD* et `MANIFEST.json` est projetée | 15 min | La MR d'erratum vers `maintenance/2025` |
+| E9 | Deux onglets de l'atlas sur quatre (Git Flow et GitLab Flow) | 20 min | Les coûts de Git Flow |
+| E10 | Réglages GitLab faits par vous, sur le projet de référence | 15 min | La déduction du workflow à partir du carnet |
+| E11 | Une seule carte-incident par équipe | 10 min | Le cycle complet issue → tag |
+
+Si le retard dépasse une heure le jour 2, la bonne décision est de
+**raccourcir E11**, pas E10 : sans E10, la promesse de la formation n'est pas
+tenue. E11 peut se poursuivre en autonomie à partir du tag `etape-11-debut`.
+
+## Animer {#animer}
+
+**Projeter le graphe pas à pas.** Chaque graphe vivant avance étape par étape.
+Avant chaque clic sur « Suivant », demandez : « que va-t-il se passer ? Quelle
+étiquette bouge ? Un commit est-il créé ? ». Faites **prédire avant de
+cliquer**. C'est dans l'écart entre la prédiction et le graphe que le modèle
+mental se corrige.
+
+**Former des binômes mixtes.** Associez une personne à l'aise avec R et une à
+l'aise avec Python, ou un profil confirmé et un profil plus hésitant. Les rôles
+A et B de E3 et les reviews de E4 exploitent cette différence. Changez les
+binômes au jour 2 si l'un d'eux s'est figé en « un qui tape, un qui regarde » :
+c'est le clavier qui tourne, pas la parole.
+
+**Faire verbaliser Git ou GitLab.** À chaque nouvelle notion, posez la
+question : « qui fournit ça ? ». Git fournit le commit, la branche, le merge,
+le rebase, le tag, le remote. GitLab fournit la Merge Request, la review,
+l'approval, la branche protégée, le pipeline, le runner et la Release. Un
+stagiaire qui répond juste à cette question sait dans quel outil chercher.
+Le mémo [Git ou GitLab ?](../memos/git-ou-gitlab.qmd) se projette à tout moment.
+
+**Terminal d'abord.** Montrez la commande, puis l'équivalent visuel dans
+VS Code, jamais l'inverse. Si un stagiaire résout un problème en cliquant,
+demandez-lui quelle commande VS Code vient d'exécuter pour lui. La sortie
+*Git* du panneau *Output* (sortie) l'affiche.
+
+**Faire grandir le carnet.** Chaque règle naît d'un incident vécu. Affichez-la
+physiquement (tableau blanc, paperboard) au moment où elle apparaît. En E10, le
+workflow se lit alors sur le mur.
+
+**Tom fait les erreurs, pas les stagiaires.** Quand un stagiaire se trompe,
+rattachez son erreur à Tom (« c'est exactement ce qu'a fait Tom en E4 ») :
+l'erreur devient un cas d'étude, pas une faute.
+
+**Chronométrer les missions.** Affichez un minuteur visible. À la moitié du
+temps, donnez le premier indice à voix haute. À la fin, le binôme le plus
+avancé montre sa solution, pas vous.

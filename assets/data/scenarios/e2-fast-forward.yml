@@ -1,0 +1,39 @@
+titre: "Chez Karim : un pull sans commit local"
+nom_distant: "GitLab (origin)"
+couleurs:
+  main: main
+commits:
+  A: {x: 0, y: 0, msg: "Ajoute la répartition par PCS et ses tests de cohérence"}
+  B: {x: 1, y: 0, parents: [A], msg: "Teste le schéma et la cohérence des données générées"}
+  V: {x: 2, y: 0, parents: [B], msg: "Documente les sources du panel (votre commit)"}
+  K: {x: 2, y: -1, parents: [B], couleur: main, msg: "Décrit le champ du panel dans data/README.md (Karim)"}
+  M: {x: 3, y: 0, parents: [V, K], msg: "Merge branch 'main' of https://gitlab.example.org/oei/observatoire-industrie"}
+etapes:
+  - texte: "Ici, « Votre dépôt local » est celui de **Karim**. Il n'a rien commité depuis son push de **K**. Sur GitLab, `main` est déjà sur **M**, que vous venez de pousser."
+    local:
+      commits: [A, B, K]
+      refs: {main: K, "origin/main": K}
+      head: main
+    distant:
+      commits: [A, B, K, V, M]
+      refs: {main: M}
+  - texte: "Karim fait `git fetch` : **V** et **M** arrivent, `origin/main` avance. `git status` : « behind 'origin/main' by 2 commits, and can be fast-forwarded ». Son `main` est un **ancêtre** de `origin/main` : il n'y a pas de divergence."
+    commande: "git fetch"
+    local:
+      commits: [A, B, K, V, M]
+      refs: {main: K, "origin/main": M}
+      head: main
+    distant:
+      commits: [A, B, K, V, M]
+      refs: {main: M}
+    surligne: [V, M]
+  - texte: "`git pull` intègre par **fast-forward** : Git se contente d'avancer l'étiquette `main` de **K** à **M**. Aucun commit n'est créé, aucun conflit n'est possible. Git l'écrit en toutes lettres : `Fast-forward`."
+    commande: "git pull"
+    local:
+      commits: [A, B, K, V, M]
+      refs: {main: M, "origin/main": M}
+      head: main
+    distant:
+      commits: [A, B, K, V, M]
+      refs: {main: M}
+    surligne: [M]

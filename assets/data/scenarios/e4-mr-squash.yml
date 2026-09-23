@@ -1,0 +1,82 @@
+# Étape E4 : la branche 18-taux-recrutement, sa MR !1, le squash au merge
+# et la suppression de la branche. Voir docs/bible-fil-rouge.md (c16 à c20).
+titre: "La MR !1, de la branche au squash"
+nom_distant: "GitLab (origin)"
+couleurs:
+  "18-taux-recrutement": travail
+commits:
+  A: {x: 0, y: 0, msg: "c16 · Documente le champ et les sources du panel"}
+  B: {x: 1, y: 0, parents: [A], msg: "c17 · Paramètre le seuil de la part des seniors (#12)"}
+  C: {x: 1, y: -1, parents: [A], msg: "c18 · Exclut les apprentis du calcul de la part des seniors (#13)"}
+  D: {x: 2, y: 0, parents: [B, C], msg: "c19 · Merge branch '13-exclure-apprentis'"}
+  T1: {x: 3, y: 1, parents: [D], couleur: travail, msg: "maj"}
+  T2: {x: 4, y: 1, parents: [T1], couleur: travail, msg: "Retire le fichier nominatif et lit le jeton dans l'environnement (#18)"}
+  T3: {x: 5, y: 1, parents: [T2], couleur: travail, msg: "Apply 1 suggestion(s) to 1 file(s)"}
+  S: {x: 6, y: 0, parents: [D], msg: "c20 · Ajoute le taux de recrutement par métier (#18)"}
+etapes:
+  - texte: "Tom part de `main` à jour (**D**, le commit de fusion d'hier) et crée sa branche : un nom de plus, posé sur **D**. Aucun fichier n'est copié."
+    commande: "git switch -c 18-taux-recrutement"
+    local:
+      commits: [A, B, C, D]
+      refs: {main: D, 18-taux-recrutement: D, origin/main: D}
+      head: 18-taux-recrutement
+    distant:
+      commits: [A, B, C, D]
+      refs: {main: D}
+  - texte: "Tom commite (**T1**, « maj ») puis pousse sa branche. GitLab crée `18-taux-recrutement` de son côté ; `-u` crée chez Tom la branche distante `origin/18-taux-recrutement` et la relie à sa branche locale. Tom ouvre la **Draft MR !1**."
+    commande: "git push -u origin 18-taux-recrutement"
+    local:
+      commits: [A, B, C, D, T1]
+      refs: {main: D, 18-taux-recrutement: T1, origin/main: D, origin/18-taux-recrutement: T1}
+      head: 18-taux-recrutement
+    distant:
+      commits: [A, B, C, D, T1]
+      refs: {main: D, 18-taux-recrutement: T1}
+    surligne: [T1]
+  - texte: "La review demande des corrections. Tom les commite (**T2**) et pousse : la MR se met à jour d'elle-même, car elle suit la **branche**, pas un commit."
+    commande: "git push"
+    local:
+      commits: [A, B, C, D, T1, T2]
+      refs: {main: D, 18-taux-recrutement: T2, origin/main: D, origin/18-taux-recrutement: T2}
+      head: 18-taux-recrutement
+    distant:
+      commits: [A, B, C, D, T1, T2]
+      refs: {main: D, 18-taux-recrutement: T2}
+  - texte: "Tom clique sur **Apply suggestion** dans GitLab : c'est **GitLab** qui crée le commit **T3** sur la branche du serveur. Le dépôt de Tom ne le connaît pas encore."
+    local:
+      commits: [A, B, C, D, T1, T2]
+      refs: {main: D, 18-taux-recrutement: T2, origin/main: D, origin/18-taux-recrutement: T2}
+      head: 18-taux-recrutement
+    distant:
+      commits: [A, B, C, D, T1, T2, T3]
+      refs: {main: D, 18-taux-recrutement: T3}
+    surligne: [T3]
+  - texte: "Avant de continuer, Tom récupère ce commit : sa branche avance par fast-forward jusqu'à **T3**."
+    commande: "git pull"
+    local:
+      commits: [A, B, C, D, T1, T2, T3]
+      refs: {main: D, 18-taux-recrutement: T3, origin/main: D, origin/18-taux-recrutement: T3}
+      head: 18-taux-recrutement
+    distant:
+      commits: [A, B, C, D, T1, T2, T3]
+      refs: {main: D, 18-taux-recrutement: T3}
+  - texte: "Review approuvée, fils résolus : Inès fusionne avec **Squash commits** et **Delete source branch**. GitLab crée **un nouveau commit S**, à un seul parent (**D**), qui contient l'état final de la branche. La branche disparaît du serveur. Chez Tom, rien n'a bougé."
+    local:
+      commits: [A, B, C, D, T1, T2, T3]
+      refs: {main: D, 18-taux-recrutement: T3, origin/main: D, origin/18-taux-recrutement: T3}
+      head: 18-taux-recrutement
+    distant:
+      commits: [A, B, C, D, S]
+      refs: {main: S}
+    surligne: [S]
+  - texte: "Tom revient sur `main` et la met à jour (fast-forward jusqu'à **S**), supprime sa branche locale, puis élague `origin/18-taux-recrutement`. **T1**, **T2** et **T3** ne sont plus portés par aucun nom : ils ne sont pas dans `main`, mais leur contenu y est, dans **S**."
+    commande: "git switch main && git pull && git branch -d 18-taux-recrutement && git fetch --prune"
+    local:
+      commits: [A, B, C, D, T1, T2, T3, S]
+      refs: {main: S, origin/main: S}
+      head: main
+    distant:
+      commits: [A, B, C, D, S]
+      refs: {main: S}
+    estompes: [T1, T2, T3]
+    surligne: [S]

@@ -1,0 +1,333 @@
+---
+title: "Commandes par intention"
+surtitre: "Mémo"
+chapeau: "Vous savez ce que vous voulez faire, pas forcément la commande. Chaque commande est rangée par intention, avec son niveau de risque, ce qu'elle fait réellement et le piège qui l'accompagne."
+description: "Mémo des commandes Git classées par intention : voir, récupérer, créer une branche, enregistrer, partager, intégrer, annuler, publier, explorer le passé. Avec niveaux de risque et pièges."
+---
+
+Toutes les commandes se tapent dans le [terminal intégré]{.t} de VS Code, à la racine du dépôt. Les exemples reprennent le projet de l'Observatoire : branche `30-difficulte-recrutement` pour l'issue #30, tags `2025.0` et `2026.0`. Remplacez les noms par les vôtres.
+
+## Les quatre niveaux de risque
+
+Chaque bloc de commande porte une étiquette. Elle répond à une seule question : **que puis-je perdre si je me trompe ?**
+
+| Étiquette | Ce que fait la commande | Ce que vous risquez |
+|---|---|---|
+| **Sans risque** | Lit le dépôt, ou télécharge sans toucher à votre travail. | Rien. Tapez-la aussi souvent que vous voulez. |
+| **Réversible** | Crée un commit, une branche, un tag, ou déplace une référence. | Un état à défaire, mais rien de perdu : `git reflog` garde la trace. |
+| **Réécrit l'historique** | Remplace des commits existants par de nouveaux (nouveaux hash). | Rien pour vous ; beaucoup pour les autres si ces commits étaient partagés. |
+| **Dangereux** | Efface des modifications non commitées, ou écrase le travail d'un autre. | Du travail **non récupérable** : Git ne l'a jamais enregistré. |
+
+::: idee-fausse
+::: fausse
+`git reset --hard` est la commande la plus dangereuse, parce qu'elle « supprime des commits ».
+:::
+::: juste
+Un commit n'est presque jamais perdu : le [reflog]{.t} le retrouve pendant des semaines. Ce qui est perdu pour de bon, ce sont les modifications **jamais commitées**, que `reset --hard`, `restore` et `clean` écrasent sans filet. Commitez souvent : c'est votre sauvegarde.
+:::
+:::
+
+## Je veux voir où j'en suis
+
+```{.bash risque="sur"}
+git status
+```
+
+Compare trois états : le dernier commit, l'[index]{.t} et votre [copie de travail]{.t}. Indique aussi la branche courante et sa position par rapport à sa branche amont. **Piège** : « Your branch is up to date with 'origin/main' » veut dire « à jour avec votre **dernier** fetch », pas avec GitLab en ce moment.
+
+```{.bash risque="sur"}
+git status -sb
+git branch -vv
+```
+
+Version courte (`## main...origin/main [ahead 1, behind 2]`) et liste des branches locales avec leur branche amont et leur avance ou retard. **Piège** : une branche sans amont n'affiche aucun retard, même si GitLab a avancé.
+
+```{.bash risque="sur"}
+git diff
+git diff --staged
+```
+
+`git diff` montre ce qui a changé et **n'est pas encore** dans l'index ; `git diff --staged` ce qui partira au prochain commit. **Piège** : un fichier nouveau, jamais ajouté, n'apparaît dans aucun des deux : seul `git status` le signale.
+
+```{.bash risque="sur"}
+git remote -v
+```
+
+Liste les [remotes]{.t ref="remote"} : un nom local, une URL. **Piège** : `origin` n'est qu'un nom posé par `git clone` ; il peut désigner n'importe quel dépôt, pas « GitLab » en général.
+
+## Je veux lire l'historique
+
+```{.bash risque="sur"}
+git log --oneline --graph --all
+```
+
+Dessine le graphe de **tous** les commits connus localement, branches et tags compris. C'est la commande à taper dès que vous doutez. **Piège** : sans `--all`, vous ne voyez que les ancêtres de HEAD ; les commits de `origin/main` que vous n'avez pas encore intégrés restent invisibles.
+
+```{.bash risque="sur"}
+git log --oneline 2025.0..main -- R/
+```
+
+Liste les commits accessibles depuis `main` mais pas depuis le tag `2025.0`, qui touchent le dossier `R/` : « qu'est-ce qui a changé dans les calculs depuis la publication ? ». **Piège** : `A..B` n'est pas un intervalle de dates, c'est une différence d'ensembles de commits.
+
+```{.bash risque="sur"}
+git show 3f9a2c1
+git log -p --follow -- R/age.R
+```
+
+`git show` affiche un commit : ses métadonnées, son message et le [diff]{.t} avec son parent. `git log -p --follow` retrace toute la vie d'un fichier, renommages compris. **Piège** : le diff affiché est **calculé** à la demande ; le commit, lui, stocke un instantané complet.
+
+## Je veux récupérer le travail des autres
+
+```{.bash risque="sur"}
+git fetch
+```
+
+Télécharge les commits que vous n'avez pas et met à jour les branches distantes (`origin/main`…). Ne touche **ni** à vos branches **ni** à vos fichiers. **Piège** : après un fetch, votre `main` n'a pas bougé ; c'est normal, seul `origin/main` a avancé.
+
+```{.bash risque="sur"}
+git log --oneline main..origin/main
+```
+
+Montre ce que le fetch a apporté et que vous n'avez pas encore intégré. À lire **avant** d'intégrer (règle R02).
+
+```{.bash risque="reversible"}
+git switch main
+git pull
+```
+
+`git pull` = `git fetch`, puis intégration de la branche amont dans la branche courante. Avec la configuration recommandée (`pull.ff only`), il n'accepte qu'un [fast-forward]{.t} et refuse sinon. **Piège** : sans cette configuration, un pull peut créer un commit de fusion ou lancer un rebase ; « pull synchronise » est faux, il **télécharge puis intègre**.
+
+```{.bash risque="reversible"}
+git switch 21-regrouper-pcs
+```
+
+Si `21-regrouper-pcs` n'existe que sur le remote (`origin/21-regrouper-pcs`), Git crée une branche locale du même nom qui la suit. **Piège** : il faut un `git fetch` préalable pour que Git connaisse la branche.
+
+## Je veux créer une branche ou en changer
+
+```{.bash risque="reversible"}
+git fetch
+git switch -c 30-difficulte-recrutement origin/main
+```
+
+Crée la branche sur le dernier état connu de GitLab, puis y place HEAD. Aucun fichier n'est copié : Git écrit un nom et un hash. **Piège** : `git switch -c ma-branche` sans point de départ part de **là où vous êtes**, éventuellement d'une vieille `main` locale ou d'une autre branche de travail.
+
+```{.bash risque="reversible"}
+git switch main
+git switch -
+```
+
+Change de branche : HEAD pointe vers une autre branche et les fichiers suivis sont mis à jour. `git switch -` revient à la branche précédente. **Piège** : si vos modifications non commitées entrent en conflit avec la branche cible, Git refuse (`error: Your local changes to the following files would be overwritten by checkout`) ; commitez ou mettez de côté d'abord.
+
+```{.bash risque="reversible"}
+git stash push -m "essai seuil 60 ans"
+git stash pop
+```
+
+Le [stash]{.t} met de côté des modifications non commitées, puis les réapplique. **Piège** : les stash s'oublient et ne sont pas poussés. Pour plus d'une heure, préférez un commit sur une branche.
+
+::: {.vscode titre="La branche courante, en permanence"}
+La barre d'état (en bas à gauche) affiche la branche courante ; un clic ouvre la liste des branches et propose *Create new branch…*. Tapez quand même `git switch -c … origin/main` : l'interface part de la branche courante, pas forcément de `origin/main`.
+:::
+
+`git checkout` fait tout cela et bien plus (changer de branche, restaurer un fichier) : vous le croiserez dans les forums. `git switch` et `git restore` le remplacent, avec des rôles séparés et moins de pièges.
+
+## Je veux enregistrer mon travail
+
+```{.bash risque="reversible"}
+git add R/indicateurs.R tests/testthat/test-indicateurs.R
+git add -p
+```
+
+Place des modifications dans l'index, c'est-à-dire dans l'instantané du prochain commit. `git add -p` propose chaque bloc modifié un par un : idéal pour ne pas mêler deux sujets. **Piège** : `git add .` ajoute aussi l'extraction CSV oubliée dans le dossier ; vérifiez `git status` avant de commiter.
+
+```{.bash risque="reversible"}
+git commit
+```
+
+Crée un [commit]{.t} : un instantané complet de l'index, avec auteur, date, message et parent. Sans `-m`, VS Code s'ouvre pour rédiger (voir la configuration plus bas). **Piège** : un message comme « maj » n'explique rien. Écrivez le **pourquoi** et citez l'issue (règle R01) :
+
+```text
+Calcule le taux de difficulté de recrutement par métier (#30)
+
+Rapport des sommes (établissements déclarant une difficulté / répondants),
+et non moyenne des taux par établissement : un établissement de 12 salariés
+ne doit pas peser autant qu'un de 2 000. Les non-répondants sont exclus.
+```
+
+## Je veux partager mon travail
+
+```{.bash risque="reversible"}
+git push -u origin 30-difficulte-recrutement
+git push
+```
+
+Envoie vos commits et demande au serveur de déplacer sa branche. `-u` définit la branche amont, une fois pour toutes ; ensuite `git push` suffit. **Piège** : un push ne « rend » rien de privé. Un fichier poussé est copié chez tous ceux qui font un fetch (règle R09).
+
+```{.bash risque="reecrit"}
+git push --force-with-lease
+```
+
+Remplace la branche distante par la vôtre, **seulement** si elle est encore là où votre dernier fetch l'a vue. À utiliser après un rebase de **votre** branche de travail. **Piège** : `git push --force`, lui, écrase sans vérifier le travail qu'un collègue aurait poussé entre-temps. Ce n'est jamais une pratique normale (règle R13).
+
+## Je veux intégrer le travail d'une autre branche
+
+Dans notre workflow, l'intégration dans `main` se fait **dans GitLab**, par une Merge Request. En local, vous intégrez surtout `main` dans votre branche, pour la mettre à jour.
+
+```{.bash risque="reecrit"}
+git fetch
+git rebase origin/main
+```
+
+Rejoue vos commits, un par un, au-dessus de `origin/main`. Git crée de **nouveaux** commits, avec de nouveaux hash ; la branche pointe ensuite dessus et les anciens commits ne sont plus référencés. **Piège** : « le rebase déplace mes commits » est faux ; et rebaser une branche sur laquelle d'autres ont travaillé réécrit leur historique (règle R13). `git rebase main` rebase sur votre `main` **locale**, peut-être en retard : préférez `origin/main` après un fetch.
+
+```{.bash risque="reversible"}
+git add reports/panorama.qmd
+git rebase --continue
+git rebase --abort
+```
+
+Pendant un rebase en conflit : résolvez, ajoutez le fichier, continuez. `--abort` remet tout exactement comme avant le rebase. **Piège** : `git commit` au milieu d'un rebase crée un commit supplémentaire ; c'est `--continue` qu'il faut.
+
+```{.bash risque="reversible"}
+git merge origin/main
+git merge --abort
+```
+
+Fusionne `origin/main` dans la branche courante : [fast-forward]{.t} si c'est possible, sinon [fusion à trois voies]{.t} et commit de fusion à deux parents. Alternative au rebase quand la branche est partagée. **Piège** : un conflit n'est pas une panne ; c'est une décision méthodologique qui vous revient (règle R05).
+
+```{.bash risque="reversible"}
+git cherry-pick -x 7c1e0b4
+```
+
+Crée sur la branche courante un **nouveau** commit qui applique les mêmes modifications que `7c1e0b4`. `-x` ajoute « (cherry picked from commit …) » au message : la trace du report. **Piège** : c'est une copie, pas un déplacement ; le commit d'origine reste où il est.
+
+## Je veux annuler
+
+Le bon outil dépend d'une seule question : **la modification est-elle déjà commitée, et poussée ?**
+
+| Situation | Commande | Risque |
+|---|---|---|
+| Modifié, pas ajouté à l'index | `git restore fichier` | Dangereux |
+| Ajouté à l'index, pas commité | `git restore --staged fichier` | Réversible |
+| Commité, pas poussé | `git commit --amend` ou `git reset --soft HEAD~1` | Réécrit l'historique |
+| Commité **et** poussé | `git revert <commit>` | Réversible |
+
+```{.bash risque="dangereux"}
+git restore R/indicateurs.R
+```
+
+Remet le fichier dans l'état de l'index (ou du dernier commit). **Piège** : vos modifications non commitées disparaissent **sans retour possible** ; aucun reflog ne les a vues.
+
+```{.bash risque="reversible"}
+git restore --staged data/extractions/recrutements_2025.csv
+```
+
+Retire le fichier de l'index sans toucher au fichier sur le disque. C'est le bon réflexe quand `git status` montre un fichier qui ne doit pas partir.
+
+```{.bash risque="reecrit"}
+git commit --amend
+```
+
+Remplace le dernier commit par un **nouveau** commit (message corrigé, fichier oublié ajouté). **Piège** : si l'ancien était poussé, votre branche a divergé de sa copie distante ; sur votre propre branche, il faudra `--force-with-lease`.
+
+```{.bash risque="reecrit"}
+git reset --soft HEAD~1
+```
+
+Recule la branche d'un commit ; les modifications de ce commit restent dans l'index, prêtes à être recommitées. **Piège** : à réserver aux commits jamais partagés.
+
+```{.bash risque="reversible"}
+git revert 7c1e0b4
+```
+
+Crée un **nouveau** commit qui applique l'inverse de `7c1e0b4`. L'historique n'est pas réécrit : tout le monde peut simplement récupérer ce commit. C'est **la** façon d'annuler ce qui est déjà dans `main`, par une MR. **Piège** : annuler un commit de fusion demande `-m 1`, pour dire quel parent conserver.
+
+```{.bash risque="dangereux"}
+git reset --hard origin/main
+git clean -n
+git clean -f
+```
+
+`reset --hard` déplace la branche **et** écrase index et fichiers suivis ; `git clean -f` supprime les fichiers non suivis (`-n` montre d'abord ce qui serait supprimé). **Piège** : tout ce qui n'était pas commité est perdu. Tapez `git status` avant, toujours.
+
+## Je veux publier une version
+
+```{.bash risque="reversible"}
+git switch main
+git pull
+git tag -a 2026.0 -m "Panorama 2026 : publication"
+git push origin 2026.0
+```
+
+Le [tag]{.t} annoté est une référence **fixe**, avec auteur, date et message, posée ici sur le commit courant de `main` (ajoutez un hash en fin de commande pour viser un autre commit). Il marque la publication et se pousse explicitement, un par un. **Piège** : `git push --tags` envoie **tous** vos tags locaux, y compris vos essais. Et un tag publié ne se déplace jamais : pour corriger, on publie `2026.1`.
+
+```{.bash risque="sur"}
+git tag -n
+git show 2026.0
+git ls-remote --tags origin
+```
+
+Liste les tags avec leur message, affiche un tag et son commit, liste les tags présents **sur le serveur**. **Piège** : le tag vit dans Git ; la [GitLab Release]{.t} (notes, liens, rapport joint) est un objet de GitLab qui s'y attache.
+
+## Je veux explorer le passé
+
+```{.bash risque="reversible"}
+git switch --detach 2025.0
+git switch main
+```
+
+Place HEAD directement sur le commit du tag `2025.0` ([detached HEAD]{.t}) : vous pouvez tout lire et tout relancer, comme en 2025. **Piège** : un commit fait dans cet état n'est retenu par aucune branche ; créez-en une (`git switch -c maintenance/2025`) avant de travailler.
+
+```{.bash risque="sur"}
+git show 2025.0:R/age.R
+git diff 2025.0 2026.0 -- R/
+```
+
+Affiche un fichier tel qu'il était dans une version, ou les différences de code entre deux publications, sans rien changer à votre copie de travail.
+
+```{.bash risque="sur"}
+git log -S "31" --oneline -- R/age.R
+git blame R/age.R
+```
+
+`git log -S` trouve les commits qui ont ajouté ou retiré une chaîne ; `git blame` donne, ligne par ligne, le dernier commit qui l'a modifiée. **Piège** : le [blame]{.t} explique une décision, il n'accuse personne ; lisez ensuite le commit avec `git show`.
+
+```{.bash risque="sur"}
+git reflog
+```
+
+Le journal **local** des positions successives de HEAD : chaque commit, switch, rebase, reset. C'est là qu'on retrouve un commit « perdu ». **Piège** : il n'existe que sur votre machine ; un service Onyxia supprimé l'emporte avec lui.
+
+Pour retrouver le commit qui a fait basculer un chiffre parmi des dizaines, voir l'approfondissement [git bisect](../parcours/approfondissements/bisect.qmd).
+
+## Configuration recommandée {#configuration}
+
+À faire une fois par poste ou par service Onyxia. Toutes ces options sont des réglages **Git**, enregistrés dans `~/.gitconfig`.
+
+```{.bash risque="reversible"}
+git config --global user.name "Prénom Nom"
+git config --global user.email "prenom.nom@example.org"
+git config --global init.defaultBranch main
+git config --global pull.ff only
+git config --global core.editor "code --wait"
+```
+
+- `user.name` et `user.email` signent chaque commit. Utilisez l'adresse connue de votre GitLab, pour que les commits soient rattachés à votre compte.
+- `init.defaultBranch main` : les nouveaux dépôts démarrent sur `main`.
+- `pull.ff only` : `git pull` refuse de créer un commit de fusion. Si la branche a divergé, vous obtenez `fatal: Not possible to fast-forward, aborting.` et vous **choisissez** consciemment : rebase de votre branche, ou merge (règle R07).
+- `core.editor "code --wait"` : les messages de commit, de merge et de rebase s'écrivent dans un onglet VS Code ; Git attend que vous fermiez l'onglet.
+
+Option utile, mais facultative :
+
+```{.bash risque="reversible"}
+git config --global fetch.prune true
+```
+
+À chaque fetch, supprime les branches distantes (`origin/18-taux-recrutement`…) qui n'existent plus sur GitLab. Vos branches **locales** ne sont pas touchées.
+
+```{.bash risque="sur"}
+git config --global --list --show-origin
+```
+
+Affiche la configuration effective et le fichier d'où vient chaque valeur.
